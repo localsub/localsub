@@ -1,0 +1,54 @@
+# Node
+node_modules/
+dist/
+
+# Rust
+src-tauri/target/
+
+# Python
+__pycache__/
+*.pyc
+python-server/venv/
+*.egg-info/
+
+# Bundled Python resources
+src-tauri/resources/python-embed/
+src-tauri/resources/get-pip.py
+src-tauri/resources/python-server/
+
+# Claude Code
+.claude/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.log
+logs/
+
+# Test files & results
+test_results/
+test_*.py
+eval_*.py
+check_*.py
+compare_*.py
+create_test_audio.py
+extract_stt.py
+
+# Dev build scripts
+run-dev.bat
+build-llama*.bat
+.cargo/
+
+# Test audio
+*.wav
+
+# Process artifacts (session specs/plans) stay local-only — public repo carries the product
+docs/superpowers/

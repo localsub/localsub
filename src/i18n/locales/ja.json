@@ -1,0 +1,669 @@
+{
+  "app": {
+    "title": "LocalSub",
+    "loading": "読み込み中..."
+  },
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "editor": "エディタ",
+    "presets": "プリセット",
+    "settings": "設定",
+    "theme": "テーマ"
+  },
+  "dashboard": {
+    "description": "ジョブの管理",
+    "filter": {
+      "all": "すべて",
+      "processing": "処理中",
+      "pending": "待機中",
+      "completed": "完了",
+      "failed": "失敗",
+      "interrupted": "中断"
+    },
+    "status": {
+      "pending": "待機中",
+      "processing": "処理中",
+      "completed": "完了",
+      "failed": "失敗",
+      "interrupted": "中断"
+    },
+    "stage": {
+      "stt": "音声認識",
+      "diarizing": "話者分離",
+      "translating": "翻訳中",
+      "done": "完了",
+      "error": "エラー"
+    },
+    "table": {
+      "file": "ファイル",
+      "preset": "プリセット",
+      "status": "ステータス",
+      "progress": "進捗",
+      "created": "作成日時"
+    },
+    "empty": {
+      "title": "ジョブがありません",
+      "description": "新しいジョブを作成して字幕の処理を始めましょう。"
+    },
+    "actions": {
+      "remove": "削除",
+      "retry": "再試行",
+      "retryTranslation": "翻訳のみ再試行",
+      "openEditor": "エディタで開く",
+      "resume": "翻訳を再開"
+    },
+    "interruptedCount": "{{count}}行翻訳済み",
+    "search": "ファイルを検索...",
+    "dropOverlay": "ここにファイルをドロップして新しいジョブを作成",
+    "time": {
+      "justNow": "たった今",
+      "minsAgo": "{{count}}分前",
+      "hrsAgo": "{{count}}時間前"
+    },
+    "eta": {
+      "lessThanMinute": "残り1分未満",
+      "minutes": "残り約{{count}}分",
+      "hoursMinutes": "残り約{{count}}時間{{minutes}}分"
+    },
+    "stats": {
+      "processedIn": "処理時間: {{time}}"
+    },
+    "sort": {
+      "newest": "新しい順",
+      "oldest": "古い順",
+      "nameAsc": "名前 A-Z",
+      "nameDesc": "名前 Z-A"
+    },
+    "newJob": {
+      "button": "新規ジョブ",
+      "title": "新規ジョブ",
+      "description": "ファイルをアップロードし、プリセットを選択して処理を開始します。",
+      "dropzone": "ここにファイルをドラッグ＆ドロップ、またはクリックして選択",
+      "preset": "プリセット",
+      "noPresets": "プリセットがありません。プリセットページで作成してください。",
+      "start": "ジョブを開始",
+      "startMultiple": "{{count}}件のジョブを開始",
+      "supportedFormats": "MP4, MKV, AVI, MOV, MP3, WAV, SRT, VTT",
+      "linkedVocab": "関連付けられた用語集:",
+      "subtitleMode": {
+        "badge": "字幕翻訳モード",
+        "hint": "字幕ファイルは音声認識をスキップして直接翻訳されます。",
+        "unavailable": "字幕ファイルには音声がないため、このオプションは使用できません。"
+      },
+      "skipTranslation": "STTのみ",
+      "skipTranslationDesc": "文字起こしのみ — 翻訳ステップをスキップ",
+      "enableDiarization": "話者分離",
+      "enableDiarizationDesc": "音声中の異なる話者を検出してラベル付けします",
+      "preview": {
+        "title": "サンプル翻訳",
+        "open": "サンプル翻訳",
+        "close": "サンプルを閉じる",
+        "start": "開始",
+        "startLabel": "開始",
+        "duration": "区間",
+        "maxMinutes": "最大{{max}}分",
+        "run": "実行",
+        "runSttAndTranslate": "STT + 翻訳",
+        "retryTranslation": "翻訳のみ再実行",
+        "time": "時間",
+        "original": "原文",
+        "translated": "翻訳",
+        "sttCached": "STTキャッシュ済み — 用語集を編集後「翻訳のみ再実行」で素早くテストできます。",
+        "noVocab": "用語集が未接続",
+        "createVocab": "新規作成",
+        "editVocab": "用語集を編集",
+        "closeVocab": "用語集を閉じる",
+        "tempVocabName": "一時用語集",
+        "source": "原語",
+        "target": "訳語",
+        "add": "追加",
+        "save": "保存",
+        "saving": "保存中...",
+        "filesSelected": "{{count}}件のファイルを選択",
+        "clickToAdd": "— クリックして追加"
+      },
+      "ffmpegMissing": "FFmpeg がありません。60分を超える動画はチャンクに分割されません。"
+    }
+  },
+  "editor": {
+    "description": "字幕エディタ",
+    "placeholder": "ダッシュボードから完了したジョブを選択して字幕を編集できます。",
+    "empty": {
+      "title": "字幕が読み込まれていません",
+      "description": "ダッシュボードから完了したジョブを選択して編集を始めましょう。"
+    },
+    "noSubtitles": "表示する字幕がありません。",
+    "selectToEdit": "リストから字幕を選択して編集してください。",
+    "subtitlesCount": "字幕",
+    "unsaved": "未保存の変更",
+    "save": "保存",
+    "export": {
+      "label": "エクスポート"
+    },
+    "originalText": "原文",
+    "translatedText": "翻訳文",
+    "translationPlaceholder": "翻訳を入力...",
+    "status": {
+      "translated": "翻訳済み",
+      "untranslated": "未翻訳",
+      "spell_error": "エラー",
+      "editing": "編集中"
+    },
+    "actions": {
+      "split": "分割",
+      "mergeNext": "次と結合",
+      "splitTooltip": "再生位置で字幕を分割",
+      "mergeNextTooltip": "下の字幕と結合",
+      "retranslate": "再翻訳",
+      "retranslateTooltip": "この行を再翻訳"
+    },
+    "stats": {
+      "chars": "文字数",
+      "duration": "長さ",
+      "cps": "文字/秒"
+    },
+    "undo": "元に戻す",
+    "redo": "やり直す",
+    "delete": "削除",
+    "deleteTooltip": "この字幕を削除",
+    "startTime": "開始",
+    "endTime": "終了",
+    "playbackSpeed": "速度",
+    "processing": "処理中...",
+    "autoSaving": "自動保存中...",
+    "autoSaved": "自動保存済み",
+    "video": {
+      "show": "動画を表示",
+      "hide": "動画を非表示"
+    },
+    "a11y": {
+      "skipPrev": "前の字幕へ",
+      "play": "再生",
+      "pause": "一時停止",
+      "skipNext": "次の字幕へ",
+      "volume": "音量"
+    },
+    "findReplace": {
+      "title": "検索と置換",
+      "placeholder": "字幕内を検索...",
+      "replacePlaceholder": "置換文字列...",
+      "replace": "置換",
+      "replaceAll": "すべて置換",
+      "caseSensitive": "大文字小文字を区別",
+      "searchOriginal": "原文を検索"
+    },
+    "timeShift": {
+      "button": "タイムシフト",
+      "title": "タイムシフト",
+      "seconds": "秒 (±)",
+      "scopeAll": "すべての行",
+      "scopeSelection": "選択した行",
+      "apply": "適用"
+    },
+    "refusal": {
+      "filterToggle": "問題のみ表示",
+      "retranslateAll": "問題を再翻訳 ({{count}})",
+      "progress": "{{done}}/{{total}}",
+      "cancel": "キャンセル",
+      "reason": {
+        "empty": "翻訳が空です",
+        "copy": "原文がそのままコピーされています",
+        "refusal_phrase": "モデルが翻訳を拒否しました",
+        "too_long": "出力が異常に長いです",
+        "repetition": "同じ語句の繰り返し"
+      }
+    },
+    "vocab": {
+      "addToVocab": "用語集に追加",
+      "source": "原語",
+      "target": "訳語",
+      "selectVocab": "用語集",
+      "noVocabs": "用語集がありません。プリセットページで作成してください。",
+      "added": "{{name}}に追加しました",
+      "addedDesc": "次回の翻訳ジョブから反映されます。",
+      "dialogDesc": "選択したテキストを用語として登録します。次回の翻訳ジョブから反映されます。",
+      "vocabMatch": "用語集: {{source}} → {{target}}"
+    }
+  },
+  "presets": {
+    "description": "翻訳プリセットと用語集",
+    "placeholder": "プリセット管理は近日公開予定です。",
+    "tabs": {
+      "presets": "ジョブプリセット",
+      "vocabularies": "用語集"
+    },
+    "presetsDesc": "プリセットはSTT、翻訳、用語集の設定を再利用可能な構成にまとめたものです。",
+    "newPreset": "新規プリセット",
+    "emptyPresets": {
+      "title": "プリセットがありません",
+      "description": "最初のプリセットを作成して始めましょう。"
+    },
+    "vocabDesc": "特定の用語の翻訳方法を定義し、ジョブ間で一貫性を保ちます。",
+    "newVocab": "新規用語集",
+    "emptyVocab": {
+      "title": "用語集がありません",
+      "description": "用語集を作成して一貫した翻訳を実現しましょう。"
+    },
+    "actions": {
+      "edit": "編集",
+      "duplicate": "複製",
+      "delete": "削除",
+      "setDefault": "デフォルトに設定"
+    },
+    "lang": {
+      "ko": "韓国語",
+      "en": "英語",
+      "ja": "日本語",
+      "zh": "中国語"
+    },
+    "style": {
+      "natural": "自然",
+      "formal": "敬語（です・ます調）",
+      "casual": "常体（だ・である調）"
+    },
+    "default": "デフォルト",
+    "quality": {
+      "fast": "高速",
+      "balanced": "バランス",
+      "best": "最高品質"
+    },
+    "twoPass": "2パス",
+    "customPrompt": "カスタム指示",
+    "customPromptPlaceholder": "追加の翻訳指示（任意）...",
+    "vocab": {
+      "importCsv": "CSVインポート",
+      "imported": "{{count}}件のエントリをインポートしました",
+      "importFailed": "CSVのインポートに失敗しました"
+    },
+    "dialog": {
+      "editPreset": "プリセットを編集",
+      "newPreset": "新規プリセット",
+      "presetDescription": "字幕生成と翻訳の設定を構成します。",
+      "editVocab": "用語集を編集",
+      "newVocab": "新規用語集",
+      "vocabDescription": "特定の単語やフレーズの翻訳方法を定義します。",
+      "name": "名前",
+      "description": "説明",
+      "whisperModel": "Whisperモデル",
+      "llmModel": "LLMモデル",
+      "noModelsInstalled": "モデルがインストールされていません",
+      "sourceLang": "ソース言語",
+      "targetLang": "ターゲット言語",
+      "outputFormat": "出力形式",
+      "translationStyle": "翻訳スタイル",
+      "vocabDictionary": "用語辞書",
+      "none": "なし",
+      "entries": "エントリ",
+      "source": "原語",
+      "target": "訳語",
+      "context": "コンテキスト",
+      "note": "メモ",
+      "optional": "任意",
+      "addEntry": "エントリを追加",
+      "cancel": "キャンセル",
+      "saveChanges": "変更を保存",
+      "createPreset": "プリセットを作成",
+      "createVocab": "用語集を作成",
+      "entriesCount": "{{count}}件"
+    }
+  },
+  "setup": {
+    "description": "このアプリを使用するには、Pythonパッケージのインストールが必要です。\nこれは初回のみのセットアップで、必要な依存関係をダウンロードしてインストールします。",
+    "checking": "セットアップ状況を確認中...",
+    "needed": "必要なパッケージをインストールする必要があります（約100MBのダウンロード）。",
+    "startButton": "セットアップを開始",
+    "startingFallback": "セットアップを開始しています...",
+    "unknownError": "不明なエラーが発生しました",
+    "retryButton": "セットアップを再試行",
+    "logsToggle": "インストールログ",
+    "error": {
+      "network": "パッケージサーバーに接続できませんでした。インターネット接続を確認してから再試行してください。",
+      "disk": "ディスクの空き容量が不足しています。空き容量を確保してから再試行してください。",
+      "noWheel": "この環境に対応するパッケージが見つかりませんでした。GitHubで問題を報告してください。",
+      "integrity": "ダウンロードの整合性チェックに失敗しました（チェックサム不一致）。ファイルが破損または改ざんされている可能性があります — 再試行してください。",
+      "unknown": "詳細は下のインストールログを確認してください。"
+    },
+    "resetButton": "リセットして再インストール",
+    "ffmpegNotice": "セットアップでは FFmpeg（GPL v3）を gyan.dev からダウンロードします。LocalSub には同梱しておらず、ソースは FFmpeg リポジトリで入手できます。PATH に FFmpeg があればそちらを使います。",
+    "ffmpegDownloadLabel": "ダウンロード",
+    "ffmpegSourceLabel": "ソース"
+  },
+  "shared": {
+    "confirm": "確認",
+    "cancel": "キャンセル"
+  },
+  "wizard": {
+    "stepLabels": {
+      "1": "ようこそ",
+      "2": "環境",
+      "3": "出力設定",
+      "4": "モデル選択",
+      "5": "インストール"
+    },
+    "back": "戻る",
+    "next": "次へ",
+    "welcome": {
+      "title": "LocalSubへようこそ",
+      "description": "LocalSubはローカルAIモデルを使用して音声・動画の字幕を文字起こし・翻訳します。いくつかの簡単なステップで環境をセットアップしましょう。",
+      "getStarted": "はじめる",
+      "skip": "セットアップウィザードをスキップ"
+    },
+    "environment": {
+      "title": "お使いの環境",
+      "detecting": "ハードウェアを検出中...",
+      "cpuCard": "CPU",
+      "ramCard": "RAM",
+      "gpuCard": "GPU",
+      "diskCard": "命令セット",
+      "noGpu": "GPUが検出されませんでした",
+      "instructionSet": "CPU命令セットのサポート",
+      "profileTitle": "推奨プロファイル",
+      "recommended": "推奨",
+      "profile": {
+        "lite": "ライト",
+        "balanced": "バランス",
+        "power": "パワー"
+      },
+      "profileDesc": {
+        "lite": "CPUのみ。最小モデル、最低リソース使用量。",
+        "balanced": "GPUアクセラレーション。適度なリソースで良好な品質。",
+        "power": "フルGPU。最大モデル、最高品質。"
+      }
+    },
+    "output": {
+      "title": "出力設定",
+      "folderLabel": "出力フォルダ",
+      "browse": "参照",
+      "formatLabel": "字幕フォーマット",
+      "sourceLanguage": "ソース言語",
+      "targetLanguage": "ターゲット言語"
+    },
+    "models": {
+      "title": "モデル選択",
+      "whisperTitle": "音声認識 (Whisper)",
+      "llmTitle": "翻訳 (LLM)",
+      "skipLlm": "翻訳をスキップ（STTのみ）",
+      "totalSize": "合計ダウンロードサイズ",
+      "diskWarning": "ディスク容量が不足しています"
+    },
+    "install": {
+      "title": "インストール中",
+      "downloading": "モデルをダウンロード中...",
+      "installing": "依存関係をインストール中...",
+      "verifying": "ファイルを検証中...",
+      "complete": "セットアップ完了！",
+      "startUsing": "LocalSubを使い始める",
+      "error": "インストールに失敗しました",
+      "retry": "再試行"
+    }
+  },
+  "toast": {
+    "configLoadFailed": "設定の読み込みに失敗しました",
+    "configSaveFailed": "設定の保存に失敗しました",
+    "presetLoadFailed": "プリセットの読み込みに失敗しました",
+    "presetSaveFailed": "プリセットの保存に失敗しました",
+    "presetDeleteFailed": "プリセットの削除に失敗しました",
+    "presetDuplicated": "プリセットを複製しました",
+    "vocabLoadFailed": "用語集の読み込みに失敗しました",
+    "vocabSaveFailed": "用語集の保存に失敗しました",
+    "vocabDeleteFailed": "用語集の削除に失敗しました",
+    "modelLoadFailed": "モデルの読み込みに失敗しました",
+    "modelDownloadFailed": "ダウンロードの開始に失敗しました",
+    "modelCancelFailed": "ダウンロードのキャンセルに失敗しました",
+    "modelDeleteFailed": "モデルの削除に失敗しました",
+    "pipelineFailed": "ジョブが失敗しました",
+    "noLlmSttOnly": "翻訳用のLLMモデルが未インストールのため、字幕（STT）のみ保存しました。",
+    "pipelineCancelFailed": "ジョブのキャンセルに失敗しました",
+    "setupCheckFailed": "セットアップの確認に失敗しました",
+    "setupFailed": "セットアップに失敗しました",
+    "setupResetFailed": "セットアップのリセットに失敗しました",
+    "serverConnectFailed": "サーバー接続に失敗しました",
+    "serverCrashed": "サーバー接続が切断されました",
+    "jobsLoadFailed": "ジョブ一覧の読み込みに失敗しました",
+    "resumeFailed": "再開する進行状況の読み込みに失敗しました",
+    "jobsSaveFailed": "ジョブ一覧の保存に失敗しました",
+    "subtitleLoadFailed": "字幕の読み込みに失敗しました",
+    "subtitleSaveFailed": "字幕の保存に失敗しました",
+    "subtitleSaved": "字幕を保存しました",
+    "exportFailed": "字幕のエクスポートに失敗しました",
+    "exportSuccess": "字幕をエクスポートしました",
+    "jobStillProcessing": "ジョブはまだ処理中です",
+    "jobFailedClick": "ジョブが失敗しました",
+    "configResetSuccess": "設定をデフォルトに戻しました",
+    "configResetFailed": "デフォルトへの復元に失敗しました",
+    "mediaLoadFailed": "メディアファイルを読み込めませんでした。タイマーシミュレーションを使用します。",
+    "resumeBusy": "他のジョブが実行中です。完了後に再開してください。"
+  },
+  "confirm": {
+    "deletePreset": "プリセットを削除",
+    "deletePresetMsg": "このプリセットを削除してもよろしいですか？この操作は元に戻せません。",
+    "deleteVocab": "用語集を削除",
+    "deleteVocabMsg": "この用語集を削除してもよろしいですか？この操作は元に戻せません。",
+    "resetConfig": "デフォルトに戻す",
+    "resetConfigMsg": "すべての設定をデフォルトに戻してもよろしいですか？この操作は元に戻せません。"
+  },
+  "configError": {
+    "title": "設定の読み込みに失敗しました",
+    "description": "アプリケーション設定の読み込み中にエラーが発生しました。",
+    "retry": "再試行"
+  },
+  "settings": {
+    "title": "設定",
+    "description": "アプリケーション設定",
+    "close": "閉じる",
+    "tabs": {
+      "general": "一般",
+      "models": "モデル",
+      "info": "情報"
+    },
+    "general": {
+      "title": "一般設定",
+      "description": "言語、出力形式、翻訳の設定です。",
+      "outputFormat": "デフォルト出力形式",
+      "sourceLanguage": "ソース言語",
+      "targetLanguage": "ターゲット言語",
+      "sourceLangs": {
+        "auto": "自動検出",
+        "en": "英語",
+        "ko": "韓国語",
+        "ja": "日本語",
+        "zh": "中国語",
+        "es": "スペイン語",
+        "fr": "フランス語",
+        "de": "ドイツ語"
+      },
+      "targetLangs": {
+        "en": "英語",
+        "ko": "韓国語",
+        "ja": "日本語",
+        "zh": "中国語",
+        "es": "スペイン語",
+        "fr": "フランス語",
+        "de": "ドイツ語"
+      }
+    },
+    "paths": {
+      "title": "ファイルパス",
+      "description": "ファイルの保存先を設定します。",
+      "outputDir": "出力ディレクトリ",
+      "outputDirDesc": "エクスポートした字幕ファイルの保存先です。",
+      "modelDir": "モデルディレクトリ",
+      "modelDirDefault": "デフォルト (AppData)",
+      "modelDirDesc": "AIモデルの保存先です。"
+    },
+    "profile": {
+      "title": "パフォーマンスプロファイル",
+      "description": "お使いのハードウェアに合ったプロファイルを選択してください。",
+      "hardwareTitle": "システムハードウェア",
+      "detecting": "ハードウェアを検出中...",
+      "recommended": "推奨",
+      "current": "現在",
+      "lite": "ライト",
+      "liteDesc": "CPUのみ。最小モデル、最低リソース使用量。",
+      "balanced": "バランス",
+      "balancedDesc": "GPUアクセラレーション。適度なリソースで良好な品質。",
+      "power": "パワー",
+      "powerDesc": "フルGPU。最大モデル、最高品質。"
+    },
+    "performance": {
+      "title": "パフォーマンス",
+      "description": "ハードウェアの使用率とリソース制限を設定します。",
+      "gpuAcceleration": "GPUアクセラレーション",
+      "gpuAccelerationDesc": "利用可能な場合、GPUを使用してモデル推論を高速化します。",
+      "concurrentJobs": "最大同時実行ジョブ数",
+      "concurrentJobsDesc": "同時に実行できるジョブの数です。",
+      "maxMemory": "最大メモリ使用量",
+      "maxMemoryDesc": "AIモデルが使用するメモリを制限します。0 = 無制限。",
+      "unlimited": "無制限"
+    },
+    "system": {
+      "title": "システム情報",
+      "description": "検出されたハードウェアとシステム機能です。",
+      "refresh": "更新",
+      "noData": "ハードウェア情報がありません。「更新」をクリックして検出してください。"
+    },
+    "about": {
+      "title": "このアプリについて",
+      "version": "バージョン",
+      "tagline": "AIによるローカル字幕翻訳ツール",
+      "runtime": "ランタイム",
+      "sttEngine": "STTエンジン",
+      "llmEngine": "LLMエンジン",
+      "license": "ライセンス",
+      "thirdParty": {
+        "title": "サードパーティコンポーネント",
+        "ffmpegNote": "FFmpeg は LocalSub に同梱されていません。インストールを要求された時点で、gyan.dev が公開する公式 Windows ビルドをその GitHub リリースから直接ダウンロードします。当該ビルドは GPL v3 のもとで配布されています。",
+        "ffmpegBuilds": "FFmpeg ビルド (gyan.dev)",
+        "ffmpegSource": "FFmpeg ソースコード"
+      },
+      "github": "GitHubリポジトリ",
+      "reportIssue": "問題を報告",
+      "updates": {
+        "title": "アップデート",
+        "check": "アップデートを確認",
+        "checking": "アップデートを確認中...",
+        "available": "アップデートがあります",
+        "upToDate": "最新バージョンです",
+        "install": "ダウンロードしてインストール",
+        "installing": "インストール中...",
+        "error": "アップデートの確認に失敗しました"
+      }
+    },
+    "translation": {
+      "title": "翻訳",
+      "mode": "翻訳モード",
+      "modeOff": "オフ",
+      "modeLocal": "ローカル",
+      "modeExternal": "外部",
+      "contextWindow": "コンテキストウィンドウ（セグメント数）",
+      "stylePreset": "スタイルプリセット",
+      "style": {
+        "literal": "直訳",
+        "natural": "自然",
+        "casual": "カジュアル",
+        "formal": "フォーマル"
+      },
+      "quality": {
+        "title": "翻訳品質",
+        "fast": "高速",
+        "fastDesc": "最小限のサンプリングで素早く翻訳します。下書き向けです。",
+        "balanced": "バランス",
+        "balancedDesc": "適度な速度で良好な品質。ほとんどの用途に推奨です。",
+        "best": "最高品質",
+        "bestDesc": "最高の品質。デフォルトで2パス精錬が有効になります。"
+      },
+      "customPrompt": "カスタム指示",
+      "customPromptPlaceholder": "追加の翻訳指示を入力（例：「くだけた表現を使う」「英語の技術用語はそのまま残す」）...",
+      "twoPass": "2パス精錬",
+      "twoPassDesc": "2回目のパスで翻訳を精錬します。遅くなりますが、より一貫した結果になります。"
+    },
+    "models": {
+      "title": "モデル",
+      "description": "音声認識と翻訳のAIモデルを管理します。",
+      "empty": "モデルカタログを読み込み中...",
+      "whisperSection": "音声認識 (Whisper)",
+      "llmSection": "翻訳 (LLM)",
+      "active": "使用中",
+      "setActive": "このモデルを使用",
+      "delete": "削除",
+      "confirmDelete": "モデルを削除",
+      "confirmDeleteMsg": "このモデルを削除してもよろしいですか？後で再ダウンロードできます。",
+      "download": "ダウンロード",
+      "install": "インストール",
+      "size": "サイズ",
+      "noGpu": "GPUが検出されませんでした — モデルはCPUで実行されます",
+      "recommended": "推奨",
+      "cpuOnly": "CPUのみ",
+      "tooLarge": "VRAMが不足しています",
+      "notInstalled": "未インストール",
+      "categoryGeneral": "汎用",
+      "categoryInstruct": "Instruct",
+      "langRecommended": "多言語",
+      "status": {
+        "downloading": "ダウンロード中",
+        "verifying": "検証中",
+        "ready": "準備完了",
+        "missing": "見つかりません",
+        "corrupt": "破損"
+      }
+    },
+    "api": {
+      "title": "外部API",
+      "provider": "プロバイダ",
+      "apiKey": "APIキー",
+      "model": "モデル",
+      "testConnection": "接続テスト",
+      "success": "接続に成功しました",
+      "failed": "接続に失敗しました"
+    },
+    "language": {
+      "title": "UI言語",
+      "en": "English",
+      "ko": "韓国語"
+    },
+    "restoreDefaults": "デフォルトに戻す",
+    "memoryWarning": "利用可能なRAMの80%以上を使用すると、動作が不安定になる場合があります。"
+  },
+  "server": {
+    "running": "サーバー稼働中",
+    "starting": "サーバー起動中...",
+    "error": "サーバーエラー",
+    "errorClick": "サーバーエラー — クリックして再起動",
+    "stopped": "サーバー停止中"
+  },
+  "theme": {
+    "light": "ライト",
+    "dark": "ダーク",
+    "system": "システム"
+  },
+  "errorBoundary": {
+    "title": "エラーが発生しました",
+    "description": "予期しないエラーが発生しました。現在のビューを再読み込みしてみてください。",
+    "tryAgain": "再試行"
+  },
+  "hw": {
+    "cuda": "CUDA {{version}}",
+    "cpuOnly": "CPUのみ"
+  },
+  "notification": {
+    "completed": "{{name}} — 完了",
+    "completedBody": "字幕のレビュー準備ができました。",
+    "failed": "{{name}} — 失敗",
+    "failedBody": "処理中にエラーが発生しました。"
+  },
+  "shortcuts": {
+    "title": "キーボードショートカット",
+    "playback": "再生操作",
+    "editing": "編集",
+    "general": "一般",
+    "playPause": "再生 / 一時停止",
+    "split": "字幕を分割",
+    "merge": "次と結合",
+    "delete": "字幕を削除",
+    "save": "保存",
+    "undo": "元に戻す",
+    "redo": "やり直す",
+    "find": "検索と置換",
+    "closeFind": "検索を閉じる"
+  }
+}

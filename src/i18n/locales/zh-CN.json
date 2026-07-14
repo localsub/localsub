@@ -1,0 +1,669 @@
+{
+  "app": {
+    "title": "LocalSub",
+    "loading": "加载中..."
+  },
+  "nav": {
+    "dashboard": "工作台",
+    "editor": "编辑器",
+    "presets": "预设",
+    "settings": "设置",
+    "theme": "主题"
+  },
+  "dashboard": {
+    "description": "管理翻译任务",
+    "filter": {
+      "all": "全部",
+      "processing": "处理中",
+      "pending": "等待中",
+      "completed": "已完成",
+      "failed": "失败",
+      "interrupted": "已中断"
+    },
+    "status": {
+      "pending": "等待中",
+      "processing": "处理中",
+      "completed": "已完成",
+      "failed": "失败",
+      "interrupted": "已中断"
+    },
+    "stage": {
+      "stt": "语音识别",
+      "diarizing": "说话人分离",
+      "translating": "翻译中",
+      "done": "完成",
+      "error": "错误"
+    },
+    "table": {
+      "file": "文件",
+      "preset": "预设",
+      "status": "状态",
+      "progress": "进度",
+      "created": "创建时间"
+    },
+    "empty": {
+      "title": "暂无任务",
+      "description": "创建新任务以开始处理字幕。"
+    },
+    "actions": {
+      "remove": "移除",
+      "retry": "重试",
+      "retryTranslation": "仅重试翻译",
+      "openEditor": "在编辑器中打开",
+      "resume": "继续翻译"
+    },
+    "interruptedCount": "已翻译 {{count}} 行",
+    "search": "搜索文件...",
+    "dropOverlay": "拖放文件到此处以创建新任务",
+    "time": {
+      "justNow": "刚刚",
+      "minsAgo": "{{count}}分钟前",
+      "hrsAgo": "{{count}}小时前"
+    },
+    "eta": {
+      "lessThanMinute": "剩余不到 1 分钟",
+      "minutes": "剩余约 {{count}} 分钟",
+      "hoursMinutes": "剩余约 {{count}} 小时 {{minutes}} 分钟"
+    },
+    "stats": {
+      "processedIn": "处理耗时 {{time}}"
+    },
+    "sort": {
+      "newest": "最新优先",
+      "oldest": "最早优先",
+      "nameAsc": "名称 A-Z",
+      "nameDesc": "名称 Z-A"
+    },
+    "newJob": {
+      "button": "新建任务",
+      "title": "新建任务",
+      "description": "上传文件并选择预设以开始处理。",
+      "dropzone": "将文件拖放到此处，或点击浏览",
+      "preset": "预设",
+      "noPresets": "暂无可用预设。请在预设页面创建。",
+      "start": "开始任务",
+      "startMultiple": "开始 {{count}} 个任务",
+      "supportedFormats": "MP4、MKV、AVI、MOV、MP3、WAV、SRT、VTT",
+      "linkedVocab": "关联词汇表：",
+      "subtitleMode": {
+        "badge": "字幕翻译模式",
+        "hint": "字幕文件将跳过语音识别，直接进行翻译。",
+        "unavailable": "字幕文件没有音频，无法使用此选项。"
+      },
+      "skipTranslation": "仅语音转录",
+      "skipTranslationDesc": "仅转录语音，跳过翻译步骤",
+      "enableDiarization": "说话人分离",
+      "enableDiarizationDesc": "检测并标注音频中的不同说话人",
+      "preview": {
+        "title": "翻译采样",
+        "open": "翻译采样",
+        "close": "关闭采样",
+        "start": "开始",
+        "startLabel": "开始",
+        "duration": "时长",
+        "maxMinutes": "最长{{max}}分钟",
+        "run": "运行",
+        "runSttAndTranslate": "STT + 翻译",
+        "retryTranslation": "仅重新翻译",
+        "time": "时间",
+        "original": "原文",
+        "translated": "译文",
+        "sttCached": "STT已缓存 — 编辑术语表后点击'仅重新翻译'即可快速测试。",
+        "noVocab": "未关联术语表",
+        "createVocab": "新建",
+        "editVocab": "编辑术语表",
+        "closeVocab": "关闭术语表",
+        "tempVocabName": "临时术语表",
+        "source": "原文",
+        "target": "译文",
+        "add": "添加",
+        "save": "保存",
+        "saving": "保存中...",
+        "filesSelected": "已选择{{count}}个文件",
+        "clickToAdd": "— 点击添加更多"
+      },
+      "ffmpegMissing": "缺少 FFmpeg。超过 60 分钟的视频将不会分块处理。"
+    }
+  },
+  "editor": {
+    "description": "字幕编辑器",
+    "placeholder": "从工作台选择已完成的任务来编辑字幕。",
+    "empty": {
+      "title": "未加载字幕",
+      "description": "从工作台选择已完成的任务以开始编辑。"
+    },
+    "noSubtitles": "暂无可显示的字幕。",
+    "selectToEdit": "从列表中选择一条字幕进行编辑。",
+    "subtitlesCount": "条字幕",
+    "unsaved": "有未保存的更改",
+    "save": "保存",
+    "export": {
+      "label": "导出"
+    },
+    "originalText": "原文",
+    "translatedText": "译文",
+    "translationPlaceholder": "输入翻译...",
+    "status": {
+      "translated": "已翻译",
+      "untranslated": "未翻译",
+      "spell_error": "错误",
+      "editing": "编辑中"
+    },
+    "actions": {
+      "split": "拆分",
+      "mergeNext": "与下一条合并",
+      "splitTooltip": "在播放位置拆分字幕",
+      "mergeNextTooltip": "与下方字幕合并",
+      "retranslate": "重新翻译",
+      "retranslateTooltip": "重新翻译此行"
+    },
+    "stats": {
+      "chars": "字符数",
+      "duration": "时长",
+      "cps": "字符/秒"
+    },
+    "undo": "撤销",
+    "redo": "重做",
+    "delete": "删除",
+    "deleteTooltip": "删除此字幕",
+    "startTime": "开始",
+    "endTime": "结束",
+    "playbackSpeed": "速度",
+    "processing": "处理中...",
+    "autoSaving": "自动保存中...",
+    "autoSaved": "已自动保存",
+    "video": {
+      "show": "显示视频",
+      "hide": "隐藏视频"
+    },
+    "a11y": {
+      "skipPrev": "跳到上一条字幕",
+      "play": "播放",
+      "pause": "暂停",
+      "skipNext": "跳到下一条字幕",
+      "volume": "音量"
+    },
+    "findReplace": {
+      "title": "查找与替换",
+      "placeholder": "在字幕中查找...",
+      "replacePlaceholder": "替换为...",
+      "replace": "替换",
+      "replaceAll": "全部替换",
+      "caseSensitive": "区分大小写",
+      "searchOriginal": "搜索原文"
+    },
+    "timeShift": {
+      "button": "时间轴平移",
+      "title": "时间轴平移",
+      "seconds": "秒 (±)",
+      "scopeAll": "全部字幕行",
+      "scopeSelection": "选中的行",
+      "apply": "应用"
+    },
+    "refusal": {
+      "filterToggle": "仅看问题",
+      "retranslateAll": "重译问题行 ({{count}})",
+      "progress": "{{done}}/{{total}}",
+      "cancel": "取消",
+      "reason": {
+        "empty": "译文为空",
+        "copy": "原文被原样复制",
+        "refusal_phrase": "模型拒绝翻译",
+        "too_long": "输出异常过长",
+        "repetition": "同一短语重复"
+      }
+    },
+    "vocab": {
+      "addToVocab": "添加到词汇表",
+      "source": "源词",
+      "target": "译词",
+      "selectVocab": "词汇表",
+      "noVocabs": "暂无词汇表。请在预设页面创建。",
+      "added": "已添加到 {{name}}",
+      "addedDesc": "将从下一个翻译任务开始生效。",
+      "dialogDesc": "将选中的文本添加为词汇表术语，从下一个翻译任务开始生效。",
+      "vocabMatch": "词汇匹配：{{source}} → {{target}}"
+    }
+  },
+  "presets": {
+    "description": "翻译预设与词汇表",
+    "placeholder": "预设管理即将推出。",
+    "tabs": {
+      "presets": "任务预设",
+      "vocabularies": "词汇表"
+    },
+    "presetsDesc": "预设将语音转录、翻译和词汇设置组合为可复用的配置。",
+    "newPreset": "新建预设",
+    "emptyPresets": {
+      "title": "暂无预设",
+      "description": "创建第一个预设以开始使用。"
+    },
+    "vocabDesc": "定义特定术语的翻译方式，确保各任务间翻译一致。",
+    "newVocab": "新建词汇表",
+    "emptyVocab": {
+      "title": "暂无词汇表",
+      "description": "创建词汇表以确保翻译的一致性。"
+    },
+    "actions": {
+      "edit": "编辑",
+      "duplicate": "复制",
+      "delete": "删除",
+      "setDefault": "设为默认"
+    },
+    "lang": {
+      "ko": "韩语",
+      "en": "英语",
+      "ja": "日语",
+      "zh": "中文"
+    },
+    "style": {
+      "natural": "自然",
+      "formal": "正式（敬语）",
+      "casual": "口语（非敬语）"
+    },
+    "default": "默认",
+    "quality": {
+      "fast": "快速",
+      "balanced": "均衡",
+      "best": "最佳"
+    },
+    "twoPass": "二次优化",
+    "customPrompt": "自定义指令",
+    "customPromptPlaceholder": "可选的额外翻译指令...",
+    "vocab": {
+      "importCsv": "导入 CSV",
+      "imported": "已导入 {{count}} 条",
+      "importFailed": "CSV 导入失败"
+    },
+    "dialog": {
+      "editPreset": "编辑预设",
+      "newPreset": "新建预设",
+      "presetDescription": "配置字幕生成和翻译设置。",
+      "editVocab": "编辑词汇表",
+      "newVocab": "新建词汇表",
+      "vocabDescription": "定义特定词语和短语的翻译方式。",
+      "name": "名称",
+      "description": "描述",
+      "whisperModel": "Whisper 模型",
+      "llmModel": "LLM 模型",
+      "noModelsInstalled": "未安装模型",
+      "sourceLang": "源语言",
+      "targetLang": "目标语言",
+      "outputFormat": "输出格式",
+      "translationStyle": "翻译风格",
+      "vocabDictionary": "词汇表",
+      "none": "无",
+      "entries": "条目",
+      "source": "源词",
+      "target": "译词",
+      "context": "上下文",
+      "note": "备注",
+      "optional": "可选",
+      "addEntry": "添加条目",
+      "cancel": "取消",
+      "saveChanges": "保存更改",
+      "createPreset": "创建预设",
+      "createVocab": "创建词汇表",
+      "entriesCount": "{{count}} 条"
+    }
+  },
+  "setup": {
+    "description": "本应用需要在系统中安装 Python 包。\n这是一次性的设置，将下载并安装必要的依赖项。",
+    "checking": "正在检查设置状态...",
+    "needed": "需要安装必要的软件包（约 100MB 下载）。",
+    "startButton": "开始设置",
+    "startingFallback": "正在启动设置...",
+    "unknownError": "发生未知错误",
+    "retryButton": "重试设置",
+    "logsToggle": "安装日志",
+    "error": {
+      "network": "无法连接到软件包服务器。请检查网络连接后重试。",
+      "disk": "磁盘空间不足。请释放空间后重试。",
+      "noWheel": "未找到与此环境兼容的软件包。请在 GitHub 上报告此问题。",
+      "integrity": "下载校验失败（校验和不匹配）。文件可能已损坏或被篡改 — 请重试。",
+      "unknown": "详情请查看下方的安装日志。"
+    },
+    "resetButton": "重置并重新安装",
+    "ffmpegNotice": "安装过程还会从 gyan.dev 下载 FFmpeg（GPL v3）。它不随 LocalSub 一起分发；其源代码可在 FFmpeg 仓库获取。如果系统 PATH 中已有 FFmpeg，则会直接使用。",
+    "ffmpegDownloadLabel": "下载",
+    "ffmpegSourceLabel": "源代码"
+  },
+  "shared": {
+    "confirm": "确认",
+    "cancel": "取消"
+  },
+  "wizard": {
+    "stepLabels": {
+      "1": "欢迎",
+      "2": "环境检测",
+      "3": "输出设置",
+      "4": "模型选择",
+      "5": "安装"
+    },
+    "back": "上一步",
+    "next": "下一步",
+    "welcome": {
+      "title": "欢迎使用 LocalSub",
+      "description": "LocalSub 使用本地 AI 模型转录和翻译音视频字幕。让我们通过几个简单步骤来设置您的环境。",
+      "getStarted": "开始",
+      "skip": "跳过设置向导"
+    },
+    "environment": {
+      "title": "您的环境",
+      "detecting": "正在检测硬件...",
+      "cpuCard": "CPU",
+      "ramCard": "RAM",
+      "gpuCard": "GPU",
+      "diskCard": "指令集",
+      "noGpu": "未检测到 GPU",
+      "instructionSet": "CPU 指令集支持",
+      "profileTitle": "推荐配置",
+      "recommended": "推荐",
+      "profile": {
+        "lite": "轻量",
+        "balanced": "均衡",
+        "power": "高性能"
+      },
+      "profileDesc": {
+        "lite": "仅 CPU。最小模型，最低资源占用。",
+        "balanced": "GPU 加速。良好质量，适中资源占用。",
+        "power": "全 GPU。最大模型，最佳质量。"
+      }
+    },
+    "output": {
+      "title": "输出设置",
+      "folderLabel": "输出文件夹",
+      "browse": "浏览",
+      "formatLabel": "字幕格式",
+      "sourceLanguage": "源语言",
+      "targetLanguage": "目标语言"
+    },
+    "models": {
+      "title": "模型选择",
+      "whisperTitle": "语音识别 (Whisper)",
+      "llmTitle": "翻译 (LLM)",
+      "skipLlm": "跳过翻译（仅语音转录）",
+      "totalSize": "总下载大小",
+      "diskWarning": "磁盘空间不足"
+    },
+    "install": {
+      "title": "正在安装",
+      "downloading": "正在下载模型...",
+      "installing": "正在安装依赖...",
+      "verifying": "正在验证文件...",
+      "complete": "设置完成！",
+      "startUsing": "开始使用 LocalSub",
+      "error": "安装失败",
+      "retry": "重试"
+    }
+  },
+  "toast": {
+    "configLoadFailed": "加载设置失败",
+    "configSaveFailed": "保存设置失败",
+    "presetLoadFailed": "加载预设失败",
+    "presetSaveFailed": "保存预设失败",
+    "presetDeleteFailed": "删除预设失败",
+    "presetDuplicated": "预设已复制",
+    "vocabLoadFailed": "加载词汇表失败",
+    "vocabSaveFailed": "保存词汇表失败",
+    "vocabDeleteFailed": "删除词汇表失败",
+    "modelLoadFailed": "加载模型失败",
+    "modelDownloadFailed": "下载启动失败",
+    "modelCancelFailed": "取消下载失败",
+    "modelDeleteFailed": "删除模型失败",
+    "pipelineFailed": "任务失败",
+    "noLlmSttOnly": "未安装翻译 LLM 模型，仅保存了字幕（STT）。",
+    "pipelineCancelFailed": "取消任务失败",
+    "setupCheckFailed": "检查设置失败",
+    "setupFailed": "设置失败",
+    "setupResetFailed": "重置设置失败",
+    "serverConnectFailed": "服务器连接失败",
+    "serverCrashed": "服务器连接中断",
+    "jobsLoadFailed": "加载任务列表失败",
+    "resumeFailed": "加载已保存的进度失败，无法继续翻译",
+    "jobsSaveFailed": "保存任务列表失败",
+    "subtitleLoadFailed": "加载字幕失败",
+    "subtitleSaveFailed": "保存字幕失败",
+    "subtitleSaved": "字幕已保存",
+    "exportFailed": "导出字幕失败",
+    "exportSuccess": "字幕已导出",
+    "jobStillProcessing": "任务仍在处理中",
+    "jobFailedClick": "任务失败",
+    "configResetSuccess": "设置已恢复为默认值",
+    "configResetFailed": "恢复默认设置失败",
+    "mediaLoadFailed": "媒体文件无法加载，使用模拟计时器。",
+    "resumeBusy": "另一个任务正在运行，请在其完成后再继续翻译。"
+  },
+  "confirm": {
+    "deletePreset": "删除预设",
+    "deletePresetMsg": "确定要删除此预设吗？此操作无法撤销。",
+    "deleteVocab": "删除词汇表",
+    "deleteVocabMsg": "确定要删除此词汇表吗？此操作无法撤销。",
+    "resetConfig": "恢复默认设置",
+    "resetConfigMsg": "确定要将所有设置恢复为默认值吗？此操作无法撤销。"
+  },
+  "configError": {
+    "title": "加载设置失败",
+    "description": "加载应用设置时发生错误。",
+    "retry": "重试"
+  },
+  "settings": {
+    "title": "设置",
+    "description": "应用设置",
+    "close": "关闭",
+    "tabs": {
+      "general": "通用",
+      "models": "模型",
+      "info": "信息"
+    },
+    "general": {
+      "title": "通用设置",
+      "description": "语言、输出格式和翻译偏好。",
+      "outputFormat": "默认输出格式",
+      "sourceLanguage": "源语言",
+      "targetLanguage": "目标语言",
+      "sourceLangs": {
+        "auto": "自动检测",
+        "en": "英语",
+        "ko": "韩语",
+        "ja": "日语",
+        "zh": "中文",
+        "es": "西班牙语",
+        "fr": "法语",
+        "de": "德语"
+      },
+      "targetLangs": {
+        "en": "英语",
+        "ko": "韩语",
+        "ja": "日语",
+        "zh": "中文",
+        "es": "西班牙语",
+        "fr": "法语",
+        "de": "德语"
+      }
+    },
+    "paths": {
+      "title": "文件路径",
+      "description": "配置文件存储位置。",
+      "outputDir": "输出目录",
+      "outputDirDesc": "导出的字幕文件保存位置。",
+      "modelDir": "模型目录",
+      "modelDirDefault": "默认 (AppData)",
+      "modelDirDesc": "AI 模型在磁盘上的存储位置。"
+    },
+    "profile": {
+      "title": "性能配置",
+      "description": "选择与您的硬件能力匹配的配置。",
+      "hardwareTitle": "系统硬件",
+      "detecting": "正在检测硬件...",
+      "recommended": "推荐",
+      "current": "当前",
+      "lite": "轻量",
+      "liteDesc": "仅 CPU。最小模型，最低资源占用。",
+      "balanced": "均衡",
+      "balancedDesc": "GPU 加速。良好质量，适中资源占用。",
+      "power": "高性能",
+      "powerDesc": "全 GPU。最大模型，最佳质量。"
+    },
+    "performance": {
+      "title": "性能",
+      "description": "配置硬件利用率和资源限制。",
+      "gpuAcceleration": "GPU 加速",
+      "gpuAccelerationDesc": "可用时使用 GPU 加速模型推理。",
+      "concurrentJobs": "最大并发任务数",
+      "concurrentJobsDesc": "可同时运行的任务数量。",
+      "maxMemory": "最大内存用量",
+      "maxMemoryDesc": "限制 AI 模型的内存用量。0 = 不限制。",
+      "unlimited": "不限制"
+    },
+    "system": {
+      "title": "系统信息",
+      "description": "检测到的硬件和系统功能。",
+      "refresh": "刷新",
+      "noData": "硬件信息不可用。点击刷新以检测。"
+    },
+    "about": {
+      "title": "关于",
+      "version": "版本",
+      "tagline": "AI 驱动的本地字幕翻译工具",
+      "runtime": "运行时",
+      "sttEngine": "语音转录引擎",
+      "llmEngine": "LLM 引擎",
+      "license": "许可证",
+      "thirdParty": {
+        "title": "第三方组件",
+        "ffmpegNote": "FFmpeg 并未随 LocalSub 一起分发。仅在您请求安装时，才会从 gyan.dev 的 GitHub 发布页直接下载其官方 Windows 构建版本。该构建依据 GPL v3 授权发布。",
+        "ffmpegBuilds": "FFmpeg 构建版本 (gyan.dev)",
+        "ffmpegSource": "FFmpeg 源代码"
+      },
+      "github": "GitHub 仓库",
+      "reportIssue": "报告问题",
+      "updates": {
+        "title": "更新",
+        "check": "检查更新",
+        "checking": "正在检查更新...",
+        "available": "有可用更新",
+        "upToDate": "已是最新版本",
+        "install": "下载并安装",
+        "installing": "正在安装...",
+        "error": "检查更新失败"
+      }
+    },
+    "translation": {
+      "title": "翻译",
+      "mode": "翻译模式",
+      "modeOff": "关闭",
+      "modeLocal": "本地",
+      "modeExternal": "外部",
+      "contextWindow": "上下文窗口（段数）",
+      "stylePreset": "风格预设",
+      "style": {
+        "literal": "直译",
+        "natural": "自然",
+        "casual": "口语",
+        "formal": "正式"
+      },
+      "quality": {
+        "title": "翻译质量",
+        "fast": "快速",
+        "fastDesc": "最少采样的快速翻译。适合草稿。",
+        "balanced": "均衡",
+        "balancedDesc": "质量与速度兼顾。适用于大多数场景。",
+        "best": "最佳",
+        "bestDesc": "最高质量。默认启用二次优化。"
+      },
+      "customPrompt": "自定义指令",
+      "customPromptPlaceholder": "添加额外翻译指令（如'使用非正式语气'或'保留英文技术术语'）...",
+      "twoPass": "二次优化",
+      "twoPassDesc": "通过第二轮处理优化翻译。速度较慢但更一致。"
+    },
+    "models": {
+      "title": "模型",
+      "description": "管理用于语音识别和翻译的 AI 模型。",
+      "empty": "正在加载模型目录...",
+      "whisperSection": "语音识别 (Whisper)",
+      "llmSection": "翻译 (LLM)",
+      "active": "使用中",
+      "setActive": "使用此模型",
+      "delete": "删除",
+      "confirmDelete": "删除模型",
+      "confirmDeleteMsg": "确定要删除此模型吗？之后可以重新下载。",
+      "download": "下载",
+      "install": "安装",
+      "size": "大小",
+      "noGpu": "未检测到 GPU — 模型将使用 CPU 运行",
+      "recommended": "推荐",
+      "cpuOnly": "仅 CPU",
+      "tooLarge": "VRAM 不足",
+      "notInstalled": "未安装",
+      "categoryGeneral": "通用",
+      "categoryInstruct": "指令",
+      "langRecommended": "多语言",
+      "status": {
+        "downloading": "下载中",
+        "verifying": "验证中",
+        "ready": "就绪",
+        "missing": "缺失",
+        "corrupt": "已损坏"
+      }
+    },
+    "api": {
+      "title": "外部 API",
+      "provider": "提供商",
+      "apiKey": "API 密钥",
+      "model": "模型",
+      "testConnection": "测试连接",
+      "success": "连接成功",
+      "failed": "连接失败"
+    },
+    "language": {
+      "title": "界面语言",
+      "en": "English",
+      "ko": "韩语"
+    },
+    "restoreDefaults": "恢复默认设置",
+    "memoryWarning": "使用超过 80% 的可用内存可能导致不稳定。"
+  },
+  "server": {
+    "running": "服务器运行中",
+    "starting": "服务器启动中...",
+    "error": "服务器错误",
+    "errorClick": "服务器错误 — 点击重启",
+    "stopped": "服务器已停止"
+  },
+  "theme": {
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "errorBoundary": {
+    "title": "出错了",
+    "description": "发生了意外错误。您可以尝试重新加载当前视图。",
+    "tryAgain": "重试"
+  },
+  "hw": {
+    "cuda": "CUDA {{version}}",
+    "cpuOnly": "仅 CPU"
+  },
+  "notification": {
+    "completed": "{{name}} — 已完成",
+    "completedBody": "字幕已准备好供审阅。",
+    "failed": "{{name}} — 失败",
+    "failedBody": "处理过程中发生错误。"
+  },
+  "shortcuts": {
+    "title": "键盘快捷键",
+    "playback": "播放控制",
+    "editing": "编辑",
+    "general": "通用",
+    "playPause": "播放 / 暂停",
+    "split": "拆分字幕",
+    "merge": "与下一条合并",
+    "delete": "删除字幕",
+    "save": "保存",
+    "undo": "撤销",
+    "redo": "重做",
+    "find": "查找与替换",
+    "closeFind": "关闭搜索"
+  }
+}

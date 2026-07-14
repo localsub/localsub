@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "whisper_models": [
+    {
+      "id": "whisper-tiny",
+      "name": "Whisper Tiny",
+      "repo": "Systran/faster-whisper-tiny",
+      "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.txt"],
+      "total_size_bytes": 77000000,
+      "sha256": { "model.bin": "dcb76c6586fc06cbdac6dd21f14cfd129cc4cdd9dce19bf4ffa62e59cbe6e6d1" },
+      "profiles": ["lite"]
+    },
+    {
+      "id": "whisper-base",
+      "name": "Whisper Base",
+      "repo": "Systran/faster-whisper-base",
+      "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.txt"],
+      "total_size_bytes": 145000000,
+      "sha256": { "model.bin": "d01c3014881c9c6f3133c182f3d2887eb6ca1c789a7538c5c007196857a0a6a9" },
+      "profiles": ["lite", "balanced"]
+    },
+    {
+      "id": "whisper-small",
+      "name": "Whisper Small",
+      "repo": "Systran/faster-whisper-small",
+      "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.txt"],
+      "total_size_bytes": 488000000,
+      "sha256": { "model.bin": "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671" },
+      "profiles": ["balanced"]
+    },
+    {
+      "id": "whisper-medium",
+      "name": "Whisper Medium",
+      "repo": "Systran/faster-whisper-medium",
+      "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.txt"],
+      "total_size_bytes": 1530000000,
+      "sha256": { "model.bin": "9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae" },
+      "profiles": ["balanced", "power"]
+    },
+    {
+      "id": "whisper-large-v3",
+      "name": "Whisper Large V3",
+      "repo": "Systran/faster-whisper-large-v3",
+      "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.json", "preprocessor_config.json"],
+      "total_size_bytes": 3090000000,
+      "sha256": { "model.bin": "69f74147e3334731bc3a76048724833325d2ec74642fb52620eda87352e3d4f1" },
+      "profiles": ["balanced", "power"]
+    },
+    {
+      "id": "kotoba-whisper-v2",
+      "name": "Kotoba-Whisper v2.0 (Japanese)",
+      "repo": "kotoba-tech/kotoba-whisper-v2.0-faster",
+      "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.json", "preprocessor_config.json"],
+      "total_size_bytes": 1516480096,
+      "sha256": { "model.bin": "60d2bc2e33de9d43f2745be09caefe1161acab670f6796d4a750d8d848382b36" },
+      "profiles": ["balanced", "power"]
+    }
+  ],
+  "llm_models": [
+    {
+      "id": "qwen3-4b-q4km",
+      "name": "Qwen3-4B Q4_K_M",
+      "repo": "Qwen/Qwen3-4B-GGUF",
+      "filename": "Qwen3-4B-Q4_K_M.gguf",
+      "size_bytes": 2800000000,
+      "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+      "quant": "Q4_K_M",
+      "profiles": ["lite"],
+      "n_gpu_layers_default": -1,
+      "model_category": "general"
+    },
+    {
+      "id": "qwen3-8b-q5km",
+      "name": "Qwen3-8B Q5_K_M",
+      "repo": "Qwen/Qwen3-8B-GGUF",
+      "filename": "Qwen3-8B-Q5_K_M.gguf",
+      "size_bytes": 5800000000,
+      "sha256": "068bae163faa96ad48032daf4e071a6a28fe67d8dcc95367609c2ff165e52738",
+      "quant": "Q5_K_M",
+      "profiles": ["balanced"],
+      "n_gpu_layers_default": 28,
+      "model_category": "general"
+    },
+    {
+      "id": "qwen3-14b-q8",
+      "name": "Qwen3-14B Q8_0",
+      "repo": "Qwen/Qwen3-14B-GGUF",
+      "filename": "Qwen3-14B-Q8_0.gguf",
+      "size_bytes": 15000000000,
+      "sha256": "a0dfe649137410b7d82f06a209240508e218f32f5b6fd81b69d6932160cfcd9d",
+      "quant": "Q8_0",
+      "profiles": ["power"],
+      "n_gpu_layers_default": -1,
+      "model_category": "general"
+    },
+    {
+      "id": "qwen35-9b-q4km",
+      "name": "Qwen3.5-9B Q4_K_M",
+      "repo": "unsloth/Qwen3.5-9B-GGUF",
+      "filename": "Qwen3.5-9B-Q4_K_M.gguf",
+      "size_bytes": 5680522464,
+      "sha256": "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8",
+      "quant": "Q4_K_M",
+      "profiles": ["balanced", "power"],
+      "n_gpu_layers_default": -1,
+      "model_category": "general"
+    },
+    {
+      "id": "qwen35-9b-q5km",
+      "name": "Qwen3.5-9B Q5_K_M",
+      "repo": "unsloth/Qwen3.5-9B-GGUF",
+      "filename": "Qwen3.5-9B-Q5_K_M.gguf",
+      "size_bytes": 6577841376,
+      "sha256": "dc2a39aef291f91a9116ad214058da0d86eb648743a124bd8c333787c4b9c91c",
+      "quant": "Q5_K_M",
+      "profiles": ["balanced", "power"],
+      "n_gpu_layers_default": -1,
+      "model_category": "general"
+    },
+    {
+      "id": "qwen25-7b-instruct-q5km",
+      "name": "Qwen2.5-7B Instruct Q5_K_M",
+      "repo": "Qwen/Qwen2.5-7B-Instruct-GGUF",
+      "filename": "qwen2.5-7b-instruct-q5_k_m-00001-of-00002.gguf",
+      "size_bytes": 5900000000,
+      "sha256": "42f6693004793ee6cf1b2b723f0273b10f86a3bb2a949bd9128d4cda5fb866cd",
+      "split_files": [
+        {
+          "filename": "qwen2.5-7b-instruct-q5_k_m-00001-of-00002.gguf",
+          "sha256": "42f6693004793ee6cf1b2b723f0273b10f86a3bb2a949bd9128d4cda5fb866cd"
+        },
+        {
+          "filename": "qwen2.5-7b-instruct-q5_k_m-00002-of-00002.gguf",
+          "sha256": "beba9d4f2f5a1fe7d144dcae332e68b52c26705c5310dece2e5d1997e091e134"
+        }
+      ],
+      "quant": "Q5_K_M",
+      "profiles": ["balanced"],
+      "n_gpu_layers_default": 28,
+      "model_category": "instruct"
+    },
+    {
+      "id": "gemmax2-28-9b-q4km",
+      "name": "GemmaX2-28 9B Q4_K_M (Translation)",
+      "repo": "mradermacher/GemmaX2-28-9B-v0.1-GGUF",
+      "filename": "GemmaX2-28-9B-v0.1.Q4_K_M.gguf",
+      "size_bytes": 5761058336,
+      "sha256": "cbe610f8f565b793244a52bf675c7612edbfc35c713e212e8c49b31feb916606",
+      "quant": "Q4_K_M",
+      "profiles": ["balanced", "power"],
+      "n_gpu_layers_default": -1,
+      "model_category": "instruct"
+    },
+    {
+      "id": "ax-40-light-q4km",
+      "name": "A.X 4.0 Light Q4_K_M (Korean)",
+      "repo": "Mungert/A.X-4.0-Light-GGUF",
+      "filename": "A.X-4.0-Light-q4_k_m.gguf",
+      "size_bytes": 4484512032,
+      "sha256": "14c4ab51a128fc6d132ae0f3d9a2e88f09477996fba67f58152ad8f8c74ee2f1",
+      "quant": "Q4_K_M",
+      "profiles": ["balanced", "power"],
+      "n_gpu_layers_default": -1,
+      "model_category": "instruct"
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "id": "default-ja-common-expressions",
+  "name": "Japanese Common Expressions",
+  "description": "Short spoken Japanese expressions that small LLMs often leave untranslated. Seeded by LocalSub on first launch; editable and deletable like any user vocabulary.",
+  "source_lang": "ja",
+  "target_lang": "ko",
+  "entries": [
+    {
+      "id": "default-ja-ke-01",
+      "source": "おい",
+      "target": "야",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-02",
+      "source": "ねえ",
+      "target": "있잖아",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-03",
+      "source": "うん",
+      "target": "응",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-04",
+      "source": "ええ",
+      "target": "네",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-05",
+      "source": "はい",
+      "target": "네",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-06",
+      "source": "いいえ",
+      "target": "아니요",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-07",
+      "source": "なに",
+      "target": "뭐",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-08",
+      "source": "何",
+      "target": "뭐",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-09",
+      "source": "えっ",
+      "target": "엥",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-10",
+      "source": "えー",
+      "target": "에이",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-11",
+      "source": "うそ",
+      "target": "거짓말",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-12",
+      "source": "まじ",
+      "target": "진짜",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-13",
+      "source": "やだ",
+      "target": "싫어",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-14",
+      "source": "くそ",
+      "target": "젠장",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-15",
+      "source": "クソ",
+      "target": "젠장",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-16",
+      "source": "ちくしょう",
+      "target": "젠장",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-17",
+      "source": "畜生",
+      "target": "젠장",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-18",
+      "source": "バカ",
+      "target": "바보",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-19",
+      "source": "馬鹿",
+      "target": "바보",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-20",
+      "source": "すげー",
+      "target": "대박",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-21",
+      "source": "やばい",
+      "target": "큰일이다",
+      "fallback_only": true
+    },
+    {
+      "id": "default-ja-ke-22",
+      "source": "サイコー",
+      "target": "최고",
+      "fallback_only": true
+    }
+  ],
+  "created_at": "2026-04-17T00:00:00Z",
+  "updated_at": "2026-04-17T00:00:00Z"
+}

@@ -1,0 +1,669 @@
+{
+  "app": {
+    "title": "LocalSub",
+    "loading": "Loading..."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "editor": "Editor",
+    "presets": "Presets",
+    "settings": "Settings",
+    "theme": "Theme"
+  },
+  "dashboard": {
+    "description": "Manage translation jobs",
+    "filter": {
+      "all": "All",
+      "processing": "Processing",
+      "pending": "Pending",
+      "completed": "Completed",
+      "failed": "Failed",
+      "interrupted": "Interrupted"
+    },
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "interrupted": "Interrupted"
+    },
+    "stage": {
+      "stt": "STT",
+      "diarizing": "Diarizing",
+      "translating": "Translating",
+      "done": "Done",
+      "error": "Error"
+    },
+    "table": {
+      "file": "File",
+      "preset": "Preset",
+      "status": "Status",
+      "progress": "Progress",
+      "created": "Created"
+    },
+    "empty": {
+      "title": "No jobs yet",
+      "description": "Create a new job to start processing subtitles."
+    },
+    "actions": {
+      "remove": "Remove",
+      "retry": "Retry",
+      "retryTranslation": "Retry Translation Only",
+      "openEditor": "Open in Editor",
+      "resume": "Resume Translation"
+    },
+    "interruptedCount": "{{count}} lines translated",
+    "search": "Search files...",
+    "dropOverlay": "Drop files here to create a new job",
+    "time": {
+      "justNow": "Just now",
+      "minsAgo": "{{count}}m ago",
+      "hrsAgo": "{{count}}h ago"
+    },
+    "eta": {
+      "lessThanMinute": "Less than a minute left",
+      "minutes": "About {{count}} min left",
+      "hoursMinutes": "About {{count}}h {{minutes}}m left"
+    },
+    "stats": {
+      "processedIn": "Processed in {{time}}"
+    },
+    "sort": {
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "nameAsc": "Name A-Z",
+      "nameDesc": "Name Z-A"
+    },
+    "newJob": {
+      "button": "New Job",
+      "title": "New Job",
+      "description": "Upload files and select a preset to start processing.",
+      "dropzone": "Drag and drop files here, or click to browse",
+      "preset": "Preset",
+      "noPresets": "No presets available. Create one in the Presets page.",
+      "start": "Start job",
+      "startMultiple": "Start {{count}} jobs",
+      "supportedFormats": "MP4, MKV, AVI, MOV, MP3, WAV, SRT, VTT",
+      "linkedVocab": "Linked vocabulary:",
+      "subtitleMode": {
+        "badge": "Subtitle translation mode",
+        "hint": "Subtitle files skip speech recognition and go straight to translation.",
+        "unavailable": "Not available for subtitle files — there is no audio to process."
+      },
+      "skipTranslation": "STT Only",
+      "skipTranslationDesc": "Transcribe only — skip the translation step",
+      "enableDiarization": "Speaker Diarization",
+      "enableDiarizationDesc": "Detect and label different speakers in the audio",
+      "preview": {
+        "title": "Sample Translation",
+        "open": "Sample Translation",
+        "close": "Close Sample",
+        "start": "Start",
+        "startLabel": "Start",
+        "duration": "Duration",
+        "maxMinutes": "max {{max}} min",
+        "run": "Run",
+        "runSttAndTranslate": "STT + Translate",
+        "retryTranslation": "Re-translate only",
+        "time": "Time",
+        "original": "Original",
+        "translated": "Translated",
+        "sttCached": "STT cached — edit vocabulary then click 'Re-translate only' to test quickly.",
+        "noVocab": "No linked vocabulary",
+        "createVocab": "Create new",
+        "editVocab": "Edit vocabulary",
+        "closeVocab": "Close vocabulary",
+        "tempVocabName": "Temp vocabulary",
+        "source": "Source",
+        "target": "Target",
+        "add": "Add",
+        "save": "Save",
+        "saving": "Saving...",
+        "filesSelected": "{{count}} file(s) selected",
+        "clickToAdd": "— click to add more"
+      },
+      "ffmpegMissing": "FFmpeg is missing. Videos over 60 minutes will not be split into chunks."
+    }
+  },
+  "editor": {
+    "description": "Subtitle editor",
+    "placeholder": "Select a completed job from Dashboard to edit subtitles.",
+    "empty": {
+      "title": "No subtitles loaded",
+      "description": "Select a completed job from the Dashboard to start editing."
+    },
+    "noSubtitles": "No subtitles to display.",
+    "selectToEdit": "Select a subtitle from the list to edit.",
+    "subtitlesCount": "subtitles",
+    "unsaved": "Unsaved changes",
+    "save": "Save",
+    "export": {
+      "label": "Export"
+    },
+    "originalText": "Original Text",
+    "translatedText": "Translated Text",
+    "translationPlaceholder": "Enter translation...",
+    "status": {
+      "translated": "Translated",
+      "untranslated": "Untranslated",
+      "spell_error": "Error",
+      "editing": "Editing"
+    },
+    "actions": {
+      "split": "Split",
+      "mergeNext": "Merge with next",
+      "splitTooltip": "Split subtitle at playhead position",
+      "mergeNextTooltip": "Merge with the subtitle below",
+      "retranslate": "Retranslate",
+      "retranslateTooltip": "Retranslate this line"
+    },
+    "stats": {
+      "chars": "Characters",
+      "duration": "Duration",
+      "cps": "Chars/sec"
+    },
+    "undo": "Undo",
+    "redo": "Redo",
+    "delete": "Delete",
+    "deleteTooltip": "Delete this subtitle",
+    "startTime": "Start",
+    "endTime": "End",
+    "playbackSpeed": "Speed",
+    "processing": "Processing...",
+    "autoSaving": "Auto-saving...",
+    "autoSaved": "Auto-saved",
+    "video": {
+      "show": "Show Video",
+      "hide": "Hide Video"
+    },
+    "a11y": {
+      "skipPrev": "Skip to previous subtitle",
+      "play": "Play",
+      "pause": "Pause",
+      "skipNext": "Skip to next subtitle",
+      "volume": "Volume"
+    },
+    "findReplace": {
+      "title": "Find & Replace",
+      "placeholder": "Find in subtitles...",
+      "replacePlaceholder": "Replace with...",
+      "replace": "Replace",
+      "replaceAll": "Replace All",
+      "caseSensitive": "Case Sensitive",
+      "searchOriginal": "Search Original Text"
+    },
+    "timeShift": {
+      "button": "Shift Times",
+      "title": "Time Shift",
+      "seconds": "Seconds (±)",
+      "scopeAll": "All lines",
+      "scopeSelection": "Selected line",
+      "apply": "Apply"
+    },
+    "refusal": {
+      "filterToggle": "Problems only",
+      "retranslateAll": "Retranslate issues ({{count}})",
+      "progress": "{{done}}/{{total}}",
+      "cancel": "Cancel",
+      "reason": {
+        "empty": "Empty translation",
+        "copy": "Source copied verbatim",
+        "refusal_phrase": "Model refused to translate",
+        "too_long": "Suspiciously long output",
+        "repetition": "Repeated phrase loop"
+      }
+    },
+    "vocab": {
+      "addToVocab": "Add to Vocabulary",
+      "source": "Source term",
+      "target": "Translation",
+      "selectVocab": "Vocabulary",
+      "noVocabs": "No vocabularies. Create one in Presets.",
+      "added": "Added to {{name}}",
+      "addedDesc": "It will apply from the next translation job.",
+      "dialogDesc": "Register the selected text as a vocabulary term. It applies from the next translation job.",
+      "vocabMatch": "Vocabulary: {{source}} → {{target}}"
+    }
+  },
+  "presets": {
+    "description": "Translation presets & vocabularies",
+    "placeholder": "Preset management coming soon.",
+    "tabs": {
+      "presets": "Job Presets",
+      "vocabularies": "Vocabularies"
+    },
+    "presetsDesc": "Presets combine STT, translation, and vocabulary settings into reusable configurations.",
+    "newPreset": "New Preset",
+    "emptyPresets": {
+      "title": "No presets yet",
+      "description": "Create your first preset to get started."
+    },
+    "vocabDesc": "Define how specific terms should be translated for consistency across jobs.",
+    "newVocab": "New Vocabulary",
+    "emptyVocab": {
+      "title": "No vocabularies yet",
+      "description": "Create a vocabulary dictionary to ensure consistent translations."
+    },
+    "actions": {
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "setDefault": "Set as default"
+    },
+    "lang": {
+      "ko": "Korean",
+      "en": "English",
+      "ja": "Japanese",
+      "zh": "Chinese"
+    },
+    "style": {
+      "natural": "Natural",
+      "formal": "Formal",
+      "casual": "Casual"
+    },
+    "default": "Default",
+    "quality": {
+      "fast": "Fast",
+      "balanced": "Balanced",
+      "best": "Best"
+    },
+    "twoPass": "2-Pass",
+    "customPrompt": "Custom Instructions",
+    "customPromptPlaceholder": "Optional extra translation instructions...",
+    "vocab": {
+      "importCsv": "Import CSV",
+      "imported": "{{count}} entries imported",
+      "importFailed": "Failed to import CSV"
+    },
+    "dialog": {
+      "editPreset": "Edit Preset",
+      "newPreset": "New Preset",
+      "presetDescription": "Configure subtitle generation and translation settings.",
+      "editVocab": "Edit Vocabulary",
+      "newVocab": "New Vocabulary",
+      "vocabDescription": "Define how specific words and phrases should be translated.",
+      "name": "Name",
+      "description": "Description",
+      "whisperModel": "Whisper Model",
+      "llmModel": "LLM Model",
+      "noModelsInstalled": "No models installed",
+      "sourceLang": "Source Language",
+      "targetLang": "Target Language",
+      "outputFormat": "Output Format",
+      "translationStyle": "Translation Style",
+      "vocabDictionary": "Vocabulary Dictionary",
+      "none": "None",
+      "entries": "Entries",
+      "source": "Source",
+      "target": "Target",
+      "context": "Context",
+      "note": "Note",
+      "optional": "Optional",
+      "addEntry": "Add Entry",
+      "cancel": "Cancel",
+      "saveChanges": "Save Changes",
+      "createPreset": "Create Preset",
+      "createVocab": "Create Vocabulary",
+      "entriesCount": "{{count}} entries"
+    }
+  },
+  "setup": {
+    "description": "This app requires Python packages to be installed on your system.\nThis is a one-time setup that will download and install the necessary dependencies.",
+    "checking": "Checking setup status...",
+    "needed": "Required packages need to be installed (~100MB download).",
+    "startButton": "Start Setup",
+    "startingFallback": "Starting setup...",
+    "unknownError": "An unknown error occurred",
+    "retryButton": "Retry Setup",
+    "logsToggle": "Installation logs",
+    "error": {
+      "network": "Could not reach the package server. Check your internet connection and try again.",
+      "disk": "Not enough disk space. Free up some space and try again.",
+      "noWheel": "No compatible package was found for this environment. Please report this issue on GitHub.",
+      "integrity": "Download verification failed (checksum mismatch). The file may be corrupted or tampered with — please retry.",
+      "unknown": "Check the installation logs below for details."
+    },
+    "resetButton": "Reset & reinstall",
+    "ffmpegNotice": "Setup also downloads FFmpeg (GPL v3) from gyan.dev. It is not bundled with LocalSub; its source is available at the FFmpeg repository. If FFmpeg is already on your PATH, it is used instead.",
+    "ffmpegDownloadLabel": "Download",
+    "ffmpegSourceLabel": "Source"
+  },
+  "shared": {
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "wizard": {
+    "stepLabels": {
+      "1": "Welcome",
+      "2": "Environment",
+      "3": "Output Settings",
+      "4": "Model Selection",
+      "5": "Installation"
+    },
+    "back": "Back",
+    "next": "Next",
+    "welcome": {
+      "title": "Welcome to LocalSub",
+      "description": "LocalSub transcribes and translates audio/video subtitles using local AI models. Let's set up your environment in a few quick steps.",
+      "getStarted": "Get Started",
+      "skip": "Skip setup wizard"
+    },
+    "environment": {
+      "title": "Your Environment",
+      "detecting": "Detecting hardware...",
+      "cpuCard": "CPU",
+      "ramCard": "RAM",
+      "gpuCard": "GPU",
+      "diskCard": "Instruction Set",
+      "noGpu": "No GPU detected",
+      "instructionSet": "CPU instruction support",
+      "profileTitle": "Recommended Profile",
+      "recommended": "Recommended",
+      "profile": {
+        "lite": "Lite",
+        "balanced": "Balanced",
+        "power": "Power"
+      },
+      "profileDesc": {
+        "lite": "CPU only. Smallest models, lowest resource usage.",
+        "balanced": "GPU accelerated. Good quality with moderate resources.",
+        "power": "Full GPU. Largest models, best quality."
+      }
+    },
+    "output": {
+      "title": "Output Settings",
+      "folderLabel": "Output Folder",
+      "browse": "Browse",
+      "formatLabel": "Subtitle Format",
+      "sourceLanguage": "Source Language",
+      "targetLanguage": "Target Language"
+    },
+    "models": {
+      "title": "Model Selection",
+      "whisperTitle": "Speech Recognition (Whisper)",
+      "llmTitle": "Translation (LLM)",
+      "skipLlm": "Skip translation (STT only)",
+      "totalSize": "Total download size",
+      "diskWarning": "Not enough disk space"
+    },
+    "install": {
+      "title": "Installing",
+      "downloading": "Downloading models...",
+      "installing": "Installing dependencies...",
+      "verifying": "Verifying files...",
+      "complete": "Setup Complete!",
+      "startUsing": "Start Using LocalSub",
+      "error": "Installation Failed",
+      "retry": "Retry"
+    }
+  },
+  "toast": {
+    "configLoadFailed": "Failed to load settings",
+    "configSaveFailed": "Failed to save settings",
+    "presetLoadFailed": "Failed to load presets",
+    "presetSaveFailed": "Failed to save preset",
+    "presetDeleteFailed": "Failed to delete preset",
+    "presetDuplicated": "Preset duplicated",
+    "vocabLoadFailed": "Failed to load vocabularies",
+    "vocabSaveFailed": "Failed to save vocabulary",
+    "vocabDeleteFailed": "Failed to delete vocabulary",
+    "modelLoadFailed": "Failed to load models",
+    "modelDownloadFailed": "Failed to start download",
+    "modelCancelFailed": "Failed to cancel download",
+    "modelDeleteFailed": "Failed to delete model",
+    "pipelineFailed": "Job failed",
+    "noLlmSttOnly": "No translation LLM model is installed — saved transcript (STT) only.",
+    "pipelineCancelFailed": "Failed to cancel job",
+    "setupCheckFailed": "Failed to check setup",
+    "setupFailed": "Setup failed",
+    "setupResetFailed": "Failed to reset setup",
+    "serverConnectFailed": "Server connection failed",
+    "serverCrashed": "Server connection lost",
+    "jobsLoadFailed": "Failed to load job list",
+    "resumeFailed": "Failed to load saved progress for resume",
+    "jobsSaveFailed": "Failed to save job list",
+    "subtitleLoadFailed": "Failed to load subtitles",
+    "subtitleSaveFailed": "Failed to save subtitles",
+    "subtitleSaved": "Subtitles saved",
+    "exportFailed": "Failed to export subtitles",
+    "exportSuccess": "Subtitles exported",
+    "jobStillProcessing": "Job is still processing",
+    "jobFailedClick": "Job failed",
+    "configResetSuccess": "Settings restored to defaults",
+    "configResetFailed": "Failed to restore defaults",
+    "mediaLoadFailed": "Media file could not be loaded. Using timer simulation.",
+    "resumeBusy": "Another job is currently running. Resume after it finishes."
+  },
+  "confirm": {
+    "deletePreset": "Delete Preset",
+    "deletePresetMsg": "Are you sure you want to delete this preset? This action cannot be undone.",
+    "deleteVocab": "Delete Vocabulary",
+    "deleteVocabMsg": "Are you sure you want to delete this vocabulary? This action cannot be undone.",
+    "resetConfig": "Restore Defaults",
+    "resetConfigMsg": "Are you sure you want to restore all settings to defaults? This action cannot be undone."
+  },
+  "configError": {
+    "title": "Failed to load settings",
+    "description": "An error occurred while loading application settings.",
+    "retry": "Retry"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Application settings",
+    "close": "Close",
+    "tabs": {
+      "general": "General",
+      "models": "Models",
+      "info": "Info"
+    },
+    "general": {
+      "title": "General Settings",
+      "description": "Language, output format, and translation preferences.",
+      "outputFormat": "Default Output Format",
+      "sourceLanguage": "Source Language",
+      "targetLanguage": "Target Language",
+      "sourceLangs": {
+        "auto": "Auto Detect",
+        "en": "English",
+        "ko": "Korean",
+        "ja": "Japanese",
+        "zh": "Chinese",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German"
+      },
+      "targetLangs": {
+        "en": "English",
+        "ko": "Korean",
+        "ja": "Japanese",
+        "zh": "Chinese",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German"
+      }
+    },
+    "paths": {
+      "title": "File Paths",
+      "description": "Configure where files are stored.",
+      "outputDir": "Output Directory",
+      "outputDirDesc": "Where exported subtitle files are saved.",
+      "modelDir": "Model Directory",
+      "modelDirDefault": "Default (AppData)",
+      "modelDirDesc": "Where AI models are stored on disk."
+    },
+    "profile": {
+      "title": "Performance Profile",
+      "description": "Choose a profile that matches your hardware capabilities.",
+      "hardwareTitle": "System Hardware",
+      "detecting": "Detecting hardware...",
+      "recommended": "Recommended",
+      "current": "Current",
+      "lite": "Lite",
+      "liteDesc": "CPU only. Smallest models, lowest resource usage.",
+      "balanced": "Balanced",
+      "balancedDesc": "GPU accelerated. Good quality with moderate resources.",
+      "power": "Power",
+      "powerDesc": "Full GPU. Largest models, best quality."
+    },
+    "performance": {
+      "title": "Performance",
+      "description": "Configure hardware utilization and resource limits.",
+      "gpuAcceleration": "GPU Acceleration",
+      "gpuAccelerationDesc": "Use GPU for faster model inference when available.",
+      "concurrentJobs": "Max Concurrent Jobs",
+      "concurrentJobsDesc": "Number of jobs that can run simultaneously.",
+      "maxMemory": "Max Memory Usage",
+      "maxMemoryDesc": "Limit memory used by AI models. 0 = unlimited.",
+      "unlimited": "Unlimited"
+    },
+    "system": {
+      "title": "System Information",
+      "description": "Detected hardware and system capabilities.",
+      "refresh": "Refresh",
+      "noData": "Hardware information not available. Click Refresh to detect."
+    },
+    "about": {
+      "title": "About",
+      "version": "Version",
+      "tagline": "AI-powered local subtitle translator",
+      "runtime": "Runtime",
+      "sttEngine": "STT Engine",
+      "llmEngine": "LLM Engine",
+      "license": "License",
+      "thirdParty": {
+        "title": "Third-party components",
+        "ffmpegNote": "FFmpeg is not bundled with LocalSub. When you request installation, the official Windows build published by gyan.dev is downloaded directly from their GitHub releases. That build is distributed under the GPL v3.",
+        "ffmpegBuilds": "FFmpeg builds (gyan.dev)",
+        "ffmpegSource": "FFmpeg source code"
+      },
+      "github": "GitHub Repository",
+      "reportIssue": "Report an Issue",
+      "updates": {
+        "title": "Updates",
+        "check": "Check for updates",
+        "checking": "Checking for updates...",
+        "available": "Update available",
+        "upToDate": "You're up to date",
+        "install": "Download & Install",
+        "installing": "Installing...",
+        "error": "Update check failed"
+      }
+    },
+    "translation": {
+      "title": "Translation",
+      "mode": "Translation Mode",
+      "modeOff": "Off",
+      "modeLocal": "Local",
+      "modeExternal": "External",
+      "contextWindow": "Context Window (segments)",
+      "stylePreset": "Style Preset",
+      "style": {
+        "literal": "Literal",
+        "natural": "Natural",
+        "casual": "Casual",
+        "formal": "Formal"
+      },
+      "quality": {
+        "title": "Translation Quality",
+        "fast": "Fast",
+        "fastDesc": "Quick translations with minimal sampling. Best for drafts.",
+        "balanced": "Balanced",
+        "balancedDesc": "Good quality with moderate speed. Recommended for most use.",
+        "best": "Best",
+        "bestDesc": "Highest quality. Enables 2-pass refinement by default."
+      },
+      "customPrompt": "Custom Instructions",
+      "customPromptPlaceholder": "Add extra translation instructions (e.g. 'Use informal speech' or 'Keep English technical terms')...",
+      "twoPass": "2-Pass Refinement",
+      "twoPassDesc": "Refine translations with a second pass. Slower but more consistent."
+    },
+    "models": {
+      "title": "Models",
+      "description": "Manage AI models for speech recognition and translation.",
+      "empty": "Loading model catalog...",
+      "whisperSection": "Speech Recognition (Whisper)",
+      "llmSection": "Translation (LLM)",
+      "active": "Active",
+      "setActive": "Use this model",
+      "delete": "Delete",
+      "confirmDelete": "Delete Model",
+      "confirmDeleteMsg": "Are you sure you want to delete this model? You can re-download it later.",
+      "download": "Download",
+      "install": "Install",
+      "size": "Size",
+      "noGpu": "No GPU detected — models will run on CPU",
+      "recommended": "Recommended",
+      "cpuOnly": "CPU Only",
+      "tooLarge": "Insufficient VRAM",
+      "notInstalled": "Not Installed",
+      "categoryGeneral": "General",
+      "categoryInstruct": "Instruct",
+      "langRecommended": "Multilingual",
+      "status": {
+        "downloading": "Downloading",
+        "verifying": "Verifying",
+        "ready": "Ready",
+        "missing": "Missing",
+        "corrupt": "Corrupt"
+      }
+    },
+    "api": {
+      "title": "External API",
+      "provider": "Provider",
+      "apiKey": "API Key",
+      "model": "Model",
+      "testConnection": "Test Connection",
+      "success": "Connection successful",
+      "failed": "Connection failed"
+    },
+    "language": {
+      "title": "UI Language",
+      "en": "English",
+      "ko": "Korean"
+    },
+    "restoreDefaults": "Restore Defaults",
+    "memoryWarning": "Using more than 80% of available RAM may cause instability."
+  },
+  "server": {
+    "running": "Server running",
+    "starting": "Starting...",
+    "error": "Server error",
+    "errorClick": "Server error — click to restart",
+    "stopped": "Server stopped"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. You can try reloading the current view.",
+    "tryAgain": "Try Again"
+  },
+  "hw": {
+    "cuda": "CUDA {{version}}",
+    "cpuOnly": "CPU Only"
+  },
+  "notification": {
+    "completed": "{{name}} — Complete",
+    "completedBody": "Subtitles are ready to review.",
+    "failed": "{{name}} — Failed",
+    "failedBody": "An error occurred during processing."
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "playback": "Playback",
+    "editing": "Editing",
+    "general": "General",
+    "playPause": "Play / Pause",
+    "split": "Split subtitle",
+    "merge": "Merge with next",
+    "delete": "Delete subtitle",
+    "save": "Save",
+    "undo": "Undo",
+    "redo": "Redo",
+    "find": "Find & Replace",
+    "closeFind": "Close search"
+  }
+}

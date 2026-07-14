@@ -1,0 +1,669 @@
+{
+  "app": {
+    "title": "LocalSub",
+    "loading": "Cargando..."
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "editor": "Editor",
+    "presets": "Ajustes predefinidos",
+    "settings": "Configuración",
+    "theme": "Tema"
+  },
+  "dashboard": {
+    "description": "Administrar trabajos de traducción",
+    "filter": {
+      "all": "Todos",
+      "processing": "Procesando",
+      "pending": "Pendiente",
+      "completed": "Completado",
+      "failed": "Fallido",
+      "interrupted": "Interrumpido"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "processing": "Procesando",
+      "completed": "Completado",
+      "failed": "Fallido",
+      "interrupted": "Interrumpido"
+    },
+    "stage": {
+      "stt": "STT",
+      "diarizing": "Diarización",
+      "translating": "Traduciendo",
+      "done": "Listo",
+      "error": "Error"
+    },
+    "table": {
+      "file": "Archivo",
+      "preset": "Predefinido",
+      "status": "Estado",
+      "progress": "Progreso",
+      "created": "Creado"
+    },
+    "empty": {
+      "title": "No hay trabajos aún",
+      "description": "Crea un nuevo trabajo para comenzar a procesar subtítulos."
+    },
+    "actions": {
+      "remove": "Eliminar",
+      "retry": "Reintentar",
+      "retryTranslation": "Reintentar solo traducción",
+      "openEditor": "Abrir en Editor",
+      "resume": "Reanudar traducción"
+    },
+    "interruptedCount": "{{count}} líneas traducidas",
+    "search": "Buscar archivos...",
+    "dropOverlay": "Suelta los archivos aquí para crear un nuevo trabajo",
+    "time": {
+      "justNow": "Ahora mismo",
+      "minsAgo": "hace {{count}}m",
+      "hrsAgo": "hace {{count}}h"
+    },
+    "eta": {
+      "lessThanMinute": "Queda menos de un minuto",
+      "minutes": "Quedan unos {{count}} min",
+      "hoursMinutes": "Quedan unas {{count}} h {{minutes}} min"
+    },
+    "stats": {
+      "processedIn": "Procesado en {{time}}"
+    },
+    "sort": {
+      "newest": "Más recientes primero",
+      "oldest": "Más antiguos primero",
+      "nameAsc": "Nombre A-Z",
+      "nameDesc": "Nombre Z-A"
+    },
+    "newJob": {
+      "button": "Nuevo trabajo",
+      "title": "Nuevo trabajo",
+      "description": "Sube archivos y selecciona un predefinido para comenzar.",
+      "dropzone": "Arrastra y suelta archivos aquí, o haz clic para explorar",
+      "preset": "Predefinido",
+      "noPresets": "No hay predefinidos disponibles. Crea uno en la página de Predefinidos.",
+      "start": "Iniciar trabajo",
+      "startMultiple": "Iniciar {{count}} trabajos",
+      "supportedFormats": "MP4, MKV, AVI, MOV, MP3, WAV, SRT, VTT",
+      "linkedVocab": "Vocabulario vinculado:",
+      "subtitleMode": {
+        "badge": "Modo de traducción de subtítulos",
+        "hint": "Los archivos de subtítulos omiten el reconocimiento de voz y pasan directamente a la traducción.",
+        "unavailable": "No disponible para archivos de subtítulos: no hay audio que procesar."
+      },
+      "skipTranslation": "Solo STT",
+      "skipTranslationDesc": "Solo transcribir — omitir el paso de traducción",
+      "enableDiarization": "Diarización de hablantes",
+      "enableDiarizationDesc": "Detectar y etiquetar diferentes hablantes en el audio",
+      "preview": {
+        "title": "Traducción de muestra",
+        "open": "Traducción de muestra",
+        "close": "Cerrar muestra",
+        "start": "Inicio",
+        "startLabel": "Inicio",
+        "duration": "Duración",
+        "maxMinutes": "máx. {{max}} min",
+        "run": "Ejecutar",
+        "runSttAndTranslate": "STT + Traducción",
+        "retryTranslation": "Solo re-traducir",
+        "time": "Tiempo",
+        "original": "Original",
+        "translated": "Traducción",
+        "sttCached": "STT en caché — edita el glosario y haz clic en 'Solo re-traducir' para probar rápidamente.",
+        "noVocab": "Sin glosario vinculado",
+        "createVocab": "Crear nuevo",
+        "editVocab": "Editar glosario",
+        "closeVocab": "Cerrar glosario",
+        "tempVocabName": "Glosario temporal",
+        "source": "Origen",
+        "target": "Traducción",
+        "add": "Agregar",
+        "save": "Guardar",
+        "saving": "Guardando...",
+        "filesSelected": "{{count}} archivo(s) seleccionado(s)",
+        "clickToAdd": "— clic para agregar más"
+      },
+      "ffmpegMissing": "Falta FFmpeg. Los vídeos de más de 60 minutos no se dividirán en fragmentos."
+    }
+  },
+  "editor": {
+    "description": "Editor de subtítulos",
+    "placeholder": "Selecciona un trabajo completado del Panel para editar subtítulos.",
+    "empty": {
+      "title": "No hay subtítulos cargados",
+      "description": "Selecciona un trabajo completado del Panel para comenzar a editar."
+    },
+    "noSubtitles": "No hay subtítulos para mostrar.",
+    "selectToEdit": "Selecciona un subtítulo de la lista para editar.",
+    "subtitlesCount": "subtítulos",
+    "unsaved": "Cambios sin guardar",
+    "save": "Guardar",
+    "export": {
+      "label": "Exportar"
+    },
+    "originalText": "Texto original",
+    "translatedText": "Texto traducido",
+    "translationPlaceholder": "Ingresa la traducción...",
+    "status": {
+      "translated": "Traducido",
+      "untranslated": "Sin traducir",
+      "spell_error": "Error",
+      "editing": "Editando"
+    },
+    "actions": {
+      "split": "Dividir",
+      "mergeNext": "Unir con siguiente",
+      "splitTooltip": "Dividir subtítulo en la posición del cursor",
+      "mergeNextTooltip": "Unir con el subtítulo de abajo",
+      "retranslate": "Retraducir",
+      "retranslateTooltip": "Retraducir esta línea"
+    },
+    "stats": {
+      "chars": "Caracteres",
+      "duration": "Duración",
+      "cps": "Caract/seg"
+    },
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "delete": "Eliminar",
+    "deleteTooltip": "Eliminar este subtítulo",
+    "startTime": "Inicio",
+    "endTime": "Fin",
+    "playbackSpeed": "Velocidad",
+    "processing": "Procesando...",
+    "autoSaving": "Guardando...",
+    "autoSaved": "Guardado",
+    "video": {
+      "show": "Mostrar video",
+      "hide": "Ocultar video"
+    },
+    "a11y": {
+      "skipPrev": "Ir al subtítulo anterior",
+      "play": "Reproducir",
+      "pause": "Pausar",
+      "skipNext": "Ir al siguiente subtítulo",
+      "volume": "Volumen"
+    },
+    "findReplace": {
+      "title": "Buscar y reemplazar",
+      "placeholder": "Buscar en subtítulos...",
+      "replacePlaceholder": "Reemplazar con...",
+      "replace": "Reemplazar",
+      "replaceAll": "Reemplazar todo",
+      "caseSensitive": "Distinguir mayúsculas",
+      "searchOriginal": "Buscar en texto original"
+    },
+    "timeShift": {
+      "button": "Desplazar tiempos",
+      "title": "Desplazamiento de tiempo",
+      "seconds": "Segundos (±)",
+      "scopeAll": "Todas las líneas",
+      "scopeSelection": "Línea seleccionada",
+      "apply": "Aplicar"
+    },
+    "refusal": {
+      "filterToggle": "Solo problemas",
+      "retranslateAll": "Retraducir problemas ({{count}})",
+      "progress": "{{done}}/{{total}}",
+      "cancel": "Cancelar",
+      "reason": {
+        "empty": "Traducción vacía",
+        "copy": "Texto original copiado tal cual",
+        "refusal_phrase": "El modelo se negó a traducir",
+        "too_long": "Salida inusualmente larga",
+        "repetition": "Repetición de la misma frase"
+      }
+    },
+    "vocab": {
+      "addToVocab": "Agregar al vocabulario",
+      "source": "Término original",
+      "target": "Traducción",
+      "selectVocab": "Vocabulario",
+      "noVocabs": "No hay vocabularios. Crea uno en Predefinidos.",
+      "added": "Agregado a {{name}}",
+      "addedDesc": "Se aplicará a partir del próximo trabajo de traducción.",
+      "dialogDesc": "Registra el texto seleccionado como término del vocabulario. Se aplicará a partir del próximo trabajo de traducción.",
+      "vocabMatch": "Vocabulario: {{source}} → {{target}}"
+    }
+  },
+  "presets": {
+    "description": "Predefinidos de traducción y vocabularios",
+    "placeholder": "La administración de predefinidos estará disponible pronto.",
+    "tabs": {
+      "presets": "Predefinidos de trabajo",
+      "vocabularies": "Vocabularios"
+    },
+    "presetsDesc": "Los predefinidos combinan configuraciones de STT, traducción y vocabulario en configuraciones reutilizables.",
+    "newPreset": "Nuevo predefinido",
+    "emptyPresets": {
+      "title": "No hay predefinidos aún",
+      "description": "Crea tu primer predefinido para comenzar."
+    },
+    "vocabDesc": "Define cómo deben traducirse términos específicos para mantener consistencia entre trabajos.",
+    "newVocab": "Nuevo vocabulario",
+    "emptyVocab": {
+      "title": "No hay vocabularios aún",
+      "description": "Crea un diccionario de vocabulario para asegurar traducciones consistentes."
+    },
+    "actions": {
+      "edit": "Editar",
+      "duplicate": "Duplicar",
+      "delete": "Eliminar",
+      "setDefault": "Establecer como predeterminado"
+    },
+    "lang": {
+      "ko": "Coreano",
+      "en": "Inglés",
+      "ja": "Japonés",
+      "zh": "Chino"
+    },
+    "style": {
+      "natural": "Natural",
+      "formal": "Formal",
+      "casual": "Informal"
+    },
+    "default": "Predeterminado",
+    "quality": {
+      "fast": "Rápido",
+      "balanced": "Equilibrado",
+      "best": "Mejor"
+    },
+    "twoPass": "2 pasadas",
+    "customPrompt": "Instrucciones personalizadas",
+    "customPromptPlaceholder": "Instrucciones de traducción adicionales (opcional)...",
+    "vocab": {
+      "importCsv": "Importar CSV",
+      "imported": "{{count}} entradas importadas",
+      "importFailed": "Error al importar CSV"
+    },
+    "dialog": {
+      "editPreset": "Editar predefinido",
+      "newPreset": "Nuevo predefinido",
+      "presetDescription": "Configura los ajustes de generación y traducción de subtítulos.",
+      "editVocab": "Editar vocabulario",
+      "newVocab": "Nuevo vocabulario",
+      "vocabDescription": "Define cómo deben traducirse palabras y frases específicas.",
+      "name": "Nombre",
+      "description": "Descripción",
+      "whisperModel": "Modelo Whisper",
+      "llmModel": "Modelo LLM",
+      "noModelsInstalled": "No hay modelos instalados",
+      "sourceLang": "Idioma de origen",
+      "targetLang": "Idioma de destino",
+      "outputFormat": "Formato de salida",
+      "translationStyle": "Estilo de traducción",
+      "vocabDictionary": "Diccionario de vocabulario",
+      "none": "Ninguno",
+      "entries": "Entradas",
+      "source": "Origen",
+      "target": "Destino",
+      "context": "Contexto",
+      "note": "Nota",
+      "optional": "Opcional",
+      "addEntry": "Agregar entrada",
+      "cancel": "Cancelar",
+      "saveChanges": "Guardar cambios",
+      "createPreset": "Crear predefinido",
+      "createVocab": "Crear vocabulario",
+      "entriesCount": "{{count}} entradas"
+    }
+  },
+  "setup": {
+    "description": "Esta aplicación requiere paquetes de Python instalados en tu sistema.\nEsta es una configuración única que descargará e instalará las dependencias necesarias.",
+    "checking": "Verificando estado de la configuración...",
+    "needed": "Se necesitan instalar los paquetes requeridos (~100MB de descarga).",
+    "startButton": "Iniciar configuración",
+    "startingFallback": "Iniciando configuración...",
+    "unknownError": "Ocurrió un error desconocido",
+    "retryButton": "Reintentar configuración",
+    "logsToggle": "Registros de instalación",
+    "error": {
+      "network": "No se pudo conectar con el servidor de paquetes. Comprueba tu conexión a internet e inténtalo de nuevo.",
+      "disk": "No hay suficiente espacio en disco. Libera espacio e inténtalo de nuevo.",
+      "noWheel": "No se encontró un paquete compatible con este entorno. Por favor, reporta este problema en GitHub.",
+      "integrity": "La verificación de la descarga falló (checksum no coincide). El archivo puede estar dañado o manipulado — vuelve a intentarlo.",
+      "unknown": "Consulta los registros de instalación a continuación para más detalles."
+    },
+    "resetButton": "Restablecer y reinstalar",
+    "ffmpegNotice": "La configuración también descarga FFmpeg (GPL v3) desde gyan.dev. No se distribuye con LocalSub; su código fuente está disponible en el repositorio de FFmpeg. Si ya tienes FFmpeg en tu PATH, se usará ese.",
+    "ffmpegDownloadLabel": "Descarga",
+    "ffmpegSourceLabel": "Código fuente"
+  },
+  "shared": {
+    "confirm": "Confirmar",
+    "cancel": "Cancelar"
+  },
+  "wizard": {
+    "stepLabels": {
+      "1": "Bienvenida",
+      "2": "Entorno",
+      "3": "Configuración de salida",
+      "4": "Selección de modelo",
+      "5": "Instalación"
+    },
+    "back": "Atrás",
+    "next": "Siguiente",
+    "welcome": {
+      "title": "Bienvenido a LocalSub",
+      "description": "LocalSub transcribe y traduce subtítulos de audio/video usando modelos de IA locales. Configuremos tu entorno en unos pocos pasos.",
+      "getStarted": "Comenzar",
+      "skip": "Omitir asistente de configuración"
+    },
+    "environment": {
+      "title": "Tu entorno",
+      "detecting": "Detectando hardware...",
+      "cpuCard": "CPU",
+      "ramCard": "RAM",
+      "gpuCard": "GPU",
+      "diskCard": "Conjunto de instrucciones",
+      "noGpu": "No se detectó GPU",
+      "instructionSet": "Soporte de instrucciones del CPU",
+      "profileTitle": "Perfil recomendado",
+      "recommended": "Recomendado",
+      "profile": {
+        "lite": "Ligero",
+        "balanced": "Equilibrado",
+        "power": "Potencia"
+      },
+      "profileDesc": {
+        "lite": "Solo CPU. Modelos más pequeños, menor uso de recursos.",
+        "balanced": "Aceleración por GPU. Buena calidad con recursos moderados.",
+        "power": "GPU completa. Modelos más grandes, mejor calidad."
+      }
+    },
+    "output": {
+      "title": "Configuración de salida",
+      "folderLabel": "Carpeta de salida",
+      "browse": "Explorar",
+      "formatLabel": "Formato de subtítulos",
+      "sourceLanguage": "Idioma de origen",
+      "targetLanguage": "Idioma de destino"
+    },
+    "models": {
+      "title": "Selección de modelo",
+      "whisperTitle": "Reconocimiento de voz (Whisper)",
+      "llmTitle": "Traducción (LLM)",
+      "skipLlm": "Omitir traducción (solo STT)",
+      "totalSize": "Tamaño total de descarga",
+      "diskWarning": "No hay suficiente espacio en disco"
+    },
+    "install": {
+      "title": "Instalando",
+      "downloading": "Descargando modelos...",
+      "installing": "Instalando dependencias...",
+      "verifying": "Verificando archivos...",
+      "complete": "Configuración completada",
+      "startUsing": "Comenzar a usar LocalSub",
+      "error": "La instalación falló",
+      "retry": "Reintentar"
+    }
+  },
+  "toast": {
+    "configLoadFailed": "Error al cargar la configuración",
+    "configSaveFailed": "Error al guardar la configuración",
+    "presetLoadFailed": "Error al cargar los predefinidos",
+    "presetSaveFailed": "Error al guardar el predefinido",
+    "presetDeleteFailed": "Error al eliminar el predefinido",
+    "presetDuplicated": "Predefinido duplicado",
+    "vocabLoadFailed": "Error al cargar los vocabularios",
+    "vocabSaveFailed": "Error al guardar el vocabulario",
+    "vocabDeleteFailed": "Error al eliminar el vocabulario",
+    "modelLoadFailed": "Error al cargar los modelos",
+    "modelDownloadFailed": "Error al iniciar la descarga",
+    "modelCancelFailed": "Error al cancelar la descarga",
+    "modelDeleteFailed": "Error al eliminar el modelo",
+    "pipelineFailed": "El trabajo falló",
+    "noLlmSttOnly": "No hay ningún modelo LLM de traducción instalado; se guardó solo la transcripción (STT).",
+    "pipelineCancelFailed": "Error al cancelar el trabajo",
+    "setupCheckFailed": "Error al verificar la configuración",
+    "setupFailed": "La configuración falló",
+    "setupResetFailed": "Error al restablecer la configuración",
+    "serverConnectFailed": "Error de conexión al servidor",
+    "serverCrashed": "Se perdió la conexión con el servidor",
+    "jobsLoadFailed": "Error al cargar la lista de trabajos",
+    "resumeFailed": "Error al cargar el progreso guardado para reanudar",
+    "jobsSaveFailed": "Error al guardar la lista de trabajos",
+    "subtitleLoadFailed": "Error al cargar los subtítulos",
+    "subtitleSaveFailed": "Error al guardar los subtítulos",
+    "subtitleSaved": "Subtítulos guardados",
+    "exportFailed": "Error al exportar los subtítulos",
+    "exportSuccess": "Subtítulos exportados",
+    "jobStillProcessing": "El trabajo aún se está procesando",
+    "jobFailedClick": "El trabajo falló",
+    "configResetSuccess": "Configuración restaurada a los valores predeterminados",
+    "configResetFailed": "Error al restaurar los valores predeterminados",
+    "mediaLoadFailed": "No se pudo cargar el archivo multimedia. Usando simulación de temporizador.",
+    "resumeBusy": "Hay otro trabajo en curso. Reanuda cuando termine."
+  },
+  "confirm": {
+    "deletePreset": "Eliminar predefinido",
+    "deletePresetMsg": "¿Estás seguro de que quieres eliminar este predefinido? Esta acción no se puede deshacer.",
+    "deleteVocab": "Eliminar vocabulario",
+    "deleteVocabMsg": "¿Estás seguro de que quieres eliminar este vocabulario? Esta acción no se puede deshacer.",
+    "resetConfig": "Restaurar valores predeterminados",
+    "resetConfigMsg": "¿Estás seguro de que quieres restaurar toda la configuración a los valores predeterminados? Esta acción no se puede deshacer."
+  },
+  "configError": {
+    "title": "Error al cargar la configuración",
+    "description": "Ocurrió un error al cargar la configuración de la aplicación.",
+    "retry": "Reintentar"
+  },
+  "settings": {
+    "title": "Configuración",
+    "description": "Configuración de la aplicación",
+    "close": "Cerrar",
+    "tabs": {
+      "general": "General",
+      "models": "Modelos",
+      "info": "Información"
+    },
+    "general": {
+      "title": "Configuración general",
+      "description": "Idioma, formato de salida y preferencias de traducción.",
+      "outputFormat": "Formato de salida predeterminado",
+      "sourceLanguage": "Idioma de origen",
+      "targetLanguage": "Idioma de destino",
+      "sourceLangs": {
+        "auto": "Detección automática",
+        "en": "Inglés",
+        "ko": "Coreano",
+        "ja": "Japonés",
+        "zh": "Chino",
+        "es": "Español",
+        "fr": "Francés",
+        "de": "Alemán"
+      },
+      "targetLangs": {
+        "en": "Inglés",
+        "ko": "Coreano",
+        "ja": "Japonés",
+        "zh": "Chino",
+        "es": "Español",
+        "fr": "Francés",
+        "de": "Alemán"
+      }
+    },
+    "paths": {
+      "title": "Rutas de archivos",
+      "description": "Configura dónde se almacenan los archivos.",
+      "outputDir": "Directorio de salida",
+      "outputDirDesc": "Donde se guardan los archivos de subtítulos exportados.",
+      "modelDir": "Directorio de modelos",
+      "modelDirDefault": "Predeterminado (AppData)",
+      "modelDirDesc": "Donde se almacenan los modelos de IA en el disco."
+    },
+    "profile": {
+      "title": "Perfil de rendimiento",
+      "description": "Elige un perfil que se ajuste a las capacidades de tu hardware.",
+      "hardwareTitle": "Hardware del sistema",
+      "detecting": "Detectando hardware...",
+      "recommended": "Recomendado",
+      "current": "Actual",
+      "lite": "Ligero",
+      "liteDesc": "Solo CPU. Modelos más pequeños, menor uso de recursos.",
+      "balanced": "Equilibrado",
+      "balancedDesc": "Aceleración por GPU. Buena calidad con recursos moderados.",
+      "power": "Potencia",
+      "powerDesc": "GPU completa. Modelos más grandes, mejor calidad."
+    },
+    "performance": {
+      "title": "Rendimiento",
+      "description": "Configura la utilización del hardware y los límites de recursos.",
+      "gpuAcceleration": "Aceleración por GPU",
+      "gpuAccelerationDesc": "Usar GPU para inferencia más rápida cuando esté disponible.",
+      "concurrentJobs": "Trabajos simultáneos máximos",
+      "concurrentJobsDesc": "Número de trabajos que pueden ejecutarse simultáneamente.",
+      "maxMemory": "Uso máximo de memoria",
+      "maxMemoryDesc": "Limitar la memoria utilizada por los modelos de IA. 0 = sin límite.",
+      "unlimited": "Sin límite"
+    },
+    "system": {
+      "title": "Información del sistema",
+      "description": "Hardware detectado y capacidades del sistema.",
+      "refresh": "Actualizar",
+      "noData": "Información de hardware no disponible. Haz clic en Actualizar para detectar."
+    },
+    "about": {
+      "title": "Acerca de",
+      "version": "Versión",
+      "tagline": "Traductor local de subtítulos con IA",
+      "runtime": "Entorno de ejecución",
+      "sttEngine": "Motor STT",
+      "llmEngine": "Motor LLM",
+      "license": "Licencia",
+      "thirdParty": {
+        "title": "Componentes de terceros",
+        "ffmpegNote": "FFmpeg no se distribuye con LocalSub. Cuando solicitas su instalación, la compilación oficial para Windows publicada por gyan.dev se descarga directamente desde sus versiones de GitHub. Esa compilación se publica bajo la GPL v3.",
+        "ffmpegBuilds": "Compilaciones de FFmpeg (gyan.dev)",
+        "ffmpegSource": "Código fuente de FFmpeg"
+      },
+      "github": "Repositorio en GitHub",
+      "reportIssue": "Reportar un problema",
+      "updates": {
+        "title": "Actualizaciones",
+        "check": "Buscar actualizaciones",
+        "checking": "Buscando actualizaciones...",
+        "available": "Actualización disponible",
+        "upToDate": "Estás al día",
+        "install": "Descargar e instalar",
+        "installing": "Instalando...",
+        "error": "Error al buscar actualizaciones"
+      }
+    },
+    "translation": {
+      "title": "Traducción",
+      "mode": "Modo de traducción",
+      "modeOff": "Desactivado",
+      "modeLocal": "Local",
+      "modeExternal": "Externo",
+      "contextWindow": "Ventana de contexto (segmentos)",
+      "stylePreset": "Estilo predefinido",
+      "style": {
+        "literal": "Literal",
+        "natural": "Natural",
+        "casual": "Informal",
+        "formal": "Formal"
+      },
+      "quality": {
+        "title": "Calidad de traducción",
+        "fast": "Rápida",
+        "fastDesc": "Traducciones rápidas con muestreo mínimo. Ideal para borradores.",
+        "balanced": "Equilibrada",
+        "balancedDesc": "Buena calidad a velocidad moderada. Recomendada para la mayoría de usos.",
+        "best": "Mejor",
+        "bestDesc": "Máxima calidad. Habilita refinamiento en 2 pasadas por defecto."
+      },
+      "customPrompt": "Instrucciones personalizadas",
+      "customPromptPlaceholder": "Agrega instrucciones de traducción adicionales (ej. 'Usar lenguaje informal' o 'Mantener términos técnicos en inglés')...",
+      "twoPass": "Refinamiento en 2 pasadas",
+      "twoPassDesc": "Refina las traducciones con una segunda pasada. Más lento pero más consistente."
+    },
+    "models": {
+      "title": "Modelos",
+      "description": "Administra los modelos de IA para reconocimiento de voz y traducción.",
+      "empty": "Cargando catálogo de modelos...",
+      "whisperSection": "Reconocimiento de voz (Whisper)",
+      "llmSection": "Traducción (LLM)",
+      "active": "Activo",
+      "setActive": "Usar este modelo",
+      "delete": "Eliminar",
+      "confirmDelete": "Eliminar modelo",
+      "confirmDeleteMsg": "¿Estás seguro de que quieres eliminar este modelo? Puedes volver a descargarlo después.",
+      "download": "Descargar",
+      "install": "Instalar",
+      "size": "Tamaño",
+      "noGpu": "No se detectó GPU — los modelos se ejecutarán en CPU",
+      "recommended": "Recomendado",
+      "cpuOnly": "Solo CPU",
+      "tooLarge": "VRAM insuficiente",
+      "notInstalled": "No instalado",
+      "categoryGeneral": "General",
+      "categoryInstruct": "Instruct",
+      "langRecommended": "Multilingüe",
+      "status": {
+        "downloading": "Descargando",
+        "verifying": "Verificando",
+        "ready": "Listo",
+        "missing": "Faltante",
+        "corrupt": "Corrupto"
+      }
+    },
+    "api": {
+      "title": "API externa",
+      "provider": "Proveedor",
+      "apiKey": "Clave API",
+      "model": "Modelo",
+      "testConnection": "Probar conexión",
+      "success": "Conexión exitosa",
+      "failed": "Conexión fallida"
+    },
+    "language": {
+      "title": "Idioma de la interfaz",
+      "en": "Inglés",
+      "ko": "Coreano"
+    },
+    "restoreDefaults": "Restaurar valores predeterminados",
+    "memoryWarning": "Usar más del 80% de la RAM disponible puede causar inestabilidad."
+  },
+  "server": {
+    "running": "Servidor activo",
+    "starting": "Iniciando servidor...",
+    "error": "Error del servidor",
+    "errorClick": "Error del servidor — clic para reiniciar",
+    "stopped": "Servidor detenido"
+  },
+  "theme": {
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  },
+  "errorBoundary": {
+    "title": "Algo salió mal",
+    "description": "Ocurrió un error inesperado. Puedes intentar recargar la vista actual.",
+    "tryAgain": "Intentar de nuevo"
+  },
+  "hw": {
+    "cuda": "CUDA {{version}}",
+    "cpuOnly": "Solo CPU"
+  },
+  "notification": {
+    "completed": "{{name}} — Completado",
+    "completedBody": "Los subtítulos están listos para revisión.",
+    "failed": "{{name}} — Falló",
+    "failedBody": "Ocurrió un error durante el procesamiento."
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "playback": "Reproducción",
+    "editing": "Edición",
+    "general": "General",
+    "playPause": "Reproducir / Pausar",
+    "split": "Dividir subtítulo",
+    "merge": "Unir con siguiente",
+    "delete": "Eliminar subtítulo",
+    "save": "Guardar",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "find": "Buscar y reemplazar",
+    "closeFind": "Cerrar búsqueda"
+  }
+}

@@ -1,0 +1,669 @@
+{
+  "app": {
+    "title": "LocalSub",
+    "loading": "로딩 중..."
+  },
+  "nav": {
+    "dashboard": "작업 관리",
+    "editor": "자막 편집기",
+    "presets": "프리셋",
+    "settings": "설정",
+    "theme": "테마"
+  },
+  "dashboard": {
+    "description": "번역 작업 관리",
+    "filter": {
+      "all": "전체",
+      "processing": "처리 중",
+      "pending": "대기 중",
+      "completed": "완료",
+      "failed": "실패",
+      "interrupted": "중단됨"
+    },
+    "status": {
+      "pending": "대기 중",
+      "processing": "처리 중",
+      "completed": "완료",
+      "failed": "실패",
+      "interrupted": "중단됨"
+    },
+    "stage": {
+      "stt": "음성 인식",
+      "diarizing": "화자 검출",
+      "translating": "번역 중",
+      "done": "완료",
+      "error": "오류"
+    },
+    "table": {
+      "file": "파일",
+      "preset": "프리셋",
+      "status": "상태",
+      "progress": "진행률",
+      "created": "생성 시간"
+    },
+    "empty": {
+      "title": "아직 작업이 없습니다",
+      "description": "새 작업을 만들어 자막 처리를 시작하세요."
+    },
+    "actions": {
+      "remove": "삭제",
+      "retry": "재시도",
+      "retryTranslation": "번역만 재시도",
+      "openEditor": "에디터 열기",
+      "resume": "이어서 번역"
+    },
+    "interruptedCount": "{{count}}줄 번역됨",
+    "search": "파일 검색...",
+    "dropOverlay": "파일을 여기에 놓아 새 작업을 만드세요",
+    "time": {
+      "justNow": "방금",
+      "minsAgo": "{{count}}분 전",
+      "hrsAgo": "{{count}}시간 전"
+    },
+    "eta": {
+      "lessThanMinute": "1분 미만 남음",
+      "minutes": "약 {{count}}분 남음",
+      "hoursMinutes": "약 {{count}}시간 {{minutes}}분 남음"
+    },
+    "stats": {
+      "processedIn": "처리 시간: {{time}}"
+    },
+    "sort": {
+      "newest": "최신순",
+      "oldest": "오래된순",
+      "nameAsc": "이름 A-Z",
+      "nameDesc": "이름 Z-A"
+    },
+    "newJob": {
+      "button": "새 작업",
+      "title": "새 작업",
+      "description": "파일을 업로드하고 프리셋을 선택하여 처리를 시작하세요.",
+      "dropzone": "파일을 드래그 앤 드롭하거나 클릭하여 찾아보기",
+      "preset": "프리셋",
+      "noPresets": "사용 가능한 프리셋이 없습니다. 프리셋 페이지에서 만들어주세요.",
+      "start": "작업 시작",
+      "startMultiple": "{{count}}개 작업 시작",
+      "supportedFormats": "MP4, MKV, AVI, MOV, MP3, WAV, SRT, VTT",
+      "linkedVocab": "연결된 용어사전:",
+      "subtitleMode": {
+        "badge": "자막 번역 모드",
+        "hint": "자막 파일은 음성 인식 없이 바로 번역됩니다.",
+        "unavailable": "자막 파일에는 오디오가 없어 사용할 수 없는 옵션입니다."
+      },
+      "skipTranslation": "음성 인식만",
+      "skipTranslationDesc": "음성 인식만 수행하고 번역 단계를 건너뜁니다",
+      "enableDiarization": "화자 검출",
+      "enableDiarizationDesc": "오디오에서 서로 다른 화자를 감지하고 라벨을 지정합니다",
+      "preview": {
+        "title": "샘플 번역",
+        "open": "샘플 번역",
+        "close": "샘플 닫기",
+        "start": "시작",
+        "startLabel": "시작",
+        "duration": "구간",
+        "maxMinutes": "최대 {{max}}분",
+        "run": "실행",
+        "runSttAndTranslate": "STT + 번역",
+        "retryTranslation": "번역만 재실행",
+        "time": "시간",
+        "original": "원문",
+        "translated": "번역",
+        "sttCached": "STT 캐싱됨 — 용어 사전 수정 후 '번역만 재실행'으로 빠르게 테스트할 수 있습니다.",
+        "noVocab": "연결된 용어 사전 없음",
+        "createVocab": "새로 만들기",
+        "editVocab": "용어 사전 편집",
+        "closeVocab": "용어 사전 닫기",
+        "tempVocabName": "임시 용어 사전",
+        "source": "원문",
+        "target": "번역",
+        "add": "추가",
+        "save": "저장",
+        "saving": "저장 중...",
+        "filesSelected": "{{count}}개 파일 선택됨",
+        "clickToAdd": "— 클릭하여 추가"
+      },
+      "ffmpegMissing": "FFmpeg가 없습니다. 60분이 넘는 영상은 청크로 분할되지 않습니다."
+    }
+  },
+  "editor": {
+    "description": "자막 편집기",
+    "placeholder": "대시보드에서 완료된 작업을 선택하여 자막을 편집하세요.",
+    "empty": {
+      "title": "로드된 자막이 없습니다",
+      "description": "대시보드에서 완료된 작업을 선택하여 편집을 시작하세요."
+    },
+    "noSubtitles": "표시할 자막이 없습니다.",
+    "selectToEdit": "목록에서 자막을 선택하여 편집하세요.",
+    "subtitlesCount": "자막",
+    "unsaved": "저장되지 않은 변경사항",
+    "save": "저장",
+    "export": {
+      "label": "내보내기"
+    },
+    "originalText": "원본 텍스트",
+    "translatedText": "번역 텍스트",
+    "translationPlaceholder": "번역을 입력하세요...",
+    "status": {
+      "translated": "번역됨",
+      "untranslated": "미번역",
+      "spell_error": "오류",
+      "editing": "편집 중"
+    },
+    "actions": {
+      "split": "분할",
+      "mergeNext": "다음과 병합",
+      "splitTooltip": "재생 위치에서 자막 분할",
+      "mergeNextTooltip": "아래 자막과 병합",
+      "retranslate": "재번역",
+      "retranslateTooltip": "이 줄을 다시 번역합니다"
+    },
+    "stats": {
+      "chars": "글자 수",
+      "duration": "길이",
+      "cps": "글자/초"
+    },
+    "undo": "실행 취소",
+    "redo": "다시 실행",
+    "delete": "삭제",
+    "deleteTooltip": "이 자막 삭제",
+    "startTime": "시작",
+    "endTime": "끝",
+    "playbackSpeed": "재생 속도",
+    "processing": "처리 중...",
+    "autoSaving": "자동 저장 중...",
+    "autoSaved": "자동 저장됨",
+    "video": {
+      "show": "비디오 표시",
+      "hide": "비디오 숨기기"
+    },
+    "a11y": {
+      "skipPrev": "이전 자막으로 이동",
+      "play": "재생",
+      "pause": "일시정지",
+      "skipNext": "다음 자막으로 이동",
+      "volume": "볼륨"
+    },
+    "findReplace": {
+      "title": "찾기 및 바꾸기",
+      "placeholder": "자막에서 찾기...",
+      "replacePlaceholder": "바꿀 내용...",
+      "replace": "바꾸기",
+      "replaceAll": "모두 바꾸기",
+      "caseSensitive": "대소문자 구분",
+      "searchOriginal": "원문 검색"
+    },
+    "timeShift": {
+      "button": "타임 시프트",
+      "title": "타임 시프트",
+      "seconds": "초 (±)",
+      "scopeAll": "전체 라인",
+      "scopeSelection": "선택한 라인",
+      "apply": "적용"
+    },
+    "refusal": {
+      "filterToggle": "문제만 보기",
+      "retranslateAll": "문제 재번역 ({{count}})",
+      "progress": "{{done}}/{{total}}",
+      "cancel": "취소",
+      "reason": {
+        "empty": "번역이 비어 있음",
+        "copy": "원문이 그대로 복사됨",
+        "refusal_phrase": "모델이 번역을 거부함",
+        "too_long": "비정상적으로 긴 출력",
+        "repetition": "같은 구절 반복"
+      }
+    },
+    "vocab": {
+      "addToVocab": "용어사전에 추가",
+      "source": "원문 용어",
+      "target": "번역",
+      "selectVocab": "용어사전",
+      "noVocabs": "용어사전이 없습니다. 프리셋에서 만드세요.",
+      "added": "{{name}}에 추가됨",
+      "addedDesc": "다음 번역 작업부터 반영됩니다.",
+      "dialogDesc": "선택한 텍스트를 용어로 등록합니다. 다음 번역 작업부터 반영됩니다.",
+      "vocabMatch": "용어사전: {{source}} → {{target}}"
+    }
+  },
+  "presets": {
+    "description": "번역 프리셋 & 용어사전",
+    "placeholder": "프리셋 관리 기능이 곧 제공됩니다.",
+    "tabs": {
+      "presets": "작업 프리셋",
+      "vocabularies": "용어사전"
+    },
+    "presetsDesc": "STT, 번역, 용어사전 설정을 재사용 가능한 구성으로 결합합니다.",
+    "newPreset": "새 프리셋",
+    "emptyPresets": {
+      "title": "프리셋이 없습니다",
+      "description": "첫 번째 프리셋을 만들어 시작하세요."
+    },
+    "vocabDesc": "작업 전반에서 일관된 번역을 위해 특정 용어의 번역 방법을 정의합니다.",
+    "newVocab": "새 용어사전",
+    "emptyVocab": {
+      "title": "용어사전이 없습니다",
+      "description": "일관된 번역을 위해 용어사전을 만드세요."
+    },
+    "actions": {
+      "edit": "편집",
+      "duplicate": "복제",
+      "delete": "삭제",
+      "setDefault": "기본으로 설정"
+    },
+    "lang": {
+      "ko": "한국어",
+      "en": "영어",
+      "ja": "일본어",
+      "zh": "중국어"
+    },
+    "style": {
+      "natural": "자연스럽게",
+      "formal": "존댓말",
+      "casual": "반말"
+    },
+    "default": "기본",
+    "quality": {
+      "fast": "빠름",
+      "balanced": "균형",
+      "best": "최고"
+    },
+    "twoPass": "2-Pass",
+    "customPrompt": "커스텀 지시사항",
+    "customPromptPlaceholder": "추가 번역 지시사항 입력...",
+    "vocab": {
+      "importCsv": "CSV 가져오기",
+      "imported": "{{count}}건 가져옴",
+      "importFailed": "CSV 가져오기 실패"
+    },
+    "dialog": {
+      "editPreset": "프리셋 편집",
+      "newPreset": "새 프리셋",
+      "presetDescription": "자막 생성 및 번역 설정을 구성합니다.",
+      "editVocab": "용어사전 편집",
+      "newVocab": "새 용어사전",
+      "vocabDescription": "특정 단어와 구문의 번역 방법을 정의합니다.",
+      "name": "이름",
+      "description": "설명",
+      "whisperModel": "Whisper 모델",
+      "llmModel": "LLM 모델",
+      "noModelsInstalled": "설치된 모델 없음",
+      "sourceLang": "원본 언어",
+      "targetLang": "번역 언어",
+      "outputFormat": "출력 형식",
+      "translationStyle": "번역 스타일",
+      "vocabDictionary": "용어사전",
+      "none": "없음",
+      "entries": "항목",
+      "source": "원문",
+      "target": "번역",
+      "context": "문맥",
+      "note": "메모",
+      "optional": "선택사항",
+      "addEntry": "항목 추가",
+      "cancel": "취소",
+      "saveChanges": "변경 저장",
+      "createPreset": "프리셋 생성",
+      "createVocab": "용어사전 생성",
+      "entriesCount": "{{count}}개 항목"
+    }
+  },
+  "setup": {
+    "description": "이 앱은 시스템에 Python 패키지를 설치해야 합니다.\n필요한 의존성을 다운로드하고 설치하는 일회성 설정입니다.",
+    "checking": "설정 상태 확인 중...",
+    "needed": "필수 패키지를 설치해야 합니다 (~100MB 다운로드).",
+    "startButton": "설정 시작",
+    "startingFallback": "설정 시작 중...",
+    "unknownError": "알 수 없는 오류가 발생했습니다",
+    "retryButton": "설정 재시도",
+    "logsToggle": "설치 로그",
+    "error": {
+      "network": "패키지 서버에 연결할 수 없습니다. 인터넷 연결을 확인한 후 다시 시도해 주세요.",
+      "disk": "디스크 공간이 부족합니다. 공간을 확보한 후 다시 시도해 주세요.",
+      "noWheel": "이 환경에서 호환되는 패키지를 찾을 수 없습니다. GitHub에 이슈를 등록해 주세요.",
+      "integrity": "다운로드 무결성 검증에 실패했습니다 (체크섬 불일치). 파일이 손상되었거나 변조되었을 수 있습니다 — 다시 시도해 주세요.",
+      "unknown": "자세한 내용은 아래 설치 로그를 확인해 주세요."
+    },
+    "resetButton": "초기화 후 재설치",
+    "ffmpegNotice": "설치 과정에서 FFmpeg(GPL v3)를 gyan.dev에서 내려받습니다. LocalSub에 포함해 배포하지 않으며, 소스는 FFmpeg 저장소에서 받을 수 있습니다. 시스템 PATH에 FFmpeg가 있으면 그것을 사용합니다.",
+    "ffmpegDownloadLabel": "다운로드",
+    "ffmpegSourceLabel": "소스"
+  },
+  "shared": {
+    "confirm": "확인",
+    "cancel": "취소"
+  },
+  "wizard": {
+    "stepLabels": {
+      "1": "환영",
+      "2": "환경 확인",
+      "3": "출력 설정",
+      "4": "모델 선택",
+      "5": "설치"
+    },
+    "back": "이전",
+    "next": "다음",
+    "welcome": {
+      "title": "LocalSub에 오신 것을 환영합니다",
+      "description": "LocalSub는 로컬 AI 모델을 사용하여 오디오/비디오 자막을 생성하고 번역합니다. 몇 가지 간단한 단계로 환경을 설정해 보겠습니다.",
+      "getStarted": "시작하기",
+      "skip": "설정 마법사 건너뛰기"
+    },
+    "environment": {
+      "title": "환경 확인",
+      "detecting": "하드웨어 감지 중...",
+      "cpuCard": "CPU",
+      "ramCard": "RAM",
+      "gpuCard": "GPU",
+      "diskCard": "명령어 세트",
+      "noGpu": "GPU 미감지",
+      "instructionSet": "CPU 명령어 지원",
+      "profileTitle": "추천 프로필",
+      "recommended": "추천",
+      "profile": {
+        "lite": "Lite",
+        "balanced": "Balanced",
+        "power": "Power"
+      },
+      "profileDesc": {
+        "lite": "CPU 전용. 가장 작은 모델, 최소 리소스 사용.",
+        "balanced": "GPU 가속. 적절한 리소스로 좋은 품질.",
+        "power": "전체 GPU. 가장 큰 모델, 최고 품질."
+      }
+    },
+    "output": {
+      "title": "출력 설정",
+      "folderLabel": "출력 폴더",
+      "browse": "찾아보기",
+      "formatLabel": "자막 형식",
+      "sourceLanguage": "원본 언어",
+      "targetLanguage": "번역 언어"
+    },
+    "models": {
+      "title": "모델 선택",
+      "whisperTitle": "음성 인식 (Whisper)",
+      "llmTitle": "번역 (LLM)",
+      "skipLlm": "번역 건너뛰기 (STT만 사용)",
+      "totalSize": "총 다운로드 크기",
+      "diskWarning": "디스크 공간이 부족합니다"
+    },
+    "install": {
+      "title": "설치 중",
+      "downloading": "모델 다운로드 중...",
+      "installing": "의존성 설치 중...",
+      "verifying": "파일 검증 중...",
+      "complete": "설정 완료!",
+      "startUsing": "LocalSub 시작하기",
+      "error": "설치 실패",
+      "retry": "재시도"
+    }
+  },
+  "toast": {
+    "configLoadFailed": "설정 로드 실패",
+    "configSaveFailed": "설정 저장 실패",
+    "presetLoadFailed": "프리셋 로드 실패",
+    "presetSaveFailed": "프리셋 저장 실패",
+    "presetDeleteFailed": "프리셋 삭제 실패",
+    "presetDuplicated": "프리셋이 복제되었습니다",
+    "vocabLoadFailed": "어휘 사전 로드 실패",
+    "vocabSaveFailed": "어휘 사전 저장 실패",
+    "vocabDeleteFailed": "어휘 사전 삭제 실패",
+    "modelLoadFailed": "모델 로드 실패",
+    "modelDownloadFailed": "다운로드 시작 실패",
+    "modelCancelFailed": "다운로드 취소 실패",
+    "modelDeleteFailed": "모델 삭제 실패",
+    "pipelineFailed": "작업 실패",
+    "noLlmSttOnly": "번역 LLM 모델이 설치되지 않아 자막(STT)만 저장했습니다.",
+    "pipelineCancelFailed": "작업 취소 실패",
+    "setupCheckFailed": "환경 설정 확인 실패",
+    "setupFailed": "환경 설정 실패",
+    "setupResetFailed": "환경 설정 초기화 실패",
+    "serverConnectFailed": "서버 연결 실패",
+    "serverCrashed": "서버 연결이 끊어졌습니다",
+    "jobsLoadFailed": "작업 목록 로드 실패",
+    "resumeFailed": "이어서 번역할 진행 내용을 불러오지 못했습니다",
+    "jobsSaveFailed": "작업 목록 저장 실패",
+    "subtitleLoadFailed": "자막 로드 실패",
+    "subtitleSaveFailed": "자막 저장 실패",
+    "subtitleSaved": "자막이 저장되었습니다",
+    "exportFailed": "자막 내보내기 실패",
+    "exportSuccess": "자막이 내보내기 되었습니다",
+    "jobStillProcessing": "아직 처리 중인 작업입니다",
+    "jobFailedClick": "작업이 실패했습니다",
+    "configResetSuccess": "설정이 기본값으로 복원되었습니다",
+    "configResetFailed": "기본값 복원 실패",
+    "mediaLoadFailed": "미디어 파일을 로드할 수 없습니다. 타이머 시뮬레이션을 사용합니다.",
+    "resumeBusy": "다른 작업이 실행 중입니다. 끝난 후 이어서 번역해 주세요."
+  },
+  "confirm": {
+    "deletePreset": "프리셋 삭제",
+    "deletePresetMsg": "이 프리셋을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "deleteVocab": "어휘 사전 삭제",
+    "deleteVocabMsg": "이 어휘 사전을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "resetConfig": "기본값 복원",
+    "resetConfigMsg": "모든 설정을 기본값으로 복원하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+  },
+  "configError": {
+    "title": "설정 로드 실패",
+    "description": "앱 설정을 로드하는 중 오류가 발생했습니다.",
+    "retry": "재시도"
+  },
+  "settings": {
+    "title": "설정",
+    "description": "애플리케이션 설정",
+    "close": "닫기",
+    "tabs": {
+      "general": "일반",
+      "models": "모델",
+      "info": "정보"
+    },
+    "general": {
+      "title": "일반 설정",
+      "description": "언어, 출력 형식, 번역 설정을 구성합니다.",
+      "outputFormat": "기본 출력 형식",
+      "sourceLanguage": "원본 언어",
+      "targetLanguage": "번역 언어",
+      "sourceLangs": {
+        "auto": "자동 감지",
+        "en": "영어",
+        "ko": "한국어",
+        "ja": "일본어",
+        "zh": "중국어",
+        "es": "스페인어",
+        "fr": "프랑스어",
+        "de": "독일어"
+      },
+      "targetLangs": {
+        "en": "영어",
+        "ko": "한국어",
+        "ja": "일본어",
+        "zh": "중국어",
+        "es": "스페인어",
+        "fr": "프랑스어",
+        "de": "독일어"
+      }
+    },
+    "paths": {
+      "title": "파일 경로",
+      "description": "파일 저장 위치를 설정합니다.",
+      "outputDir": "출력 폴더",
+      "outputDirDesc": "내보낸 자막 파일이 저장되는 위치입니다.",
+      "modelDir": "모델 폴더",
+      "modelDirDefault": "기본값 (AppData)",
+      "modelDirDesc": "AI 모델이 저장되는 디스크 위치입니다."
+    },
+    "profile": {
+      "title": "성능 프로필",
+      "description": "하드웨어 성능에 맞는 프로필을 선택하세요.",
+      "hardwareTitle": "시스템 하드웨어",
+      "detecting": "하드웨어 감지 중...",
+      "recommended": "추천",
+      "current": "현재",
+      "lite": "Lite",
+      "liteDesc": "CPU 전용. 가장 작은 모델, 최소 리소스 사용.",
+      "balanced": "Balanced",
+      "balancedDesc": "GPU 가속. 적절한 리소스로 좋은 품질.",
+      "power": "Power",
+      "powerDesc": "전체 GPU. 가장 큰 모델, 최고 품질."
+    },
+    "performance": {
+      "title": "성능",
+      "description": "하드웨어 활용 및 리소스 제한을 설정합니다.",
+      "gpuAcceleration": "GPU 가속",
+      "gpuAccelerationDesc": "가능한 경우 GPU를 사용하여 모델 추론을 가속합니다.",
+      "concurrentJobs": "최대 동시 작업 수",
+      "concurrentJobsDesc": "동시에 실행할 수 있는 작업 수입니다.",
+      "maxMemory": "최대 메모리 사용량",
+      "maxMemoryDesc": "AI 모델이 사용하는 메모리를 제한합니다. 0 = 무제한.",
+      "unlimited": "무제한"
+    },
+    "system": {
+      "title": "시스템 정보",
+      "description": "감지된 하드웨어 및 시스템 기능입니다.",
+      "refresh": "새로고침",
+      "noData": "하드웨어 정보를 사용할 수 없습니다. 새로고침을 클릭하여 감지하세요."
+    },
+    "about": {
+      "title": "정보",
+      "version": "버전",
+      "tagline": "AI 기반 로컬 자막 번역기",
+      "runtime": "런타임",
+      "sttEngine": "STT 엔진",
+      "llmEngine": "LLM 엔진",
+      "license": "라이선스",
+      "thirdParty": {
+        "title": "제3자 구성요소",
+        "ffmpegNote": "FFmpeg는 LocalSub에 포함되어 있지 않습니다. 설치를 요청하실 때 gyan.dev가 배포하는 공식 Windows 빌드를 그쪽 GitHub 릴리스에서 직접 내려받습니다. 해당 빌드는 GPL v3으로 배포됩니다.",
+        "ffmpegBuilds": "FFmpeg 빌드 (gyan.dev)",
+        "ffmpegSource": "FFmpeg 소스 코드"
+      },
+      "github": "GitHub 저장소",
+      "reportIssue": "문제 보고",
+      "updates": {
+        "title": "업데이트",
+        "check": "업데이트 확인",
+        "checking": "업데이트 확인 중...",
+        "available": "업데이트 가능",
+        "upToDate": "최신 버전입니다",
+        "install": "다운로드 및 설치",
+        "installing": "설치 중...",
+        "error": "업데이트 확인 실패"
+      }
+    },
+    "translation": {
+      "title": "번역",
+      "mode": "번역 모드",
+      "modeOff": "끄기",
+      "modeLocal": "로컬",
+      "modeExternal": "외부",
+      "contextWindow": "컨텍스트 윈도우 (세그먼트)",
+      "stylePreset": "스타일 프리셋",
+      "style": {
+        "literal": "직역",
+        "natural": "자연스러운",
+        "casual": "구어체",
+        "formal": "격식체"
+      },
+      "quality": {
+        "title": "번역 품질",
+        "fast": "빠름",
+        "fastDesc": "최소 샘플링으로 빠른 번역. 초안 작업에 적합.",
+        "balanced": "균형",
+        "balancedDesc": "적절한 속도와 좋은 품질. 대부분의 용도에 추천.",
+        "best": "최고",
+        "bestDesc": "최고 품질. 기본적으로 2-pass 교정 활성화."
+      },
+      "customPrompt": "커스텀 지시사항",
+      "customPromptPlaceholder": "추가 번역 지시사항 입력 (예: '반말로 번역' 또는 '영어 기술 용어 유지')...",
+      "twoPass": "2-Pass 교정",
+      "twoPassDesc": "2차 패스로 번역을 교정합니다. 느리지만 더 일관된 결과."
+    },
+    "models": {
+      "title": "모델",
+      "description": "음성 인식 및 번역을 위한 AI 모델을 관리합니다.",
+      "empty": "모델 카탈로그 로딩 중...",
+      "whisperSection": "음성 인식 (Whisper)",
+      "llmSection": "번역 (LLM)",
+      "active": "활성",
+      "setActive": "이 모델 사용",
+      "delete": "삭제",
+      "confirmDelete": "모델 삭제",
+      "confirmDeleteMsg": "이 모델을 삭제하시겠습니까? 나중에 다시 다운로드할 수 있습니다.",
+      "download": "다운로드",
+      "install": "설치",
+      "size": "크기",
+      "noGpu": "GPU 미감지 — 모델은 CPU에서 실행됩니다",
+      "recommended": "추천",
+      "cpuOnly": "CPU 전용",
+      "tooLarge": "VRAM 부족",
+      "notInstalled": "미설치",
+      "categoryGeneral": "범용",
+      "categoryInstruct": "인스트럭트",
+      "langRecommended": "다국어",
+      "status": {
+        "downloading": "다운로드 중",
+        "verifying": "검증 중",
+        "ready": "준비됨",
+        "missing": "없음",
+        "corrupt": "손상됨"
+      }
+    },
+    "api": {
+      "title": "외부 API",
+      "provider": "제공자",
+      "apiKey": "API 키",
+      "model": "모델",
+      "testConnection": "연결 테스트",
+      "success": "연결 성공",
+      "failed": "연결 실패"
+    },
+    "language": {
+      "title": "UI 언어",
+      "en": "English",
+      "ko": "한국어"
+    },
+    "restoreDefaults": "기본값 복원",
+    "memoryWarning": "사용 가능한 RAM의 80% 이상을 사용하면 불안정해질 수 있습니다."
+  },
+  "server": {
+    "running": "서버 실행 중",
+    "starting": "서버 시작 중...",
+    "error": "서버 오류",
+    "errorClick": "서버 오류 — 클릭하여 재시작",
+    "stopped": "서버 중지됨"
+  },
+  "theme": {
+    "light": "라이트",
+    "dark": "다크",
+    "system": "시스템"
+  },
+  "errorBoundary": {
+    "title": "오류가 발생했습니다",
+    "description": "예기치 않은 오류가 발생했습니다. 현재 화면을 다시 로드해 보세요.",
+    "tryAgain": "다시 시도"
+  },
+  "hw": {
+    "cuda": "CUDA {{version}}",
+    "cpuOnly": "CPU 전용"
+  },
+  "notification": {
+    "completed": "{{name}} — 완료",
+    "completedBody": "자막이 준비되었습니다.",
+    "failed": "{{name}} — 실패",
+    "failedBody": "처리 중 오류가 발생했습니다."
+  },
+  "shortcuts": {
+    "title": "단축키",
+    "playback": "재생",
+    "editing": "편집",
+    "general": "일반",
+    "playPause": "재생 / 일시 정지",
+    "split": "자막 분할",
+    "merge": "다음 자막과 병합",
+    "delete": "자막 삭제",
+    "save": "저장",
+    "undo": "실행 취소",
+    "redo": "다시 실행",
+    "find": "찾기 및 바꾸기",
+    "closeFind": "검색 닫기"
+  }
+}
