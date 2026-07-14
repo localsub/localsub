@@ -132,6 +132,8 @@ export interface WhisperModelEntry {
   total_size_bytes: number;
   sha256: Record<string, string>;
   profiles: Profile[];
+  license: string;
+  license_url: string;
 }
 
 export interface LlmSplitFile {
@@ -151,6 +153,8 @@ export interface LlmModelEntry {
   n_gpu_layers_default: number;
   model_category?: string;
   split_files?: LlmSplitFile[];
+  license: string;
+  license_url: string;
 }
 
 export interface ModelCatalog {

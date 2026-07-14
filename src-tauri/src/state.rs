@@ -205,6 +205,9 @@ pub struct WhisperCatalogEntry {
     pub total_size_bytes: u64,
     pub sha256: HashMap<String, String>,
     pub profiles: Vec<Profile>,
+    // 카탈로그 등재 = 다운로드 링크 제공. 라이선스 미신고 모델은 파싱 단계에서 거부된다.
+    pub license: String,
+    pub license_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -228,6 +231,9 @@ pub struct LlmCatalogEntry {
     pub model_category: Option<String>,
     #[serde(default)]
     pub split_files: Option<Vec<LlmSplitFile>>,
+    // 카탈로그 등재 = 다운로드 링크 제공. 라이선스 미신고 모델은 파싱 단계에서 거부된다.
+    pub license: String,
+    pub license_url: String,
 }
 
 // ── Runtime types ──
@@ -394,6 +400,32 @@ mod tests {
         let pc: PartialConfig =
             serde_json::from_value(legacy_patch).expect("stale key must be ignored");
         assert!(pc.target_language.is_none());
+    }
+
+    /// 카탈로그 등재 = 다운로드 링크 제공이므로 모든 엔트리는 라이선스를 신고해야 한다.
+    /// `license`/`license_url`이 필수 필드라 누락 시 여기서 파싱이 실패하고,
+    /// 빈 문자열로 채워 넣는 우회도 이 테스트가 막는다.
+    #[test]
+    fn test_bundled_catalog_declares_license_for_every_entry() {
+        let raw = include_str!("../resources/model_catalog.json");
+        let catalog: ModelCatalog =
+            serde_json::from_str(raw).expect("bundled catalog must parse (license fields required)");
+        for e in &catalog.whisper_models {
+            assert!(!e.license.trim().is_empty(), "{} has empty license", e.id);
+            assert!(
+                e.license_url.starts_with("https://"),
+                "{} license_url must be https",
+                e.id
+            );
+        }
+        for e in &catalog.llm_models {
+            assert!(!e.license.trim().is_empty(), "{} has empty license", e.id);
+            assert!(
+                e.license_url.starts_with("https://"),
+                "{} license_url must be https",
+                e.id
+            );
+        }
     }
 
     #[test]
