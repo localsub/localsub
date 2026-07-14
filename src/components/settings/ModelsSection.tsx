@@ -279,6 +279,14 @@ export function ModelsSection({
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{formatSize(entry.total_size_bytes)}</span>
+                      <a
+                        href={entry.license_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+                      >
+                        {entry.license}
+                      </a>
                       {renderStatusBadge(status)}
                       {renderVramBadge(fit)}
                     </div>
@@ -357,6 +365,14 @@ export function ModelsSection({
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{formatSize(entry.size_bytes)}</span>
+                      <a
+                        href={entry.license_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+                      >
+                        {entry.license}
+                      </a>
                       {renderStatusBadge(status)}
                       {renderVramBadge(fit)}
                     </div>

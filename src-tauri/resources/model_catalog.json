@@ -8,7 +8,9 @@
       "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.txt"],
       "total_size_bytes": 77000000,
       "sha256": { "model.bin": "dcb76c6586fc06cbdac6dd21f14cfd129cc4cdd9dce19bf4ffa62e59cbe6e6d1" },
-      "profiles": ["lite"]
+      "profiles": ["lite"],
+      "license": "MIT",
+      "license_url": "https://huggingface.co/Systran/faster-whisper-tiny"
     },
     {
       "id": "whisper-base",
@@ -17,7 +19,9 @@
       "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.txt"],
       "total_size_bytes": 145000000,
       "sha256": { "model.bin": "d01c3014881c9c6f3133c182f3d2887eb6ca1c789a7538c5c007196857a0a6a9" },
-      "profiles": ["lite", "balanced"]
+      "profiles": ["lite", "balanced"],
+      "license": "MIT",
+      "license_url": "https://huggingface.co/Systran/faster-whisper-base"
     },
     {
       "id": "whisper-small",
@@ -26,7 +30,9 @@
       "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.txt"],
       "total_size_bytes": 488000000,
       "sha256": { "model.bin": "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671" },
-      "profiles": ["balanced"]
+      "profiles": ["balanced"],
+      "license": "MIT",
+      "license_url": "https://huggingface.co/Systran/faster-whisper-small"
     },
     {
       "id": "whisper-medium",
@@ -35,7 +41,9 @@
       "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.txt"],
       "total_size_bytes": 1530000000,
       "sha256": { "model.bin": "9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae" },
-      "profiles": ["balanced", "power"]
+      "profiles": ["balanced", "power"],
+      "license": "MIT",
+      "license_url": "https://huggingface.co/Systran/faster-whisper-medium"
     },
     {
       "id": "whisper-large-v3",
@@ -44,7 +52,9 @@
       "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.json", "preprocessor_config.json"],
       "total_size_bytes": 3090000000,
       "sha256": { "model.bin": "69f74147e3334731bc3a76048724833325d2ec74642fb52620eda87352e3d4f1" },
-      "profiles": ["balanced", "power"]
+      "profiles": ["balanced", "power"],
+      "license": "MIT",
+      "license_url": "https://huggingface.co/Systran/faster-whisper-large-v3"
     },
     {
       "id": "kotoba-whisper-v2",
@@ -53,7 +63,9 @@
       "files": ["model.bin", "config.json", "tokenizer.json", "vocabulary.json", "preprocessor_config.json"],
       "total_size_bytes": 1516480096,
       "sha256": { "model.bin": "60d2bc2e33de9d43f2745be09caefe1161acab670f6796d4a750d8d848382b36" },
-      "profiles": ["balanced", "power"]
+      "profiles": ["balanced", "power"],
+      "license": "MIT",
+      "license_url": "https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-faster"
     }
   ],
   "llm_models": [
@@ -67,7 +79,9 @@
       "quant": "Q4_K_M",
       "profiles": ["lite"],
       "n_gpu_layers_default": -1,
-      "model_category": "general"
+      "model_category": "general",
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/Qwen/Qwen3-4B-GGUF"
     },
     {
       "id": "qwen3-8b-q5km",
@@ -79,7 +93,9 @@
       "quant": "Q5_K_M",
       "profiles": ["balanced"],
       "n_gpu_layers_default": 28,
-      "model_category": "general"
+      "model_category": "general",
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/Qwen/Qwen3-8B-GGUF"
     },
     {
       "id": "qwen3-14b-q8",
@@ -91,7 +107,9 @@
       "quant": "Q8_0",
       "profiles": ["power"],
       "n_gpu_layers_default": -1,
-      "model_category": "general"
+      "model_category": "general",
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/Qwen/Qwen3-14B-GGUF"
     },
     {
       "id": "qwen35-9b-q4km",
@@ -103,7 +121,9 @@
       "quant": "Q4_K_M",
       "profiles": ["balanced", "power"],
       "n_gpu_layers_default": -1,
-      "model_category": "general"
+      "model_category": "general",
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE"
     },
     {
       "id": "qwen35-9b-q5km",
@@ -115,7 +135,9 @@
       "quant": "Q5_K_M",
       "profiles": ["balanced", "power"],
       "n_gpu_layers_default": -1,
-      "model_category": "general"
+      "model_category": "general",
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE"
     },
     {
       "id": "qwen25-7b-instruct-q5km",
@@ -137,19 +159,9 @@
       "quant": "Q5_K_M",
       "profiles": ["balanced"],
       "n_gpu_layers_default": 28,
-      "model_category": "instruct"
-    },
-    {
-      "id": "gemmax2-28-9b-q4km",
-      "name": "GemmaX2-28 9B Q4_K_M (Translation)",
-      "repo": "mradermacher/GemmaX2-28-9B-v0.1-GGUF",
-      "filename": "GemmaX2-28-9B-v0.1.Q4_K_M.gguf",
-      "size_bytes": 5761058336,
-      "sha256": "cbe610f8f565b793244a52bf675c7612edbfc35c713e212e8c49b31feb916606",
-      "quant": "Q4_K_M",
-      "profiles": ["balanced", "power"],
-      "n_gpu_layers_default": -1,
-      "model_category": "instruct"
+      "model_category": "instruct",
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF"
     },
     {
       "id": "ax-40-light-q4km",
@@ -161,7 +173,9 @@
       "quant": "Q4_K_M",
       "profiles": ["balanced", "power"],
       "n_gpu_layers_default": -1,
-      "model_category": "instruct"
+      "model_category": "instruct",
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/skt/A.X-4.0-Light"
     }
   ]
 }

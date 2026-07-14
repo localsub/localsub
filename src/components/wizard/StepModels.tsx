@@ -81,6 +81,8 @@ export function StepModels({
             key={m.id}
             name={m.name}
             size={formatSize(m.total_size_bytes)}
+            license={m.license}
+            licenseUrl={m.license_url}
             checked={selectedWhisperModel === m.id}
             onChange={() => onSelectWhisper(m.id)}
           />
@@ -98,6 +100,8 @@ export function StepModels({
             key={m.id}
             name={`${m.name} (${m.quant})`}
             size={formatSize(m.size_bytes)}
+            license={m.license}
+            licenseUrl={m.license_url}
             checked={selectedLlmModel === m.id}
             onChange={() => onSelectLlm(m.id)}
           />
@@ -134,11 +138,15 @@ export function StepModels({
 function ModelRadio({
   name,
   size,
+  license,
+  licenseUrl,
   checked,
   onChange,
 }: {
   name: string;
   size: string;
+  license: string;
+  licenseUrl: string;
   checked: boolean;
   onChange: () => void;
 }) {
@@ -158,7 +166,17 @@ function ModelRadio({
       />
       <HardDrive className="h-4 w-4 shrink-0 text-slate-500" />
       <span className="text-sm font-medium text-slate-200">{name}</span>
-      <span className="ml-auto text-xs text-slate-500">{size}</span>
+      <span className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+        <a
+          href={licenseUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-dotted underline-offset-2 hover:text-slate-300"
+        >
+          {license}
+        </a>
+        <span>{size}</span>
+      </span>
     </label>
   );
 }
