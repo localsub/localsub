@@ -1,7 +1,7 @@
 {
   "name": "localsub",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "scripts": {
@@ -71,7 +71,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^28.1.0",
     "png-to-ico": "^3.0.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "typescript": "~5.6.2",
     "vite": "^6.0.0",
     "vitest": "^4.0.18"

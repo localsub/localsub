@@ -50,20 +50,30 @@ pub async fn run_setup(
         s.setup_status = SetupStatus::IN_PROGRESS;
     }
 
+    log::info!("[setup] first-run setup starting");
+
     let app_clone = app.clone();
     let result = tokio::task::spawn_blocking(move || {
         setup_manager::run_setup_sync(&app_clone)
     })
     .await
-    .map_err(|e| AppError::Setup(format!("Setup task panicked: {}", e)))?;
+    .map_err(|e| {
+        // A panic never reaches run_setup_sync's own logging.
+        log::error!("[setup] setup task panicked: {}", e);
+        AppError::Setup(format!("Setup task panicked: {}", e))
+    })?;
 
     match result {
         Ok(()) => {
+            log::info!("[setup] first-run setup completed");
             let mut s = state.lock().expect("Failed to lock state");
             s.setup_status = SetupStatus::COMPLETE;
             Ok(())
         }
         Err(e) => {
+            // The failure otherwise only exists in the frontend's log panel,
+            // which does not survive an app restart.
+            log::error!("[setup] first-run setup failed: {}", e);
             let mut s = state.lock().expect("Failed to lock state");
             s.setup_status = SetupStatus::ERROR;
             Err(e)
@@ -75,6 +85,7 @@ pub async fn run_setup(
 pub async fn reset_setup(
     state: State<'_, SharedState>,
 ) -> Result<(), AppError> {
+    log::info!("[setup] reset requested; wiping python-env");
     setup_manager::reset_setup()?;
     let mut s = state.lock().expect("Failed to lock state");
     s.setup_status = SetupStatus::NEEDED;

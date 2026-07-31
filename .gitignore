@@ -52,3 +52,5 @@ build-llama*.bat
 
 # Process artifacts (session specs/plans) stay local-only — public repo carries the product
 docs/superpowers/
+docs/release-signing/
+docs/specs/

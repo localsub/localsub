@@ -42,12 +42,12 @@ use state::{AppState, SharedState};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Set up logging to both stderr and file
-    let log_dir = dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("LocalSub")
-        .join("logs");
+    let log_dir = utils::log_dir();
     let _ = std::fs::create_dir_all(&log_dir);
     let log_file_path = log_dir.join("tauri.log");
+    // Append-only handle below never shrinks the file; roll it here, before the
+    // writer opens, so a long-lived install can't grow the log without bound.
+    utils::rotate_log_if_large(&log_file_path, 5 * 1024 * 1024);
 
     let mut builder =
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
@@ -150,6 +150,7 @@ pub fn run() {
             // Export commands
             commands_export::export_subtitles,
             commands_export::open_folder,
+            commands_export::open_log_dir,
             // Subtitle commands
             commands_subtitle::load_job_subtitles,
             commands_subtitle::save_job_subtitles,

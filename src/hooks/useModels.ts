@@ -13,6 +13,7 @@ import type {
   ModelCatalog,
   ModelManifestEntry,
   DownloadProgress,
+  DownloadError,
 } from "../types";
 
 export function useModels() {
@@ -93,6 +94,7 @@ export function useModels() {
 
     let unlistenProgress: (() => void) | null = null;
     let unlistenManifest: (() => void) | null = null;
+    let unlistenError: (() => void) | null = null;
 
     listen<DownloadProgress>(
       "download-progress",
@@ -112,9 +114,31 @@ export function useModels() {
       },
     ).then((fn) => { unlistenManifest = fn; });
 
+    // A mid-download failure only reached the manifest (status → "corrupt"), so
+    // the progress bar stopped and a red badge appeared with the cause dropped
+    // on the floor. The reason is already in the payload — surface it.
+    listen<DownloadError>(
+      "download-error",
+      (event) => {
+        const { model_id, error, cancelled } = event.payload;
+        // Cancelling is a user action, not a failure worth a red toast.
+        if (cancelled) return;
+
+        setDownloads((prev) => {
+          const next = new Map(prev);
+          next.delete(model_id);
+          return next;
+        });
+
+        console.error(`Model download failed for ${model_id}:`, error);
+        toastError(i18n.t("toast.modelDownloadError"), error || model_id);
+      },
+    ).then((fn) => { unlistenError = fn; });
+
     return () => {
       unlistenProgress?.();
       unlistenManifest?.();
+      unlistenError?.();
     };
   }, [loadManifest]);
 

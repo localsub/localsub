@@ -289,6 +289,14 @@ export interface DownloadProgress {
   eta_secs: number;
 }
 
+/** Payload of the `download-error` event (Rust `commands_model::download_model`). */
+export interface DownloadError {
+  model_id: string;
+  error: string;
+  /** A user-initiated cancel travels on this same event; it is not a failure. */
+  cancelled: boolean;
+}
+
 // ── Model manifest ──
 
 export interface ModelManifestEntry {

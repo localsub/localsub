@@ -324,6 +324,7 @@
       "unknown": "詳細は下のインストールログを確認してください。"
     },
     "resetButton": "リセットして再インストール",
+    "openLogsButton": "ログフォルダーを開く",
     "ffmpegNotice": "セットアップでは FFmpeg（GPL v3）を gyan.dev からダウンロードします。LocalSub には同梱しておらず、ソースは FFmpeg リポジトリで入手できます。PATH に FFmpeg があればそちらを使います。",
     "ffmpegDownloadLabel": "ダウンロード",
     "ffmpegSourceLabel": "ソース"
@@ -409,6 +410,7 @@
     "vocabDeleteFailed": "用語集の削除に失敗しました",
     "modelLoadFailed": "モデルの読み込みに失敗しました",
     "modelDownloadFailed": "ダウンロードの開始に失敗しました",
+    "modelDownloadError": "モデルのダウンロードに失敗しました",
     "modelCancelFailed": "ダウンロードのキャンセルに失敗しました",
     "modelDeleteFailed": "モデルの削除に失敗しました",
     "pipelineFailed": "ジョブが失敗しました",

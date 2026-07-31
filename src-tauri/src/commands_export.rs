@@ -44,6 +44,20 @@ pub async fn export_subtitles(
     Ok(out_path.to_string_lossy().to_string())
 }
 
+/// Opens the folder holding `tauri.log` and `server.log` in the file manager.
+///
+/// The setup ERROR screen is the entry point: logs live under `%APPDATA%`, not
+/// in the install folder, so without this a failing first-run install leaves the
+/// user unable to find the one artifact worth sending back. Creates the folder
+/// first — if logging itself never initialised, the path may not exist yet and
+/// explorer would just blink.
+#[tauri::command]
+pub async fn open_log_dir() -> Result<(), AppError> {
+    let dir = crate::utils::log_dir();
+    std::fs::create_dir_all(&dir).map_err(AppError::Io)?;
+    open_folder(dir.to_string_lossy().to_string()).await
+}
+
 #[tauri::command]
 pub async fn open_folder(path: String) -> Result<(), AppError> {
     let dir = std::path::Path::new(&path);

@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 import type { SetupStatus, SetupProgress, SetupErrorKind } from "../types";
 import { Progress } from "./Progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
-import { FFMPEG_BUILDS, FFMPEG_SOURCE } from "../lib/links";
+import { FFMPEG_BUILDS, FFMPEG_SOURCE, LOG_DIR_HINT } from "../lib/links";
 
 interface SetupScreenProps {
   status: SetupStatus;
@@ -14,6 +14,7 @@ interface SetupScreenProps {
   onStart: () => void;
   onRetry: () => void;
   onReset: () => void;
+  onOpenLogs: () => void;
 }
 
 const ERROR_KIND_KEYS = {
@@ -61,7 +62,16 @@ function SetupLogPanel({ logLines }: { logLines: string[] }) {
   );
 }
 
-export function SetupScreen({ status, progress, error, logLines, onStart, onRetry, onReset }: SetupScreenProps) {
+export function SetupScreen({
+  status,
+  progress,
+  error,
+  logLines,
+  onStart,
+  onRetry,
+  onReset,
+  onOpenLogs,
+}: SetupScreenProps) {
   const { t } = useTranslation();
 
   const errorKind = progress?.error_kind ?? null;
@@ -156,12 +166,24 @@ export function SetupScreen({ status, progress, error, logLines, onStart, onRetr
             )}
             <SetupLogPanel logLines={logLines} />
             <div className="flex flex-col items-center gap-2">
-              <button
-                className="cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85"
-                onClick={onRetry}
-              >
-                {t("setup.retryButton")}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  className="cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85"
+                  onClick={onRetry}
+                >
+                  {t("setup.retryButton")}
+                </button>
+                {/* 로그는 설치 폴더가 아니라 %APPDATA%에 있다. 그걸 모르면
+                    사용자는 보고할 것을 못 찾는다 — 여기가 유일한 안내다. */}
+                <button
+                  className="cursor-pointer rounded-md border border-white/10 bg-surface-inset px-4 py-2 text-sm text-slate-300 transition-colors hover:text-slate-100"
+                  onClick={onOpenLogs}
+                >
+                  {t("setup.openLogsButton")}
+                </button>
+              </div>
+              {/* 파일 관리자가 안 열리는 경우를 위해 경로 자체도 노출한다. */}
+              <code className="font-mono text-[0.7rem] text-slate-500">{LOG_DIR_HINT}</code>
               {/* 부분 설치가 손상돼 retry가 반복 실패할 때의 탈출구:
                   python-env를 통째로 비우고 처음부터 다시 설치. */}
               <button
