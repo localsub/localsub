@@ -26,7 +26,7 @@ import { Toaster } from "./components/ui/sonner";
 import { Button } from "./components/ui/button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import type { AppScreen, MainPage, DashboardJob, SubtitleLine, JobSourceType } from "./types";
-import { loadDashboardJobs, saveDashboardJobs, loadJobSubtitles } from "./lib/tauriApi";
+import { loadDashboardJobs, saveDashboardJobs, loadJobSubtitles, openLogDir } from "./lib/tauriApi";
 import { getSourceType } from "./lib/sourceType";
 import { sendNotification, isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 
@@ -484,6 +484,9 @@ function App() {
           onStart={startSetup}
           onRetry={retry}
           onReset={resetSetup}
+          onOpenLogs={() => {
+            void openLogDir();
+          }}
         />
       </ThemeProvider>
     );

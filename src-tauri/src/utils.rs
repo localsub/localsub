@@ -77,6 +77,41 @@ pub fn app_data_dir() -> Result<PathBuf, AppError> {
     Ok(base.join(APP_ID))
 }
 
+/// Directory holding `tauri.log` and the Python server's `server.log`.
+///
+/// Sits beside the rest of the app data (`%APPDATA%\LocalSub`), *not* in the
+/// install folder — which is the first place a tester looks, finds nothing, and
+/// then has nothing to report. `open_log_dir` and the setup ERROR screen point
+/// here; keep `LOG_DIR_HINT` in `src/lib/links.ts` in sync.
+///
+/// Infallible on purpose: this runs before the logger exists, so an
+/// unresolvable config dir degrades to the process CWD rather than failing
+/// startup.
+pub fn log_dir() -> PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(APP_ID)
+        .join("logs")
+}
+
+/// Roll `path` aside once it exceeds `max_bytes`, keeping a single `.1` backup.
+///
+/// The log is opened in append mode for the life of the process, so it only
+/// ever grows; without this a long-lived install accumulates an unbounded file.
+/// Rotation happens at startup — the only moment no writer holds the handle.
+/// Every failure here is swallowed by the caller: losing a log must never stop
+/// the app from starting.
+pub fn rotate_log_if_large(path: &Path, max_bytes: u64) {
+    let too_big = fs::metadata(path).map(|m| m.len() > max_bytes).unwrap_or(false);
+    if !too_big {
+        return;
+    }
+
+    let backup = path.with_extension("log.1");
+    let _ = fs::remove_file(&backup);
+    let _ = fs::rename(path, &backup);
+}
+
 pub fn atomic_write<T: Serialize + ?Sized>(path: &Path, data: &T) -> Result<(), AppError> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -177,6 +212,62 @@ mod tests {
 
         let err = read_json_file::<Doc>(&p).unwrap_err().to_string();
         assert!(err.contains("not valid UTF-8"), "{err}");
+    }
+
+    /// The setup ERROR screen tells the user their logs are in
+    /// `%APPDATA%\LocalSub\logs` (`LOG_DIR_HINT` in `src/lib/links.ts`). If this
+    /// ever drifts from `app_data_dir()/logs`, that instruction sends people to
+    /// an empty folder — which is the exact failure this function was added for.
+    #[test]
+    fn log_dir_sits_under_the_app_data_dir() {
+        let expected = app_data_dir().expect("config dir must resolve on a test host");
+        assert_eq!(log_dir(), expected.join("logs"));
+    }
+
+    #[test]
+    fn rotate_log_leaves_a_small_file_alone() {
+        let p = scratch("small.log");
+        fs::write(&p, "line\n").unwrap();
+
+        rotate_log_if_large(&p, 1024);
+
+        assert_eq!(fs::read_to_string(&p).unwrap(), "line\n");
+        assert!(!p.with_extension("log.1").exists());
+    }
+
+    #[test]
+    fn rotate_log_rolls_an_oversized_file_into_a_backup() {
+        let p = scratch("big.log");
+        fs::write(&p, "x".repeat(2048)).unwrap();
+
+        rotate_log_if_large(&p, 1024);
+
+        // Original is out of the way so the fresh handle starts empty.
+        assert!(!p.exists());
+        assert_eq!(fs::read_to_string(p.with_extension("log.1")).unwrap().len(), 2048);
+    }
+
+    #[test]
+    fn rotate_log_keeps_only_one_backup() {
+        let p = scratch("roll.log");
+        let backup = p.with_extension("log.1");
+        fs::write(&backup, "previous").unwrap();
+        fs::write(&p, "y".repeat(2048)).unwrap();
+
+        rotate_log_if_large(&p, 1024);
+
+        // The older backup is replaced, not accumulated into .2/.3/…
+        assert_eq!(fs::read_to_string(&backup).unwrap().len(), 2048);
+    }
+
+    #[test]
+    fn rotate_log_on_a_missing_file_is_a_no_op() {
+        let p = scratch("absent.log");
+        let _ = fs::remove_file(&p);
+
+        rotate_log_if_large(&p, 1024);
+
+        assert!(!p.exists());
     }
 
     #[test]

@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -80,6 +81,37 @@ pub fn classify_pip_error(stderr: &str) -> SetupErrorKind {
     SetupErrorKind::Unknown
 }
 
+/// How many trailing output lines of a failed setup subprocess to copy into
+/// the log file. Generous enough for a pip traceback plus the ERROR lines
+/// above it, bounded so a chatty install can't hold the whole transcript in
+/// memory.
+const SETUP_LOG_TAIL_LINES: usize = 200;
+
+/// ERROR only when the failure ends setup. A stage with a fallback (the CUDA
+/// wheel) failing is expected on non-NVIDIA machines; at ERROR it would send
+/// anyone reading the log after a *successful* install chasing a non-problem.
+fn failure_level(is_terminal: bool) -> log::Level {
+    if is_terminal {
+        log::Level::Error
+    } else {
+        log::Level::Warn
+    }
+}
+
+/// Pushes `line` into a bounded ring, dropping the oldest once `cap` is hit.
+///
+/// The buffer follows a subprocess that may print tens of thousands of lines,
+/// so growth has to be capped at the push, not at the read.
+fn push_bounded(buf: &mut VecDeque<String>, line: String, cap: usize) {
+    if cap == 0 {
+        return;
+    }
+    while buf.len() >= cap {
+        buf.pop_front();
+    }
+    buf.push_back(line);
+}
+
 /// Runs a setup subprocess (pip etc.) while streaming its combined
 /// stdout/stderr to the frontend as batched "setup-log" events (~100ms).
 ///
@@ -88,6 +120,12 @@ pub fn classify_pip_error(stderr: &str) -> SetupErrorKind {
 /// CPU fallback and must not flash an error in the UI) — an error-kind
 /// "setup-progress" event is emitted. The returned `AppError` carries the
 /// last 30 stderr lines.
+///
+/// Every stage boundary and the tail of a failed run also go to the log file.
+/// The live output only ever reached the frontend's collapsible log panel,
+/// which is gone the moment the app restarts — so a user reporting "setup
+/// failed" had nothing to send us, and `tauri.log` recorded a successful
+/// install in four lines and a failed one in none.
 fn run_streaming(
     cmd: &mut Command,
     app: &AppHandle,
@@ -98,18 +136,30 @@ fn run_streaming(
     // 파이프 출력 시 CPython은 ~8KB 블록 버퍼링 — 실시간 스트림이 목적이므로 해제
     cmd.env("PYTHONUNBUFFERED", "1");
 
+    log::info!("[setup] stage '{}' starting", stage);
+
     let mut child = cmd.spawn().map_err(|e| {
+        log::log!(
+            failure_level(emit_error_on_failure),
+            "[setup] stage '{}' could not spawn: {}",
+            stage,
+            e
+        );
         AppError::Setup(format!("Failed to spawn setup command ({}): {}", stage, e))
     })?;
 
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let stderr_accum: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    // Interleaved stdout+stderr tail, kept for the log file if the run fails.
+    let tail: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
     let mut readers = Vec::new();
 
     if let Some(stdout) = child.stdout.take() {
         let buf = Arc::clone(&buffer);
+        let tail = Arc::clone(&tail);
         readers.push(std::thread::spawn(move || {
             for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                push_bounded(&mut tail.lock().unwrap(), line.clone(), SETUP_LOG_TAIL_LINES);
                 buf.lock().unwrap().push(line);
             }
         }));
@@ -118,6 +168,7 @@ fn run_streaming(
     if let Some(stderr) = child.stderr.take() {
         let buf = Arc::clone(&buffer);
         let accum = Arc::clone(&stderr_accum);
+        let tail = Arc::clone(&tail);
         readers.push(std::thread::spawn(move || {
             for line in BufReader::new(stderr).lines().map_while(Result::ok) {
                 {
@@ -125,6 +176,7 @@ fn run_streaming(
                     a.push_str(&line);
                     a.push('\n');
                 }
+                push_bounded(&mut tail.lock().unwrap(), line.clone(), SETUP_LOG_TAIL_LINES);
                 buf.lock().unwrap().push(line);
             }
         }));
@@ -169,6 +221,7 @@ fn run_streaming(
     drain(&buffer);
 
     if status.success() {
+        log::info!("[setup] stage '{}' completed", stage);
         return Ok(());
     }
 
@@ -176,13 +229,29 @@ fn run_streaming(
     let kind = classify_pip_error(&stderr);
     let lines: Vec<&str> = stderr.lines().collect();
     let tail_start = lines.len().saturating_sub(30);
-    let tail = lines[tail_start..].join("\n");
-    let message = if tail.is_empty() {
+    let stderr_tail = lines[tail_start..].join("\n");
+    let message = if stderr_tail.is_empty() {
         format!("Setup command failed ({}) with {}", stage, status)
     } else {
         // 어느 단계가 실패했는지 로그/토스트에서 식별 가능하게 stage 접두
-        format!("[{}] {}", stage, tail)
+        format!("[{}] {}", stage, stderr_tail)
     };
+
+    // The UI gets `message` (stderr only); the log file gets the interleaved
+    // tail, because pip reports the cause on stdout as often as on stderr.
+    // `emit_error_on_failure` doubles as "this failure is terminal": the CUDA
+    // attempt has a CPU fallback, and logging its failure at ERROR would make
+    // a log from a perfectly healthy install read like a broken one.
+    let output_tail: Vec<String> = tail.lock().unwrap().iter().cloned().collect();
+    log::log!(
+        failure_level(emit_error_on_failure),
+        "[setup] stage '{}' failed ({}), kind={}; last {} output lines:\n{}",
+        stage,
+        status,
+        kind.as_str(),
+        output_tail.len(),
+        output_tail.join("\n"),
+    );
 
     if emit_error_on_failure {
         emit_error(app, stage, &message, kind);
@@ -995,6 +1064,43 @@ pub fn reset_setup() -> Result<(), AppError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn tail_of(lines: &[&str], cap: usize) -> Vec<String> {
+        let mut buf = VecDeque::new();
+        for line in lines {
+            push_bounded(&mut buf, line.to_string(), cap);
+        }
+        buf.into_iter().collect()
+    }
+
+    /// pip can print tens of thousands of lines; the failure tail must not grow
+    /// with them. Keeping the *last* n is what matters — the cause of a pip
+    /// failure is at the end of the transcript, never at the start.
+    #[test]
+    fn output_tail_keeps_only_the_most_recent_lines() {
+        let lines = ["a", "b", "c", "d", "e"];
+        assert_eq!(tail_of(&lines, 3), vec!["c", "d", "e"]);
+    }
+
+    #[test]
+    fn output_tail_keeps_everything_below_the_cap() {
+        let lines = ["a", "b"];
+        assert_eq!(tail_of(&lines, 5), vec!["a", "b"]);
+    }
+
+    /// A zero cap must not panic (`pop_front` on empty) — it just keeps nothing.
+    #[test]
+    fn output_tail_with_a_zero_cap_collects_nothing() {
+        assert!(tail_of(&["a", "b"], 0).is_empty());
+    }
+
+    /// The CUDA wheel failing on a non-NVIDIA box is routine and recoverable;
+    /// only a failure that stops setup deserves ERROR.
+    #[test]
+    fn recoverable_stage_failures_are_logged_below_error() {
+        assert_eq!(failure_level(true), log::Level::Error);
+        assert_eq!(failure_level(false), log::Level::Warn);
+    }
 
     /// The wheel install must NOT pass `--upgrade`: the llama-cpp wheel's
     /// top-level `bin/` collides with `env_dir\bin\pip.exe`, and `--upgrade`

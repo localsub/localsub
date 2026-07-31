@@ -324,6 +324,7 @@
       "unknown": "Consulta los registros de instalación a continuación para más detalles."
     },
     "resetButton": "Restablecer y reinstalar",
+    "openLogsButton": "Abrir carpeta de registros",
     "ffmpegNotice": "La configuración también descarga FFmpeg (GPL v3) desde gyan.dev. No se distribuye con LocalSub; su código fuente está disponible en el repositorio de FFmpeg. Si ya tienes FFmpeg en tu PATH, se usará ese.",
     "ffmpegDownloadLabel": "Descarga",
     "ffmpegSourceLabel": "Código fuente"
@@ -409,6 +410,7 @@
     "vocabDeleteFailed": "Error al eliminar el vocabulario",
     "modelLoadFailed": "Error al cargar los modelos",
     "modelDownloadFailed": "Error al iniciar la descarga",
+    "modelDownloadError": "Error en la descarga del modelo",
     "modelCancelFailed": "Error al cancelar la descarga",
     "modelDeleteFailed": "Error al eliminar el modelo",
     "pipelineFailed": "El trabajo falló",

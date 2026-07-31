@@ -324,6 +324,7 @@
       "unknown": "详情请查看下方的安装日志。"
     },
     "resetButton": "重置并重新安装",
+    "openLogsButton": "打开日志文件夹",
     "ffmpegNotice": "安装过程还会从 gyan.dev 下载 FFmpeg（GPL v3）。它不随 LocalSub 一起分发；其源代码可在 FFmpeg 仓库获取。如果系统 PATH 中已有 FFmpeg，则会直接使用。",
     "ffmpegDownloadLabel": "下载",
     "ffmpegSourceLabel": "源代码"
@@ -409,6 +410,7 @@
     "vocabDeleteFailed": "删除词汇表失败",
     "modelLoadFailed": "加载模型失败",
     "modelDownloadFailed": "下载启动失败",
+    "modelDownloadError": "模型下载失败",
     "modelCancelFailed": "取消下载失败",
     "modelDeleteFailed": "删除模型失败",
     "pipelineFailed": "任务失败",

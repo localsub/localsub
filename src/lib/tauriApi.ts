@@ -181,6 +181,15 @@ export async function openFolder(path: string): Promise<void> {
   await invoke("open_folder", { path });
 }
 
+/**
+ * Opens the folder holding `tauri.log` / `server.log`. The backend resolves the
+ * path (it is under %APPDATA%, not the install folder) and creates it if the
+ * logger never got that far.
+ */
+export async function openLogDir(): Promise<void> {
+  await invoke("open_log_dir");
+}
+
 // ── Runtime commands ──
 
 export async function getRuntimeStatus(): Promise<RuntimeStatus> {

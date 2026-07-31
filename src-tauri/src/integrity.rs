@@ -132,6 +132,20 @@ pub async fn verify_sha256(path: &Path, expected: &str) -> Result<bool, AppError
             hasher.update(&buf[..n]);
         }
         let hash = format!("{:x}", hasher.finalize());
+        if hash != expected {
+            // The caller deletes the file and reports only "mismatch", which
+            // cannot distinguish a corrupted transfer from a wrong pin in the
+            // catalog. Size plus both hashes separates the two: a truncated
+            // download is short, a bad pin is full-length with a stable hash.
+            let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+            log::error!(
+                "SHA-256 mismatch for {:?}: expected {}, got {} ({} bytes on disk)",
+                path.file_name().unwrap_or_default(),
+                expected,
+                hash,
+                size
+            );
+        }
         Ok(hash == expected)
     })
     .await

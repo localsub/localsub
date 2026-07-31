@@ -324,6 +324,7 @@
       "unknown": "Check the installation logs below for details."
     },
     "resetButton": "Reset & reinstall",
+    "openLogsButton": "Open log folder",
     "ffmpegNotice": "Setup also downloads FFmpeg (GPL v3) from gyan.dev. It is not bundled with LocalSub; its source is available at the FFmpeg repository. If FFmpeg is already on your PATH, it is used instead.",
     "ffmpegDownloadLabel": "Download",
     "ffmpegSourceLabel": "Source"
@@ -409,6 +410,7 @@
     "vocabDeleteFailed": "Failed to delete vocabulary",
     "modelLoadFailed": "Failed to load models",
     "modelDownloadFailed": "Failed to start download",
+    "modelDownloadError": "Model download failed",
     "modelCancelFailed": "Failed to cancel download",
     "modelDeleteFailed": "Failed to delete model",
     "pipelineFailed": "Job failed",
