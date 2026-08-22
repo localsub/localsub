@@ -5,6 +5,7 @@ Singleton model pattern: ONNX model is loaded once and reused across jobs.
 
 import asyncio
 import json
+import logging
 import uuid
 from enum import Enum
 from pathlib import Path
@@ -12,20 +13,39 @@ from typing import Any, AsyncGenerator
 
 import numpy as np
 
+log = logging.getLogger(__name__)
+
+# These guards catch Exception, not just ImportError: a native backend can fail
+# to *load* rather than be absent (missing MSVC runtime, wrong CPU ISA), which
+# raises OSError/RuntimeError. Letting that escape kills
+# `import diarization_router` and with it the whole server, so a broken
+# optional backend must degrade to "feature off" instead.
 try:
     import onnxruntime as ort
-except ImportError:
+except Exception as e:  # noqa: BLE001 - any load failure -> diarization off
+    log.warning("onnxruntime unavailable, diarization disabled: %s: %s", type(e).__name__, e)
+    ORT_LOAD_ERROR: str | None = f"{type(e).__name__}: {e}"
     ort = None  # type: ignore[assignment]
+else:
+    ORT_LOAD_ERROR = None
 
 try:
     import soundfile as sf
-except ImportError:
+except Exception as e:  # noqa: BLE001 - any load failure -> diarization off
+    log.warning("soundfile unavailable, diarization disabled: %s: %s", type(e).__name__, e)
+    SF_LOAD_ERROR: str | None = f"{type(e).__name__}: {e}"
     sf = None  # type: ignore[assignment]
+else:
+    SF_LOAD_ERROR = None
 
 try:
     from sklearn.cluster import AgglomerativeClustering
-except ImportError:
+except Exception as e:  # noqa: BLE001 - any load failure -> diarization off
+    log.warning("scikit-learn unavailable, diarization disabled: %s: %s", type(e).__name__, e)
+    SKLEARN_LOAD_ERROR: str | None = f"{type(e).__name__}: {e}"
     AgglomerativeClustering = None  # type: ignore[assignment]
+else:
+    SKLEARN_LOAD_ERROR = None
 
 
 # ── Model singleton ────────────────────────────────────────────────
@@ -50,7 +70,10 @@ def load_model(model_id: str) -> bool:
     global _session, _loaded_model_id
 
     if ort is None:
-        raise RuntimeError("onnxruntime is not installed")
+    # "not installed" would be a lie and a wild goose chase: the package is
+    # there, it just could not load. Keep the real reason and hand it to the
+    # user with the failure, or they go debugging pip instead of a missing DLL.
+        raise RuntimeError(f"onnxruntime unavailable ({ORT_LOAD_ERROR})")
 
     if _session is not None and _loaded_model_id == model_id:
         return True
@@ -147,7 +170,10 @@ def _auto_purge_jobs() -> None:
 def _load_audio_segment(file_path: str, start: float, end: float, target_sr: int = 16000) -> np.ndarray:
     """Load a segment of audio, resampled to target_sr mono."""
     if sf is None:
-        raise RuntimeError("soundfile is not installed")
+    # "not installed" would be a lie and a wild goose chase: the package is
+    # there, it just could not load. Keep the real reason and hand it to the
+    # user with the failure, or they go debugging pip instead of a missing DLL.
+        raise RuntimeError(f"soundfile unavailable ({SF_LOAD_ERROR})")
 
     info = sf.info(file_path)
     sr = info.samplerate
@@ -191,7 +217,10 @@ def _extract_embedding(audio: np.ndarray) -> np.ndarray:
 def _cluster_embeddings(embeddings: list[np.ndarray], n_clusters: int | None = None) -> list[str]:
     """Cluster embeddings and return speaker labels."""
     if AgglomerativeClustering is None:
-        raise RuntimeError("scikit-learn is not installed")
+    # "not installed" would be a lie and a wild goose chase: the package is
+    # there, it just could not load. Keep the real reason and hand it to the
+    # user with the failure, or they go debugging pip instead of a missing DLL.
+        raise RuntimeError(f"scikit-learn unavailable ({SKLEARN_LOAD_ERROR})")
 
     if len(embeddings) == 0:
         return []

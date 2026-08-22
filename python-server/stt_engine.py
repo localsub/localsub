@@ -16,14 +16,21 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, AsyncGenerator
 
+log = logging.getLogger(__name__)
+
 try:
     from faster_whisper import WhisperModel
-except ImportError:
+except Exception as e:  # noqa: BLE001 - any load failure -> STT off, not fatal
+    # Not just ImportError: a native backend can fail to *load* (missing MSVC
+    # runtime, wrong CPU ISA), which raises OSError/RuntimeError. Letting that
+    # escape kills `import stt_router` and takes the whole server down with it.
+    log.warning("faster_whisper unavailable, STT disabled: %s: %s", type(e).__name__, e)
+    WHISPER_LOAD_ERROR: str | None = f"{type(e).__name__}: {e}"
     WhisperModel = None  # type: ignore[misc,assignment]
+else:
+    WHISPER_LOAD_ERROR = None
 
 import gpu_utils
-
-log = logging.getLogger(__name__)
 
 # ── Long-file chunking ───────────────────────────────────────────
 # Belt-and-braces guard for the CT2 native crash chased in c0d7b92 / da27d1e.
@@ -103,7 +110,10 @@ def load_model(model_id: str) -> bool:
     unload_model()
 
     if WhisperModel is None:
-        raise RuntimeError("faster-whisper is not installed")
+    # "not installed" would be a lie and a wild goose chase: the package is
+    # there, it just could not load. Keep the real reason and hand it to the
+    # user with the failure, or they go debugging pip instead of a missing DLL.
+        raise RuntimeError(f"faster-whisper unavailable ({WHISPER_LOAD_ERROR})")
 
     model_path = _find_whisper_model_path(model_id)
     if model_path is None:

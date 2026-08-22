@@ -36,6 +36,12 @@ logs/
 # Test files & results
 test_results/
 test_*.py
+# ...but the python-server suite is real, committed, and run by CI
+# (`python -m pytest -q .`). The blanket rule above is for ad-hoc scratch
+# scripts; without this negation every *new* test file is silently left out of
+# the repo and therefore out of CI, which is how test_api_endpoints.py once
+# went unrun long enough for one of its tests to pin a bug as the spec.
+!python-server/test_*.py
 eval_*.py
 check_*.py
 compare_*.py
