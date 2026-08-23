@@ -302,6 +302,20 @@ fn run_elevated(_exe: &std::path::Path) -> Result<i32, AppError> {
 /// again instead of showing a failure.
 pub async fn install(app: &AppHandle, cancel: CancellationToken) -> Result<Outcome, AppError> {
     let entry = crate::integrity::load_integrity_manifest(app)?.vc_redist;
+
+    // Microsoft's download URL embeds the file's own sha256. If it disagrees
+    // with our pin the manifest was edited wrong -- bumping one without the
+    // other. Catch it here rather than spending 25 MB to fail the verify step
+    // with a message that reads like a corrupt download.
+    if let Some(from_url) = entry.sha256_from_url() {
+        if from_url != entry.sha256.to_ascii_lowercase() {
+            return Err(AppError::Setup(format!(
+                "integrity.json is inconsistent: vc_redist.sha256 is {} but its URL carries {}",
+                entry.sha256, from_url
+            )));
+        }
+    }
+
     let dest = crate::utils::app_data_dir()?.join("VC_redist.x64.exe");
 
     // -- Download --
