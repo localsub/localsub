@@ -329,6 +329,59 @@
     "ffmpegDownloadLabel": "다운로드",
     "ffmpegSourceLabel": "소스"
   },
+  "vcredist": {
+    "title": "필수 런타임이 없습니다",
+    "titleMinor": "일부 기능을 사용할 수 없습니다",
+    "bodyCore": "Microsoft Visual C++ 런타임이 없어 음성 인식과 번역을 실행할 수 없습니다. 설치하면 바로 사용할 수 있습니다.",
+    "bodyMinor": "Microsoft Visual C++ 런타임 일부가 없어 화자 분리와 번역 품질 검사가 비활성화됩니다. 음성 인식과 번역은 정상 동작합니다.",
+    "missingList": "누락된 파일: {{list}}",
+    "uacNotice": "설치를 누르면 Windows가 관리자 권한을 요청합니다. 대화상자에는 게시자가 Microsoft Corporation으로 표시됩니다.",
+    "install": "런타임 설치",
+    "retry": "다시 설치",
+    "cancel": "취소",
+    "installed": "Visual C++ 런타임 설치됨",
+    "exitCode": "설치 관리자 종료 코드: {{code}}",
+    "stage": {
+      "download": "설치 파일 다운로드",
+      "verify": "무결성 검증",
+      "consent": "권한 요청",
+      "install": "설치 진행",
+      "recheck": "설치 확인"
+    },
+    "stageHint": {
+      "download": "설치 파일을 받는 중입니다.",
+      "verify": "받은 파일이 게시된 해시와 일치하는지 확인하는 중입니다.",
+      "consent": "Windows 권한 요청 대화상자에서 '예'를 눌러 주세요.",
+      "install": "Microsoft 설치 관리자가 실행 중입니다. 잠시 기다려 주세요.",
+      "recheck": "런타임이 실제로 로드되는지 확인하는 중입니다."
+    },
+    "last": {
+      "interrupted": "지난 시도: {{stage}} 단계에서 중단됨 (앱이 종료됨) · {{when}}",
+      "partialDownload": "{{done}} / {{total}} MB 까지 받았습니다. 다시 시도하면 처음부터 내려받습니다.",
+      "declined": "지난 시도: 권한 요청을 취소했습니다 · {{when}}",
+      "failed": "지난 시도: {{stage}} 단계에서 실패했습니다 · {{when}}",
+      "rebootRequired": "설치를 마쳤지만 아직 적용되지 않았습니다 · {{when}}",
+      "ok": "설치 완료 · {{when}}"
+    },
+    "hint": {
+      "declined": "언제든지 다시 설치할 수 있습니다.",
+      "download": "인터넷 연결을 확인한 뒤 다시 시도해 주세요.",
+      "verify": "받은 파일이 손상되었습니다. 다시 시도해도 같다면 네트워크 환경을 확인해 주세요.",
+      "consent": "권한 요청을 열지 못했습니다. 다시 시도해 주세요.",
+      "install": "설치 관리자가 실패했습니다. 로그 폴더의 tauri.log를 확인해 주세요.",
+      "recheck": "설치는 끝났지만 런타임을 아직 찾을 수 없습니다. 컴퓨터를 다시 시작해 주세요.",
+      "reboot": "컴퓨터를 다시 시작하면 적용됩니다."
+    },
+    "toast": {
+      "installed": "런타임 설치 완료",
+      "installedBody": "음성 인식과 번역을 사용할 수 있습니다.",
+      "reboot": "다시 시작이 필요합니다",
+      "rebootBody": "컴퓨터를 다시 시작하면 런타임이 적용됩니다.",
+      "declined": "권한 요청을 취소했습니다",
+      "declinedBody": "언제든지 다시 설치할 수 있습니다.",
+      "failed": "런타임 설치 실패"
+    }
+  },
   "shared": {
     "confirm": "확인",
     "cancel": "취소"

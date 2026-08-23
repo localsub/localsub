@@ -20,6 +20,48 @@ export interface SetupLog {
   lines: string[];
 }
 
+// ── Visual C++ runtime ──
+// The bundled embeddable CPython ships vcruntime140{,_1}.dll but not the C++
+// standard library, which every native AI backend links against. Tracked
+// separately from setup: setup is remembered by a marker, this is machine state
+// that can change underneath us, so it is re-probed rather than remembered.
+
+export type VcRedistStage = "download" | "verify" | "consent" | "install" | "recheck";
+
+export type VcRedistOutcome = "ok" | "reboot_required" | "declined" | "failed";
+
+export interface VcRedistStatus {
+  /** DLLs the Windows loader could not resolve from System32. */
+  missing: string[];
+  /** STT and translation cannot run at all, not just diarization. */
+  core_blocked: boolean;
+}
+
+export interface VcRedistAttempt {
+  stage: VcRedistStage;
+  /** null means the attempt never finished — the app was closed mid-run. */
+  outcome: VcRedistOutcome | null;
+  kind: SetupErrorKind | null;
+  detail: string | null;
+  exit_code: number | null;
+  bytes_downloaded: number;
+  bytes_total: number;
+  /** Unix seconds; formatted here so Rust needs no date dependency. */
+  at_epoch_secs: number;
+}
+
+export interface VcRedistState {
+  status: VcRedistStatus;
+  last_attempt: VcRedistAttempt | null;
+}
+
+/** Live stage report ("vcredist-progress" event). */
+export interface VcRedistProgress {
+  stage: VcRedistStage;
+  bytes_downloaded: number;
+  bytes_total: number;
+}
+
 export type JobState = "QUEUED" | "RUNNING" | "DONE" | "FAILED" | "CANCELED";
 
 export interface Job {

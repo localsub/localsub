@@ -117,6 +117,8 @@ LLM 모델 등재 기준:
 ## Important Notes
 
 - Python 서버는 앱 시작 시 자동 시작. `commands_runtime.rs`의 3초 폴링이 10회 연속 실패하면 `server-crashed`를 emit하고, `usePipeline.ts`가 활성 파이프라인을 전부 `failed`로 표시한다. **Rust에는 자동 재시작이 없고**, 프론트의 `useServerStatus.ts`가 `server-crashed` 수신 3초 뒤 상태가 여전히 ERROR/STOPPED면 `startServer()`를 자동 호출한다(파이프라인의 의도적 재시작 — 모델 스왑 — 과는 상태 가드로 경합 회피).
+- **Python 자식 프로세스의 stderr는 `%APPDATA%/LocalSub/logs/python-stderr.log`로 캡처된다**(2MB 초과 시 `.1`로 롤링). 서버는 `CREATE_NO_WINDOW`로 뜨고, Python은 미포착 예외의 트레이스백을 `logging`이 아니라 **stderr로** 쓴다 — 캡처가 없으면 임포트 단계에서 죽은 서버가 `server.log`에 `Server starting`만 남기고 원인을 통째로 잃는다. 실제로 그래서 새 PC 장애를 원격 진단할 수 없었다. stdout은 `null`로 버린다(uvicorn 액세스 로그가 3초 폴링마다 쌓여 트레이스백을 묻는다).
+- ⚠️ `restart_server`는 실패 시 **`mark_server_failed`로 상태를 되돌려야 한다.** 예전엔 `wait_for_healthy` 실패를 `?`로 조기 반환해 `server_status = STARTING` + `model_loading = true`가 남았고, 그 조합이 (1) 사이드바를 "서버 시작 중…"에 영구 고정, (2) `!is_model_loading` 게이트 때문에 크래시 감지기 무력화 → `server-crashed` 미발생 → 프론트 자동 재시작 미동작, (3) `start_server`는 "already running or starting"으로 거부 — **재실행 말고는 탈출구가 전부 막혔다.**
 - STT/번역 시작 전 서버 health 체크 (최대 30회 대기)
 - 프리셋의 모델·언어·스타일·용어집은 번역에 반영됨 (`commands_translate.rs`: `preset.llm_model`/`source_lang`/`translation_style`/`vocabulary_id`가 config보다 우선, 미설정 시 config 폴백). 과거의 "프리셋 미반영 TODO"는 해소됨.
 - ⚠️ **`state.app_config`는 지연 로딩**된다(첫 config 명령이 채운다). config가 필요한 명령은 **`config_manager::ensure_loaded(&mut s)`로 그때그때 로드**할 것 — 예전엔 모델 명령들이 `app_config`가 이미 Some이길 *요구*하고 아니면 "Config not loaded"로 죽었다. 프론트가 마운트 시 `getConfig`와 `getModelManifest`를 **동시에** 쏘고 Tauri는 명령을 병렬 실행하므로, `get_model_manifest`가 레이스에서 이기면 에러 → `loadManifest`가 재시도 없이 `manifest`를 []로 남길 수 있다. `ensure_loaded`가 이 순서 의존을 없앤다(잠재 레이스 방어).
@@ -131,6 +133,12 @@ LLM 모델 등재 기준:
     - BtbN을 떠난 이유: 날짜 태그(`autobuild-*`)를 ~1개월 뒤 삭제한다. **해시 핀 + BtbN = 미러 필연.** gyan은 버전 태그를 2021년까지 보존한다.
   - llama_cpp 휠(MIT)만 `mirror_url`(`vendor-assets-v1` 릴리스, 바이트 동일) 폴백을 갖는다 — 재호스팅에 소스 제공 의무가 없다. 검증 불일치 시 `SetupErrorKind::Integrity`.
   - ⚠️ `LlamaWheel::urls()`는 `[url, mirror_url]` 순으로 시도하므로 **`mirror_url`이 upstream과 같으면 폴백이 무의미**하다(죽은 URL을 두 번 침). CUDA 휠이 실제로 그 상태였다. `integrity.rs`의 `llama_cpp_mirrors_are_real_fallbacks`가 번들 JSON을 직접 검사해 재발을 막는다.
+  - **MSVC C++ 런타임**(`vcredist.rs` + `integrity.json`의 `vc_redist`): 번들 임베더블 CPython은 `vcruntime140{,_1}.dll`만 싣고 **`msvcp140.dll`·`msvcp140_1.dll`·`vcomp140.dll`은 없다.** 그런데 ctranslate2(STT)·llama_cpp(번역)·onnxruntime(화자분리·임베딩 게이트)이 전부 이걸 임포트하고 **아무도 자체 사본을 벤더링하지 않는다**(numpy·sklearn만 자기 것을 갖고 있어 무관). VC++ 재배포 패키지가 없는 새 PC에서는 **AI 백엔드가 전부 로드 실패**한다.
+    - 감지는 파일 존재가 아니라 `LoadLibraryExW(..., LOAD_LIBRARY_SEARCH_SYSTEM32)`. 로더의 실제 검색 순서를 쓰므로 사용자가 나중에 수동 설치해도 그대로 잡히고, 작업 디렉터리에 놓인 엉뚱한 사본에 속지 않는다.
+    - **셋업 마커에 넣지 않는다.** 런타임은 머신 전역 상태라 매 실행 재검사한다. 셋업은 한 번만 돌기 때문에, 설치 제안을 셋업 안에만 두면 **UAC를 한 번 거절한 사용자가 영구히 막힌다**(예전 ffmpeg 설치 버튼과 같은 함정). 그래서 `VcRedistCard`가 대시보드·설정·셋업 **세 곳**에 뜬다.
+    - 설치는 `Start-Process -Verb RunAs`. `std::process::Command`(=`CreateProcess`)로는 권한 상승이 안 되고 `ERROR_ELEVATION_REQUIRED(740)`로 실패한다. 거절은 `1223`으로 정규화해 **실패와 구분**한다(거절은 에러가 아니라 선택).
+    - 시도 기록(`%APPDATA%/LocalSub/vcredist-attempt.json`)은 **시작할 때 쓰고 끝날 때 갱신**한다. `outcome`이 `null`로 남은 것 = 그 단계에서 앱이 죽은 것. 끝날 때만 쓰면 "중단"과 "거절"이 같은 빈칸이 된다.
+    - URL은 Microsoft CDN의 content-addressed permalink라 **경로에 sha256이 박혀 있다**. `vc_redist_url_carries_the_same_sha256_as_the_pin` 테스트가 URL과 핀의 불일치를 잡는다.
   - **빌드 타임 자산도 같은 규칙**(`scripts/download-python-embed.ps1`): 임베더블 CPython과 `get-pip.py`는 설치파일에 그대로 실리므로 sha256 핀 후 검증하고, 불일치면 중단한다(검증은 `resources/`로 옮기기 **전**에 한다). `get-pip.py`는 롤링 URL(`bootstrap.pypa.io`)이 아니라 **`pypa/get-pip`의 커밋 SHA raw URL**에서 받는다 — 롤링 URL은 핀이 불가능하고 실제로 바이트가 바뀌었다. 재호스팅은 하지 않으므로 라이선스 의무는 발생하지 않는다.
   - `resources/python-server`에 무엇이 실리는지는 **`sync-python-resources.mjs` 한 곳만** 정한다(대상 디렉토리를 비우고 `test_*` 제외). `beforeBuildCommand`도 이걸 부른다. 예전엔 ps1이 `*.py`를 전부 복사해 테스트 파일이 번들에 섞였다.
   - **개발자 로컬 경로 유출 가드**(`scripts/check-no-local-paths.mjs`): `npm run build`가 `sync-python` 직후 이걸 돌려 `resources/`·`python-server/`에서 `C:\Users\…`·`/home/…`·`/Users/…`를 찾으면 빌드를 중단한다. 앱이 실행될 때마다 `patch_pth_file`이 `python312._pth`에 `%APPDATA%` 절대경로를 써넣으므로, **dev 실행 직후 릴리스를 빌드하면 개발자 계정명이 공개 설치파일에 박힌다** — 실제로 검증 중에 한 번 그 상태로 빌드 직전까지 갔다. `_pth`는 gitignore라 CI로는 못 잡는다. 로컬 빌드 가드가 본체고 CI 스텝은 커밋된 파일용 2선이다. `src/__tests__/localPathGuard.test.ts`가 가드 자체를 지킨다.
@@ -146,6 +154,8 @@ LLM 모델 등재 기준:
   - ⚠️ **`cargo test`는 CI에 없다.** Rust 테스트는 로컬에서 `cargo test --lib`로 직접 돌릴 것.
   - `pytest` 잡은 **전체 스위트**를 돌린다(`python -m pytest -q .`). 파일 목록으로 되돌리지 말 것 — 예전 목록 방식이 `test_api_endpoints.py`를 누락시켜 테스트 3개가 썩었고, 그중 하나는 *버그였던 동작을 명세로 고정*하고 있었다.
   - ML 라이브러리는 설치하지 않는다. `faster-whisper`·`llama_cpp`·`onnxruntime`은 optional import라 없어도 엔진 모듈이 import된다. `numpy`만 `diarization_engine`의 하드 의존.
+    - ⚠️ 이 가드는 **`except Exception`이어야 한다.** `except ImportError`로는 부족하다 — llama_cpp는 `ctypes.CDLL` 실패를 `RuntimeError`로, 바이너리 부재를 `FileNotFoundError`로 바꾼다(`_ctypes_extensions.py`). 둘 다 ImportError가 아니라서 예외가 새어 나가 `import translate_router`를 깨고, `main.py`가 `uvicorn.run()` 전에 죽는다 — **백엔드 하나 때문에 서버 전체가 사라진다.** 실측: 새 Windows PC에서 `server.log`가 `Server starting`에서 끊기고 포트가 열리지 않았다. `test_native_import_guards.py`가 지킨다.
+    - 실패 사유는 `*_LOAD_ERROR`에 담아 잡 에러로 전달한다. `"X is not installed"`는 **거짓말**이다 — 패키지는 설치돼 있고 로드만 실패했으므로, 그 문구는 읽는 사람을 pip 디버깅으로 보낸다.
 - 번역 glossary는 **vocabulary(프리셋의 `vocabulary_id`) 단일 경로**. 레거시 파일 glossary(`active_glossary`/`save_glossary`/`glossaries/*.json`)는 제거됨. Rust `GlossaryEntry`는 Rust→Python 전송 wire 타입으로만 잔존.
 - 모델 선택은 **카탈로그가 아니라 매니페스트**에서 한다 (`commands_translate.rs`: `preset.llm_model` → `config.active_llm_model` → 첫 ready). 카탈로그는 그 뒤에 `n_gpu_layers`·`model_category`를 조회하는 용도라, 카탈로그에서 모델을 빼도 이미 설치된 모델은 계속 선택된다.
 - 자기정제 2-pass(`two_pass`)는 제거됨 — 같은 가중치가 두 번째 패스에서도 같은 편향을 낸다. 대체는 `preset.translation_mode = "pivot_2pass"`. config·preset의 `two_pass_translation` 필드도 함께 제거됐고, 옛 `config.json`에 남은 키는 무시된다(어느 구조체도 `deny_unknown_fields`를 쓰지 않음).

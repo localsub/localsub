@@ -12,6 +12,7 @@ mod commands_stt;
 mod commands_subtitle;
 mod commands_subtitle_import;
 mod commands_translate;
+mod commands_vcredist;
 mod commands_vocabulary;
 mod commands_wizard;
 mod config_manager;
@@ -33,6 +34,7 @@ mod subtitle_manager;
 mod subtitle_reader;
 mod subtitle_writer;
 mod utils;
+mod vcredist;
 mod vocabulary_manager;
 
 use tauri::Manager;
@@ -118,6 +120,9 @@ pub fn run() {
             commands::start_server,
             commands::stop_server,
             commands::restart_server,
+            commands_vcredist::get_vcredist_state,
+            commands_vcredist::install_vcredist,
+            commands_vcredist::cancel_vcredist_install,
             commands::get_server_status,
             commands::get_jobs,
             // Wizard commands

@@ -329,6 +329,59 @@
     "ffmpegDownloadLabel": "Download",
     "ffmpegSourceLabel": "Source"
   },
+  "vcredist": {
+    "title": "A required runtime is missing",
+    "titleMinor": "Some features are unavailable",
+    "bodyCore": "Speech recognition and translation cannot run without the Microsoft Visual C++ runtime. Installing it fixes both.",
+    "bodyMinor": "Part of the Microsoft Visual C++ runtime is missing, so speaker diarization and the translation quality check are disabled. Speech recognition and translation still work.",
+    "missingList": "Missing: {{list}}",
+    "uacNotice": "Windows will ask for administrator permission when you install. The dialog shows Microsoft Corporation as the publisher.",
+    "install": "Install runtime",
+    "retry": "Install again",
+    "cancel": "Cancel",
+    "installed": "Visual C++ runtime installed",
+    "exitCode": "Installer exit code: {{code}}",
+    "stage": {
+      "download": "Downloading installer",
+      "verify": "Verifying integrity",
+      "consent": "Permission prompt",
+      "install": "Installing",
+      "recheck": "Confirming install"
+    },
+    "stageHint": {
+      "download": "Fetching the installer.",
+      "verify": "Checking the download against its published hash.",
+      "consent": "Choose Yes in the Windows permission dialog.",
+      "install": "The Microsoft installer is running. This takes a moment.",
+      "recheck": "Confirming the runtime actually loads."
+    },
+    "last": {
+      "interrupted": "Last attempt: interrupted during {{stage}} (the app closed) · {{when}}",
+      "partialDownload": "Got {{done}} of {{total}} MB. Trying again starts the download over.",
+      "declined": "Last attempt: the permission prompt was dismissed · {{when}}",
+      "failed": "Last attempt: failed during {{stage}} · {{when}}",
+      "rebootRequired": "Installed, but not active yet · {{when}}",
+      "ok": "Installed · {{when}}"
+    },
+    "hint": {
+      "declined": "You can install it at any time.",
+      "download": "Check your internet connection and try again.",
+      "verify": "The download was damaged. If it keeps happening, check your network.",
+      "consent": "The permission prompt could not be opened. Try again.",
+      "install": "The installer failed. See tauri.log in the log folder.",
+      "recheck": "The install finished but the runtime still is not visible. Restart your computer.",
+      "reboot": "Restart your computer to activate it."
+    },
+    "toast": {
+      "installed": "Runtime installed",
+      "installedBody": "Speech recognition and translation are ready.",
+      "reboot": "Restart required",
+      "rebootBody": "Restart your computer to activate the runtime.",
+      "declined": "Permission prompt dismissed",
+      "declinedBody": "You can install it at any time.",
+      "failed": "Runtime install failed"
+    }
+  },
   "shared": {
     "confirm": "Confirm",
     "cancel": "Cancel"

@@ -84,7 +84,11 @@ def load_model(model_id: str, n_gpu_layers: int | None = None) -> bool:
         if torch.cuda.is_available():
             free, total = torch.cuda.mem_get_info()
             log.info("[LLM] VRAM before load: %.0f/%.0f MB free", free / 1024 / 1024, total / 1024 / 1024)
-    except ImportError:
+    except Exception:  # noqa: BLE001 - a VRAM log line must never break a load
+        # Not just ImportError: torch is optional here, but a torch that fails
+        # to *load* raises OSError/RuntimeError, and this block only exists to
+        # print a VRAM number. Letting that escape would break model loading
+        # over a diagnostic.
         pass
 
     # Try GPU first, fallback to CPU
@@ -131,7 +135,11 @@ def unload_model() -> None:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             log.info("[LLM] CUDA cache cleared")
-    except ImportError:
+    except Exception:  # noqa: BLE001 - a VRAM log line must never break a load
+        # Not just ImportError: torch is optional here, but a torch that fails
+        # to *load* raises OSError/RuntimeError, and this block only exists to
+        # print a VRAM number. Letting that escape would break model loading
+        # over a diagnostic.
         pass
 
 

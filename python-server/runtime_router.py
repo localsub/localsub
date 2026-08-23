@@ -103,7 +103,11 @@ async def unload_model(req: UnloadRequest):
             vram_free = torch.cuda.mem_get_info()[0] / (1024 * 1024)
             vram_total = torch.cuda.mem_get_info()[1] / (1024 * 1024)
             log.info("[UNLOAD] %s unloaded. VRAM: %.0f/%.0f MB free", req.model_type, vram_free, vram_total)
-    except ImportError:
+    except Exception:  # noqa: BLE001 - a VRAM log line must never break a load
+        # Not just ImportError: torch is optional here, but a torch that fails
+        # to *load* raises OSError/RuntimeError, and this block only exists to
+        # print a VRAM number. Letting that escape would break model loading
+        # over a diagnostic.
         pass
 
     return UnloadResponse(status="UNLOADED", model_type=req.model_type)

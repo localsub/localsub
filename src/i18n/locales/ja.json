@@ -329,6 +329,59 @@
     "ffmpegDownloadLabel": "ダウンロード",
     "ffmpegSourceLabel": "ソース"
   },
+  "vcredist": {
+    "title": "必要なランタイムがありません",
+    "titleMinor": "一部の機能が利用できません",
+    "bodyCore": "Microsoft Visual C++ ランタイムがないため、音声認識と翻訳を実行できません。インストールすれば利用できます。",
+    "bodyMinor": "Microsoft Visual C++ ランタイムの一部がないため、話者分離と翻訳品質チェックが無効です。音声認識と翻訳は動作します。",
+    "missingList": "不足しているファイル: {{list}}",
+    "uacNotice": "インストールを押すと Windows が管理者権限を求めます。ダイアログの発行元は Microsoft Corporation と表示されます。",
+    "install": "ランタイムをインストール",
+    "retry": "もう一度インストール",
+    "cancel": "キャンセル",
+    "installed": "Visual C++ ランタイム インストール済み",
+    "exitCode": "インストーラー終了コード: {{code}}",
+    "stage": {
+      "download": "インストーラーをダウンロード",
+      "verify": "整合性を検証",
+      "consent": "権限の確認",
+      "install": "インストール中",
+      "recheck": "インストールを確認"
+    },
+    "stageHint": {
+      "download": "インストーラーを取得しています。",
+      "verify": "ダウンロードしたファイルを公開ハッシュと照合しています。",
+      "consent": "Windows の権限ダイアログで「はい」を選んでください。",
+      "install": "Microsoft のインストーラーが実行中です。少々お待ちください。",
+      "recheck": "ランタイムが実際に読み込めるか確認しています。"
+    },
+    "last": {
+      "interrupted": "前回: {{stage}} の途中で中断されました (アプリが終了) · {{when}}",
+      "partialDownload": "{{done}} / {{total}} MB まで取得しました。再試行すると最初からダウンロードします。",
+      "declined": "前回: 権限の確認をキャンセルしました · {{when}}",
+      "failed": "前回: {{stage}} で失敗しました · {{when}}",
+      "rebootRequired": "インストールは完了しましたが、まだ有効ではありません · {{when}}",
+      "ok": "インストール完了 · {{when}}"
+    },
+    "hint": {
+      "declined": "いつでもインストールできます。",
+      "download": "インターネット接続を確認して、もう一度お試しください。",
+      "verify": "ダウンロードが破損しています。繰り返す場合はネットワーク環境をご確認ください。",
+      "consent": "権限ダイアログを開けませんでした。もう一度お試しください。",
+      "install": "インストーラーが失敗しました。ログフォルダーの tauri.log をご確認ください。",
+      "recheck": "インストールは終わりましたが、ランタイムがまだ見つかりません。PC を再起動してください。",
+      "reboot": "PC を再起動すると有効になります。"
+    },
+    "toast": {
+      "installed": "ランタイムをインストールしました",
+      "installedBody": "音声認識と翻訳が利用できます。",
+      "reboot": "再起動が必要です",
+      "rebootBody": "PC を再起動するとランタイムが有効になります。",
+      "declined": "権限の確認をキャンセルしました",
+      "declinedBody": "いつでもインストールできます。",
+      "failed": "ランタイムのインストールに失敗しました"
+    }
+  },
   "shared": {
     "confirm": "確認",
     "cancel": "キャンセル"

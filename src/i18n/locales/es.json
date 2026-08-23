@@ -329,6 +329,59 @@
     "ffmpegDownloadLabel": "Descarga",
     "ffmpegSourceLabel": "Código fuente"
   },
+  "vcredist": {
+    "title": "Falta un componente necesario",
+    "titleMinor": "Algunas funciones no están disponibles",
+    "bodyCore": "El reconocimiento de voz y la traducción no pueden ejecutarse sin el runtime de Microsoft Visual C++. Instalarlo resuelve ambos.",
+    "bodyMinor": "Falta parte del runtime de Microsoft Visual C++, por lo que la separación de hablantes y la comprobación de calidad de traducción están desactivadas. El reconocimiento de voz y la traducción siguen funcionando.",
+    "missingList": "Falta: {{list}}",
+    "uacNotice": "Windows pedirá permiso de administrador al instalar. El cuadro de diálogo mostrará a Microsoft Corporation como editor.",
+    "install": "Instalar runtime",
+    "retry": "Instalar de nuevo",
+    "cancel": "Cancelar",
+    "installed": "Runtime de Visual C++ instalado",
+    "exitCode": "Código de salida del instalador: {{code}}",
+    "stage": {
+      "download": "Descargando el instalador",
+      "verify": "Verificando integridad",
+      "consent": "Solicitud de permiso",
+      "install": "Instalando",
+      "recheck": "Confirmando la instalación"
+    },
+    "stageHint": {
+      "download": "Obteniendo el instalador.",
+      "verify": "Comprobando la descarga con su hash publicado.",
+      "consent": "Elige Sí en el cuadro de diálogo de permisos de Windows.",
+      "install": "El instalador de Microsoft está en marcha. Tardará un momento.",
+      "recheck": "Comprobando que el runtime se carga realmente."
+    },
+    "last": {
+      "interrupted": "Último intento: interrumpido durante {{stage}} (la aplicación se cerró) · {{when}}",
+      "partialDownload": "Se descargaron {{done}} de {{total}} MB. Al reintentar, la descarga empieza de cero.",
+      "declined": "Último intento: se cerró la solicitud de permiso · {{when}}",
+      "failed": "Último intento: falló durante {{stage}} · {{when}}",
+      "rebootRequired": "Instalado, pero aún no está activo · {{when}}",
+      "ok": "Instalado · {{when}}"
+    },
+    "hint": {
+      "declined": "Puedes instalarlo cuando quieras.",
+      "download": "Comprueba tu conexión a internet e inténtalo de nuevo.",
+      "verify": "La descarga llegó dañada. Si se repite, revisa tu red.",
+      "consent": "No se pudo abrir la solicitud de permiso. Inténtalo de nuevo.",
+      "install": "El instalador falló. Consulta tauri.log en la carpeta de registros.",
+      "recheck": "La instalación terminó pero el runtime sigue sin verse. Reinicia el equipo.",
+      "reboot": "Reinicia el equipo para activarlo."
+    },
+    "toast": {
+      "installed": "Runtime instalado",
+      "installedBody": "El reconocimiento de voz y la traducción están listos.",
+      "reboot": "Se requiere reiniciar",
+      "rebootBody": "Reinicia el equipo para activar el runtime.",
+      "declined": "Solicitud de permiso cerrada",
+      "declinedBody": "Puedes instalarlo cuando quieras.",
+      "failed": "Error al instalar el runtime"
+    }
+  },
   "shared": {
     "confirm": "Confirmar",
     "cancel": "Cancelar"
