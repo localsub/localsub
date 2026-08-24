@@ -18,8 +18,19 @@ log = logging.getLogger(__name__)
 
 try:
     from llama_cpp import Llama
-except ImportError:
+except Exception as e:  # noqa: BLE001 - any load failure -> translation off, not fatal
+    # Not just ImportError. llama_cpp turns a failed ctypes.CDLL into
+    # RuntimeError and a missing binary into FileNotFoundError
+    # (llama_cpp/_ctypes_extensions.py). The usual Windows cause is a missing
+    # MSVC C++ runtime: llama.dll imports MSVCP140.dll, which the bundled
+    # embeddable CPython does not ship. Letting that escape breaks
+    # `import translate_router`, so main.py dies before uvicorn binds the port
+    # -- the entire server is lost because one optional backend could not load.
+    log.warning("llama_cpp unavailable, translation disabled: %s: %s", type(e).__name__, e)
+    LLAMA_LOAD_ERROR: str | None = f"{type(e).__name__}: {e}"
     Llama = None  # type: ignore[misc,assignment]
+else:
+    LLAMA_LOAD_ERROR = None
 
 import embedding_gate
 import gpu_utils
@@ -52,7 +63,10 @@ def load_model(model_id: str, n_gpu_layers: int | None = None) -> bool:
     global _model, _loaded_model_id
 
     if Llama is None:
-        raise RuntimeError("llama-cpp-python is not installed")
+    # "not installed" would be a lie and a wild goose chase: the package is
+    # there, it just could not load. Keep the real reason and hand it to the
+    # user with the failure, or they go debugging pip instead of a missing DLL.
+        raise RuntimeError(f"llama-cpp-python unavailable ({LLAMA_LOAD_ERROR})")
 
     if _model is not None and _loaded_model_id == model_id:
         return True
@@ -70,7 +84,11 @@ def load_model(model_id: str, n_gpu_layers: int | None = None) -> bool:
         if torch.cuda.is_available():
             free, total = torch.cuda.mem_get_info()
             log.info("[LLM] VRAM before load: %.0f/%.0f MB free", free / 1024 / 1024, total / 1024 / 1024)
-    except ImportError:
+    except Exception:  # noqa: BLE001 - a VRAM log line must never break a load
+        # Not just ImportError: torch is optional here, but a torch that fails
+        # to *load* raises OSError/RuntimeError, and this block only exists to
+        # print a VRAM number. Letting that escape would break model loading
+        # over a diagnostic.
         pass
 
     # Try GPU first, fallback to CPU
@@ -117,7 +135,11 @@ def unload_model() -> None:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             log.info("[LLM] CUDA cache cleared")
-    except ImportError:
+    except Exception:  # noqa: BLE001 - a VRAM log line must never break a load
+        # Not just ImportError: torch is optional here, but a torch that fails
+        # to *load* raises OSError/RuntimeError, and this block only exists to
+        # print a VRAM number. Letting that escape would break model loading
+        # over a diagnostic.
         pass
 
 

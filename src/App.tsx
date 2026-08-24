@@ -13,6 +13,7 @@ import { usePresets } from "./hooks/usePresets";
 import { useVocabularies } from "./hooks/useVocabularies";
 import { usePipeline, type JobUpdate } from "./hooks/usePipeline";
 import { SetupScreen } from "./components/SetupScreen";
+import { VcRedistCard } from "./components/shared/VcRedistCard";
 import { WizardScreen } from "./components/wizard/WizardScreen";
 import { ThemeProvider } from "./components/theme-provider";
 import { AppSidebar } from "./components/app-sidebar";
@@ -512,6 +513,10 @@ function App() {
               description={pageInfo.descKey ? t(pageInfo.descKey) : undefined}
             />
             <div className="flex flex-1 flex-col overflow-auto p-4">
+              {/* Renders nothing when the runtime is present, so the common
+                  case is untouched. */}
+              <VcRedistCard />
+
               {activePage === "dashboard" && (
                 <DashboardPage
                   jobs={dashboardJobs}

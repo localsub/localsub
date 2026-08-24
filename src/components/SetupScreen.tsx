@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import type { SetupStatus, SetupProgress, SetupErrorKind } from "../types";
 import { Progress } from "./Progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import { VcRedistCard } from "@/components/shared/VcRedistCard"
 import { FFMPEG_BUILDS, FFMPEG_SOURCE, LOG_DIR_HINT } from "../lib/links";
 
 interface SetupScreenProps {
@@ -124,6 +125,15 @@ export function SetupScreen({
                 github.com/FFmpeg/FFmpeg
               </a>
             </p>
+            {/* Offered here too, on the same principle as the FFmpeg notice
+                above: say it before the install, not in a file nobody reads.
+                Renders nothing when the runtime is already present, and the
+                install is never started automatically — the Windows elevation
+                prompt has to be the direct result of a click, or it reads as
+                something the app did behind the user's back. */}
+            <div className="w-full max-w-lg">
+              <VcRedistCard />
+            </div>
             <button
               className="cursor-pointer rounded-md bg-primary px-8 py-3 text-base font-medium text-white transition-opacity hover:opacity-85"
               onClick={onStart}

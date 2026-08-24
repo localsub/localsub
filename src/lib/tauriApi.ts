@@ -16,6 +16,8 @@ import type {
   Vocabulary,
   SubtitleLine,
   DashboardJob,
+  VcRedistState,
+  VcRedistOutcome,
 } from "../types";
 
 export async function startServer(): Promise<void> {
@@ -32,6 +34,18 @@ export async function restartServer(): Promise<void> {
 
 export async function getServerStatus(): Promise<ServerStatus> {
   return invoke<ServerStatus>("get_server_status");
+}
+
+export async function getVcRedistState(): Promise<VcRedistState> {
+  return invoke<VcRedistState>("get_vcredist_state");
+}
+
+export async function installVcRedist(): Promise<VcRedistOutcome> {
+  return invoke<VcRedistOutcome>("install_vcredist");
+}
+
+export async function cancelVcRedistInstall(): Promise<void> {
+  await invoke("cancel_vcredist_install");
 }
 
 export async function getJobs(): Promise<Job[]> {

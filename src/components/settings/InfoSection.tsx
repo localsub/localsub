@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { useHardware } from "@/hooks/useHardware"
 import { useUpdater } from "@/hooks/useUpdater"
 import type { LucideIcon } from "lucide-react"
+import { VcRedistCard } from "@/components/shared/VcRedistCard"
 import { GITHUB_REPO } from "@/lib/links"
 
 export function InfoSection() {
@@ -85,6 +86,10 @@ export function InfoSection() {
       </div>
 
       <Separator />
+
+      {/* Visual C++ runtime — a fixed address for the install, so declining
+          the elevation prompt is never a dead end. */}
+      <VcRedistCard variant="section" />
 
       {/* Hardware info */}
       <div className="flex items-center justify-between">

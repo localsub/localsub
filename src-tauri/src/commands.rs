@@ -158,13 +158,8 @@ pub async fn start_server(
                 log::error!("Server health check failed: {}", e);
                 match state.lock() {
                     Ok(mut s) => {
-                        s.server_status = ServerStatus::ERROR;
+                        mark_server_failed(&mut s);
                         let _ = app_clone.emit("server-status", &s.server_status);
-                        // Kill the process if health check fails
-                        if let Some(ref mut child) = s.server_process {
-                            let _ = python_manager::kill_server(child);
-                        }
-                        s.server_process = None;
                     }
                     Err(e2) => {
                         log::error!("Failed to lock state after health check failure: {}", e2);
@@ -175,6 +170,25 @@ pub async fn start_server(
     });
 
     Ok(())
+}
+
+/// Roll the server state back after a failed start or restart.
+///
+/// Every failure path must run this. Bailing out with `server_status` still
+/// STARTING pins the sidebar at "Starting..." with no further transition, and
+/// leaving `model_loading = true` permanently disables the health-check crash
+/// detector (`consecutive_failures >= 10 && !is_model_loading` in
+/// `commands_runtime`), so `server-crashed` never fires and the frontend's
+/// auto-restart never runs. `start_server` then refuses with "already running
+/// or starting" and the sidebar's click-to-restart only reacts to
+/// ERROR/STOPPED — every recovery path shut until the app is relaunched.
+fn mark_server_failed(s: &mut crate::state::AppState) {
+    s.server_status = ServerStatus::ERROR;
+    s.model_loading = false;
+    if let Some(ref mut child) = s.server_process {
+        let _ = python_manager::kill_server(child);
+    }
+    s.server_process = None;
 }
 
 #[tauri::command]
@@ -225,17 +239,25 @@ pub async fn restart_server(
         match python_manager::spawn_python_server(&app, port) {
             Ok(child) => { s.server_process = Some(child); }
             Err(e) => {
-                s.server_status = ServerStatus::ERROR;
+                mark_server_failed(&mut s);
                 let _ = app.emit("server-status", &s.server_status);
                 return Err(e);
             }
         }
     }
 
-    // Wait for healthy (blocking — caller awaits)
-    python_manager::wait_for_healthy(port).await.map_err(|e| {
-        AppError::PythonServer(format!("Server restart failed: {}", e))
-    })?;
+    // Wait for healthy (blocking — caller awaits). The failure branch has to
+    // roll the state back by hand: an early `?` here returned with STARTING and
+    // model_loading still set, which is the state that pins the UI forever.
+    if let Err(e) = python_manager::wait_for_healthy(port).await {
+        log::error!("Server restart failed: {}", e);
+        {
+            let mut s = state.lock().expect("Failed to lock state");
+            mark_server_failed(&mut s);
+            let _ = app.emit("server-status", &s.server_status);
+        }
+        return Err(AppError::PythonServer(format!("Server restart failed: {}", e)));
+    }
 
     {
         let mut s = state.lock().expect("Failed to lock state");
@@ -295,4 +317,32 @@ pub async fn get_jobs(
     let mut jobs: Vec<Job> = s.jobs.values().cloned().collect();
     jobs.sort_by(|a, b| b.id.cmp(&a.id));
     Ok(jobs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::AppState;
+
+    /// `restart_server` used to bail out with `?` while the state still said
+    /// STARTING and `model_loading = true`. That combination shuts every exit:
+    /// the sidebar reads "Starting..." forever, the crash detector in
+    /// `commands_runtime` is gated on `!is_model_loading` so `server-crashed`
+    /// never fires, and `start_server` refuses with "already running or
+    /// starting". Only relaunching the app recovered.
+    #[test]
+    fn mark_server_failed_clears_everything_that_pins_the_ui_at_starting() {
+        let mut s = AppState::default();
+        s.server_status = ServerStatus::STARTING;
+        s.model_loading = true;
+
+        mark_server_failed(&mut s);
+
+        assert_eq!(s.server_status, ServerStatus::ERROR);
+        assert!(
+            !s.model_loading,
+            "model_loading must clear, or the crash detector stays disabled forever"
+        );
+        assert!(s.server_process.is_none());
+    }
 }

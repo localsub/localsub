@@ -353,6 +353,10 @@ pub struct AppState {
     pub runtime_status: RuntimeStatus,
     pub poll_cancel: Option<CancellationToken>,
     pub model_loading: bool,
+    /// Cancels an in-flight Visual C++ runtime download. Its own slot rather
+    /// than a key in `active_downloads`: that map is keyed by model id, and a
+    /// magic string there would collide with a model of the same name.
+    pub vcredist_cancel: Option<CancellationToken>,
 }
 
 impl Default for AppState {
@@ -373,6 +377,7 @@ impl Default for AppState {
             runtime_status: RuntimeStatus::default(),
             poll_cancel: None,
             model_loading: false,
+            vcredist_cancel: None,
         }
     }
 }

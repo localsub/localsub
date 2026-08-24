@@ -12,6 +12,7 @@ use crate::error::AppError;
 #[derive(Debug, Clone, Deserialize)]
 pub struct IntegrityManifest {
     pub ffmpeg: FfmpegEntry,
+    pub vc_redist: VcRedistEntry,
     pub llama_cpp: LlamaCpp,
 }
 
@@ -45,6 +46,41 @@ impl FfmpegEntry {
     /// ffmpeg on PATH and the user can install one themselves.
     pub fn urls(&self) -> Vec<String> {
         vec![self.url.clone()]
+    }
+}
+
+/// The Microsoft Visual C++ redistributable installer.
+///
+/// The bundled embeddable CPython ships `vcruntime140{,_1}.dll` but not
+/// `msvcp140.dll`, `msvcp140_1.dll` or `vcomp140.dll` — which ctranslate2
+/// (STT), llama_cpp (translation) and onnxruntime all link against and none of
+/// them vendor. On a machine without the runtime every one of those backends
+/// fails to load.
+///
+/// Like [`FfmpegEntry`] there is no `mirror_url`, and `deny_unknown_fields`
+/// makes re-adding one a parse error rather than a silent no-op. The reason
+/// differs though: Microsoft permits redistributing this package, so the bar is
+/// not licensing but provenance. The URL is content-addressed — Microsoft embeds
+/// the file's own SHA-256 in the path — so pointing at it is self-verifying and
+/// immutable in a way a mirror of ours could never be.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VcRedistEntry {
+    pub url: String,
+    pub sha256: String,
+}
+
+impl VcRedistEntry {
+    /// The SHA-256 Microsoft embedded in the download path, lowercased.
+    ///
+    /// Their CDN URLs look like `.../download/pr/<guid>/<SHA256>/VC_redist.x64.exe`.
+    /// Returns None if the URL does not carry one, so a future URL shape change
+    /// degrades to "cannot cross-check" instead of a false alarm.
+    pub fn sha256_from_url(&self) -> Option<String> {
+        self.url
+            .split('/')
+            .find(|seg| seg.len() == 64 && seg.chars().all(|c| c.is_ascii_hexdigit()))
+            .map(|seg| seg.to_ascii_lowercase())
     }
 }
 
@@ -274,6 +310,7 @@ mod tests {
             "sha256": "aa",
             "exe_suffixes": ["bin/ffmpeg.exe"]
           },
+          "vc_redist": { "url": "https://x/vc.exe", "sha256": "dd" },
           "llama_cpp": {
             "cuda": { "url": "https://up/cu.whl", "sha256": "bb" },
             "cpu":  { "url": "https://up/cpu.whl", "sha256": "cc" }
@@ -291,6 +328,7 @@ mod tests {
         let json = r#"{
           "version": 1,
           "ffmpeg": { "url": "https://x/ff.zip", "sha256": "aa", "exe_suffixes": ["bin/ffmpeg.exe"] },
+          "vc_redist": { "url": "https://x/vc.exe", "sha256": "dd" },
           "llama_cpp": {
             "cuda": { "url": "https://x/cu.whl", "sha256": "bb" },
             "cpu":  { "url": "https://x/cpu.whl", "sha256": "cc" }
@@ -309,6 +347,7 @@ mod tests {
         let json = r#"{
           "version": 1,
           "ffmpeg": { "url": "https://up/ff.zip", "sha256": "aa", "exe_suffixes": ["bin/ffmpeg.exe"] },
+          "vc_redist": { "url": "https://x/vc.exe", "sha256": "dd" },
           "llama_cpp": {
             "cuda": { "url": "https://up/cu.whl", "mirror_url": "https://mir/cu.whl", "sha256": "bb" },
             "cpu":  { "url": "https://up/cpu.whl", "sha256": "cc" }
@@ -323,5 +362,49 @@ mod tests {
         assert_eq!(m.llama_cpp.cpu.urls(), vec!["https://up/cpu.whl".to_string()]);
         // ffmpeg is always single-sourced.
         assert_eq!(m.ffmpeg.urls(), vec!["https://up/ff.zip".to_string()]);
+    }
+    /// Microsoft's CDN puts the file's own SHA-256 in the download path, so the
+    /// pin can be cross-checked against the URL itself. This catches the
+    /// realistic mistake: bumping the URL to a new build and forgetting the
+    /// hash below it (or the reverse), which would otherwise only surface as a
+    /// failed download on a user's machine.
+    #[test]
+    fn vc_redist_url_carries_the_same_sha256_as_the_pin() {
+        let m: IntegrityManifest =
+            serde_json::from_str(include_str!("../resources/integrity.json")).unwrap();
+
+        let from_url = m
+            .vc_redist
+            .sha256_from_url()
+            .expect("Microsoft download URLs embed the sha256; if this shape changed, revisit");
+        assert_eq!(
+            from_url,
+            m.vc_redist.sha256.to_ascii_lowercase(),
+            "vc_redist.sha256 disagrees with the hash in its own URL"
+        );
+    }
+
+    /// Same guard as ffmpeg's, for the same structural reason: a silently
+    /// ignored `mirror_url` would read as a working fallback.
+    #[test]
+    fn vc_redist_entry_rejects_a_mirror_url() {
+        let json = r#"{
+          "version": 1,
+          "ffmpeg": { "url": "https://up/ff.zip", "sha256": "aa", "exe_suffixes": ["bin/ffmpeg.exe"] },
+          "vc_redist": {
+            "url": "https://up/vc.exe",
+            "mirror_url": "https://mir/vc.exe",
+            "sha256": "dd"
+          },
+          "llama_cpp": {
+            "cuda": { "url": "https://up/cu.whl", "sha256": "bb" },
+            "cpu":  { "url": "https://up/cpu.whl", "sha256": "cc" }
+          }
+        }"#;
+        let err = serde_json::from_str::<IntegrityManifest>(json).unwrap_err();
+        assert!(
+            err.to_string().contains("mirror_url"),
+            "error must name the offending field, got: {err}"
+        );
     }
 }

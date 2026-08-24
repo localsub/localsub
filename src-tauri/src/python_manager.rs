@@ -1,10 +1,29 @@
-use std::process::{Child, Command};
+use std::fs::{File, OpenOptions};
+use std::path::Path;
+use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
 use tauri::AppHandle;
 
 use crate::error::AppError;
 use crate::setup_manager;
+
+/// Cap for the captured stderr before it rolls aside, keeping one `.1` backup.
+const PYTHON_STDERR_MAX_BYTES: u64 = 2 * 1024 * 1024;
+
+/// Opens the file the Python child's stderr is redirected into.
+///
+/// Rolls the previous contents aside first: the server is respawned on every
+/// translation to reclaim VRAM, so an append-only capture would grow forever.
+/// Returns None when the file cannot be opened — losing the capture must never
+/// stop the server from starting.
+fn open_stderr_capture(path: &Path, max_bytes: u64) -> Option<File> {
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    crate::utils::rotate_log_if_large(path, max_bytes);
+    OpenOptions::new().create(true).append(true).open(path).ok()
+}
 
 pub fn spawn_python_server(app: &AppHandle, _port: u16) -> Result<Child, AppError> {
     // Make sure this install's bundled python312._pth points at the pip-env dir.
@@ -38,6 +57,19 @@ pub fn spawn_python_server(app: &AppHandle, _port: u16) -> Result<Child, AppErro
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
+
+    // Capture the child's stderr. Without this it goes nowhere: the process is
+    // spawned with CREATE_NO_WINDOW and no redirection, and Python writes an
+    // uncaught exception's traceback to stderr rather than through `logging`.
+    // A server that dies during module import therefore left `server.log`
+    // ending at "Server starting" and no record at all of what killed it.
+    let stderr_path = crate::utils::log_dir().join("python-stderr.log");
+    if let Some(f) = open_stderr_capture(&stderr_path, PYTHON_STDERR_MAX_BYTES) {
+        cmd.stderr(Stdio::from(f));
+    }
+    // Uvicorn's access log goes to stdout and would bury the traceback under one
+    // line per 3-second health poll. What we need to keep is on stderr.
+    cmd.stdout(Stdio::null());
 
     let child = cmd.spawn().map_err(|e| {
         AppError::PythonServer(format!("Failed to spawn Python process: {}", e))
@@ -107,4 +139,49 @@ fn kill_process_tree(child: &mut Child) -> Result<(), AppError> {
         AppError::PythonServer(format!("Failed to kill Python process: {}", e))
     })?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join("localsub_python_manager_test");
+        fs::create_dir_all(&dir).unwrap();
+        let p = dir.join(name);
+        let _ = fs::remove_file(&p);
+        let _ = fs::remove_file(p.with_extension("log.1"));
+        p
+    }
+
+    /// The whole point of the capture file: a crashing child must leave its
+    /// traceback behind. Python writes uncaught tracebacks to stderr, not
+    /// through `logging`, so nothing reaches `server.log` — the fresh-PC
+    /// failure showed `server.log` ending at "Server starting" with no cause.
+    #[test]
+    fn stderr_capture_opens_an_appendable_file() {
+        let p = scratch("capture.log");
+
+        let mut f = open_stderr_capture(&p, 1024).expect("capture file must open");
+        use std::io::Write;
+        f.write_all(b"Traceback (most recent call last):\n").unwrap();
+        drop(f);
+
+        assert!(fs::read_to_string(&p).unwrap().contains("Traceback"));
+    }
+
+    /// The server respawns on every translation (VRAM reclaim), so an
+    /// append-only capture would grow without bound.
+    #[test]
+    fn stderr_capture_rolls_the_file_aside_once_it_is_too_big() {
+        let p = scratch("big.log");
+        fs::write(&p, vec![b'x'; 4096]).unwrap();
+
+        let f = open_stderr_capture(&p, 1024).expect("capture file must open");
+        drop(f);
+
+        assert_eq!(fs::metadata(&p).unwrap().len(), 0, "capture should restart empty");
+        assert!(p.with_extension("log.1").exists(), "previous run must be kept as .1");
+    }
 }
