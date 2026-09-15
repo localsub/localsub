@@ -1,165 +1,156 @@
-# LocalSub — AI Subtitle Generator & Translator
+# LocalSub — 엔지니어링 가이드 및 아키텍처 규약 (CLAUDE.md)
 
-100% 로컬 AI 기반 자막 생성 및 번역 데스크톱 앱.
+LocalSub은 로컬 AI 기반 자막 생성 및 신경망 기계번역을 수행하는 온디바이스 데스크톱 애플리케이션입니다.
 
-## Tech Stack
+## 1. 기술 스택 (Tech Stack)
 
 - **Frontend**: React 18 + TypeScript + Tailwind CSS v4 + Radix UI
-- **Desktop**: Tauri 2 (Rust) — IPC, 파일 I/O, 프로세스 관리
-- **AI Engine**: Python FastAPI (port 9111)
-  - STT: faster-whisper (CTranslate2). VAD는 faster-whisper 내장 Silero (`vad_filter=True`)
-  - Translation: llama-cpp-python (GGUF models)
-  - Diarization: ONNX Runtime 임베딩 + scikit-learn 응집 군집화 (VAD 아님)
-- **Build**: Vite + Cargo
-- **Tests**: Vitest (프론트) / pytest (python-server) / `cargo test --lib` (Rust)
+- **Desktop Shell**: Tauri 2 (Rust) — IPC, 파일 시스템 I/O, 자식 프로세스 오케스트레이션
+- **AI Inference Engine**: Python FastAPI (루프백 포트 `127.0.0.1:9111`)
+  - 음성 인식 (STT): faster-whisper (CTranslate2). 음성 활동 감지(VAD)는 faster-whisper 내장 Silero VAD (`vad_filter=True`)
+  - 신경망 기계번역 (Translation): llama-cpp-python (GGUF 양자화 모델)
+  - 화자 분리 (Diarization): ONNX Runtime 음향 임베딩 + scikit-learn 응집 군집화(Agglomerative Clustering)
+- **빌드 및 패키징**: Vite + Cargo + NSIS
+- **테스트 스위트**: Vitest (프론트엔드) / pytest (Python 추론 서버) / `cargo test --lib` (Rust 코어 라이브러리)
 
-## Architecture
+## 2. 시스템 아키텍처 (System Architecture)
 
 ```
-React UI ←→ Tauri IPC ←→ Rust Backend ←→ HTTP(9111) ←→ Python FastAPI
-                                                            ↓
-                                                     AI Models (GPU/CPU)
+React UI (WebKit/WebView)
+         ↕ (Tauri IPC Bridge: invoke / events)
+Rust Backend Core (Process Management, Integrity, Hardware Detection)
+         ↕ (HTTP REST / SSE Stream: 127.0.0.1:9111)
+Python FastAPI Inference Subprocess
+         ↓
+AI Models (faster-whisper, llama-cpp-python, ONNX Runtime)
 ```
 
-VRAM 관리: 번역 시작 전 **Python 서버를 통째로 재시작**해 Whisper VRAM을 회수한다 (`usePipeline.ts`).
-`unload_runtime_model`이 있지만 CTranslate2 Whisper 언로드가 Windows에서 세그폴트해 쓰지 않는다.
-`restart_server`는 nvidia-smi 가용 VRAM이 6GB를 넘을 때까지 최대 20초 대기 후 재spawn.
+### 비디오 메모리(VRAM) 거버넌스 및 단계별 핸드오버
+- Windows 환경에서 CTranslate2 기반 Whisper 런타임의 동적 언로드(`unload_runtime_model`) 호출 시 세그멘테이션 오류(Segmentation Fault)가 발생할 수 있습니다.
+- 따라서 번역 단계 진입 전 **Python 추론 서버 프로세스를 정상 재시작**하여 Whisper가 점유하던 VRAM을 운영체제 차원에서 100% 완전 회수합니다 (`usePipeline.ts`).
+- `restart_server`는 `nvidia-smi`를 통해 가용 VRAM이 6GB를 초과할 때까지 최대 20초간 대기한 후 자식 프로세스를 재스폰합니다.
 
-## Development
+## 3. 개발 및 빌드 환경 (Development & Build)
+
+### 사전 요구 소프트웨어
+- Node.js 18+, Rust 1.70+, Python 3.10+, CUDA Toolkit (GPU 빌드 시)
+- Windows: Visual Studio Build Tools (MSVC 컴파일러) 및 Windows SDK
 
 ```bash
-# Prerequisites: Node.js, Rust, Python 3.10+, CUDA toolkit
+# 의존성 패키지 설치
 npm install
-pip install -r python-server/requirements.txt   # or requirements.lock (hash-pinned)
-# llama-cpp-python: prebuilt wheel, NO source build (CUDA index shown; whl/cpu for CPU)
+pip install -r python-server/requirements.txt   # 또는 requirements.lock (전체 폐포 해시 핀)
+
+# llama-cpp-python: 사전 컴파일된 휠만 설치 (소스 빌드 엄격 금지)
 pip install llama-cpp-python==0.3.28 --only-binary llama-cpp-python \
   --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
 
-# Dev mode
+# 개발 서버 실행
 npm run tauri dev
-# Windows: 반드시 vcvarsall.bat으로 초기화된 셸에서 실행할 것 — cargo가 MSVC
-# link.exe와 LIB 경로를 그 환경에서 찾는다. 로컬 래퍼 run-dev.bat을 쓸 수 있으나
-# gitignore 대상이라 저장소에는 없다.
-# ⚠️ src-tauri/.cargo/config.toml에 링커/라이브러리 절대경로를 커밋하지 말 것.
-# 머신마다 VS 에디션·Windows SDK 버전이 달라 남의 빌드를 깨뜨린다(.gitignore 대상).
-
-# Tests
-npm test                                  # vitest
-cd src-tauri && cargo test --lib          # `--lib` 필수 (bin 타깃엔 테스트 없음)
-cd python-server && python -m pytest -q . # 경로 `.` 필수 (아래 주의 참조)
 ```
 
-⚠️ `pytest`에 **경로 인자 `.`을 반드시 줄 것.** 생략하면 rootdir을 위로 거슬러 탐색해
-상위 디렉토리의 무관한 테스트를 수집한다(`Labs/` 형제 프로젝트까지 끌어와 200+ collection error).
-pytest 버전에 따라서는 경로의 `[]`(`[projects] localsub`) 때문에
-`path cannot contain [] parametrization`으로 죽기도 한다. CI도 `pytest -q .` 형태를 쓴다.
+> **Windows MSVC 환경 변수 필수 주의사항**:
+> Windows 환경에서는 Cargo가 MSVC `link.exe` 링커 및 SDK 라이브러리를 정상 참조하도록 반드시 `vcvarsall.bat`으로 초기화된 셸 세션에서 빌드를 실행해야 합니다.
+> 머신별 Visual Studio 에디션 및 Windows SDK 버전 차이로 인한 빌드 파단을 방지하기 위해 `src-tauri/.cargo/config.toml`에 절대 경로를 커밋하지 마십시오 (.gitignore 대상).
 
-## Key Directories
+### 테스트 스위트 실행 규칙
 
-```
-src/                  # React frontend
-src-tauri/src/        # Rust backend (Tauri commands)
-python-server/        # FastAPI AI inference server
-  stt_engine.py       # STT (faster-whisper, 60분+ 파일은 30분 청크 분할)
-  llm_engine.py       # LLM translation (세그먼트 단위, rolling summary, 품질 게이트)
-  prompt_builder.py   # Translation prompt construction
-  quality_filters.py  # 구조적 비-번역 탐지 (스크립트/길이/반복) — 모델 무관
-  embedding_gate.py   # 의미적 게이트 (타겟 언어로 쓰인 거부문 탐지)
-  translate_router.py # Translation API endpoints
+```bash
+# 프론트엔드 단위 테스트 (Vitest)
+npm test
+
+# Rust 코어 단위 테스트 (`--lib` 플래그 필수 — 바이너리 타깃에는 테스트 미포함)
+cd src-tauri && cargo test --lib
+
+# Python 단위 테스트 (경로 인자 `.` 필수 — 아래 격리 규칙 참조)
+cd python-server && python -m pytest -q .
 ```
 
-Python 서버는 `/health` + 라우터 4개(`/stt` `/translate` `/diarization` `/runtime`)만 노출한다.
-잡 계열은 모두 `POST .../start` → `GET .../stream/{job_id}`(SSE) → `POST .../cancel/{job_id}` 패턴.
-취소는 협조적 플래그 폴링. (스캐폴딩이던 `/inference/*` 목업은 제거됨)
+> **pytest 경로 인자 `.` 필수 지정 불변식**:
+> pytest 실행 시 경로 인자 `.`을 생략할 경우 rootdir을 상위 디렉터리로 거슬러 탐색하여 상위 폴더의 무관한 테스트까지 수집(Collection)하게 됩니다.
+> 또한 디렉토리 경로에 대괄호(`[projects] localsub`)가 포함된 환경에서는 pytest의 `path cannot contain [] parametrization` 오류가 유발될 수 있으므로 `pytest -q .` 형태를 엄격히 준수해야 합니다 (CI 워크플로 포함).
 
-## Model Catalog
+## 4. 핵심 디렉토리 및 모듈 구조
 
-`src-tauri/resources/model_catalog.json` — 모델 목록 관리.
-Whisper 모델은 `model.bin` + `config.json` + `tokenizer.json` + `vocabulary.*` 필요 (tiny~medium은 이 4파일뿐).
-⚠️ Whisper large-v3와 kotoba-whisper-v2는 `preprocessor_config.json`도 필수 — large-v3는 이게 있어야 128 mel channels 사용.
+```
+src/                  # React 프론트엔드 소스코드
+src-tauri/src/        # Rust 백엔드 코어 (Tauri 명령 핸들러, 프로세스 및 무결성 관리)
+python-server/        # FastAPI 기반 AI 추론 서버
+  stt_engine.py       # STT 엔진 (faster-whisper, 60분 초과 미디어의 30분 청크 분할)
+  llm_engine.py       # LLM 번역 엔진 (세그먼트 단위 추론, 롤링 요약, 품질 게이트)
+  prompt_builder.py   # 번역 프롬프트 구성 모듈
+  quality_filters.py  # 구조적 비-번역 탐지 (문자 집합/길이 비율/퇴행적 반복)
+  embedding_gate.py   # 의미론적 거부 감지 게이트 (목표 언어 거부 응답 벡터 유사도 판별)
+  translate_router.py # 번역 REST/SSE API 라우터
+docs/                 # 시스템 설계 문서, 규격 사양서, 다이어그램, 기술 용어 사전
+  glossary.md         # 정본 표준 기술 용어 사전
+  specs/SPEC.md       # 시스템 요구사항 명세서 (FR/NFR/Architecture)
+  diagrams/           # 아키텍처 및 파이프라인 SVG 다이어그램
+```
 
-LLM 모델 등재 기준:
-- `model_category`: `"general"`은 프롬프트에 `/no_think` 주입(Qwen3 전용 디렉티브) → **비-Qwen3 모델(Gemma·Qwen2.5 등)은 반드시 `"instruct"`** (잡토큰 방지). `prompt_builder.py` 참조.
-  - 카탈로그에 없는 모델의 `model_category` 폴백은 `"instruct"`. `/no_think`는 opt-in이어야 하므로 기본값이 `"general"`이면 안 된다 (`commands_translate.rs`, `prompt_builder.py` 양쪽).
-- 라이선스: 카탈로그 등재 = 다운로드 링크 제공이므로 **재배포 가능 라이선스만**(Apache/MIT/Gemma OK). 제외 대상: NC(EXAONE 등), 영토 제외 조항(Tencent Hunyuan = 대한민국 명시 제외), CC-BY-NC 의심(Tower+).
-- `sha256`은 HuggingFace LFS oid로 채움(모델 다운로드 없이 API에서 취득). 분할 모델은 `split_files`.
+Python 서버는 `/health` 엔드포인트 및 4개의 도메인 라우터(`/stt`, `/translate`, `/diarization`, `/runtime`)를 노출합니다.
+장기 실행 작업은 모두 `POST .../start` → `GET .../stream/{job_id}`(SSE) → `POST .../cancel/{job_id}` 패턴을 따르며, 취소 처리는 협조적 플래그 폴링 방식으로 수행됩니다.
 
-## Translation Pipeline
+## 5. 모델 카탈로그 및 라이선스 정책 (Model Catalog & Licensing)
 
-1. STT (Whisper) → segments with timestamps
-2. Whisper 해제 (VRAM) — 실제로는 서버 재시작. 위 Architecture 참조
-3. Auto-infer media context (첫 100 세그먼트로 장면/장르 추론)
-4. LLM 로드 → **세그먼트 단위** 번역 (배치 없음)
-5. 각 세그먼트마다 품질 게이트 → 걸리면 높은 temperature로 1회 재시도 + 플래그
-6. 25개마다 rolling summary 생성 (200개마다 처음부터 재생성해 드리프트 방지)
-7. 프롬프트: 심플하게 유지 (9B 모델에 복잡한 프롬프트는 역효과)
+모델 메타데이터는 `src-tauri/resources/model_catalog.json`을 통해 관리됩니다.
+Whisper 모델 구동에는 `model.bin`, `config.json`, `tokenizer.json`, `vocabulary.*`의 4개 파일이 요구되며, Whisper large-v3 및 kotoba-whisper-v2 모델의 경우 128 mel channel 처리를 위해 `preprocessor_config.json`이 필수적으로 포함되어야 합니다.
 
-품질 게이트 순서 (`llm_engine.py`의 `_bad_output_reason`):
-`_looks_like_refusal`(구문, 모델별로 취약) → `quality_filters`(구조적: 스크립트 누출·off-target
-언어·길이 폭증·퇴행 반복) → `embedding_gate`(의미적, 마지막). 구조적 신호가 주력이다 —
-거부 문구는 생성마다·모델마다 달라서 구문 목록은 항상 불완전하다.
-임베딩 게이트는 `LOCALSUB_DISABLE_EMBED_GATE`(비어있지 않은 아무 값)로 끄고, 모델(~250MB)이 없으면 조용히 no-op.
+### LLM 카탈로그 등록 기준
+1. **`model_category` 분류 기준**:
+   - `"general"`: 프롬프트에 `/no_think` 디렉티브를 주입합니다 (Qwen3 전용 추론 제어 지시자).
+   - **비-Qwen3 모델(Gemma, Qwen2.5 등)**: 불필요한 제어 토큰 노출을 방지하기 위해 **반드시 `"instruct"`로 지정**해야 합니다 (`prompt_builder.py` 참조).
+   - 카탈로그 미등재 모델의 기본 폴백 카테고리는 `"instruct"`입니다 (`commands_translate.rs` 및 `prompt_builder.py`).
+2. **소프트웨어 라이선스 준수**:
+   - 카탈로그 등재는 직접 다운로드 링크 제공을 수반하므로 재배포가 공식 허용된 라이선스(Apache 2.0, MIT, Gemma 등) 모델만 등록합니다. 비상업 제한(NC) 모델, 특정 국가/지역 배제 조항이 포함된 모델은 등재 대상에서 제외합니다.
+3. **무결성 검증**:
+   - `sha256` 해시는 Hugging Face LFS OID를 기반으로 사전에 고정하며, 분할 파일 모델은 `split_files` 배열을 통해 관리합니다.
 
-⚠️ `translation_mode`는 **두 곳에서 다른 의미**다.
-`config.translation_mode` = `"local"` / `"off"` (번역 자체를 끄는 스위치),
-`preset.translation_mode` = `"direct"` / `"pivot_2pass"` (Python으로 전달되는 번역 전략).
+## 6. 번역 파이프라인 및 품질 게이트 (Translation Pipeline & Quality Gates)
 
-## Git History
+1. **음성 인식 (Whisper)**: 오디오 신호 분석 및 타임스탬프 세그먼트 생성
+2. **VRAM 회수 (Whisper 해제)**: 추론 서버 프로세스 정상 재시작 및 VRAM 확보
+3. **미디어 컨텍스트 추론**: 초기 100개 세그먼트를 기반으로 장면 및 장르 문맥 추론
+4. **LLM 모델 적재 및 세그먼트 번역**: 배치 처리가 아닌 개별 세그먼트 단위 순차 번역
+5. **다단계 품질 게이트 평가**: 통과 실패 시 높은 Temperature 설정으로 1회 재시도 및 이상 플래그 설정
+6. **롤링 요약 갱신**: 25개 세그먼트마다 점진 갱신, 누적 왜곡 방지를 위해 200개 세그먼트마다 전체 재생성
+7. **프롬프트 단순성 유지**: 9B 이하 경량 모델의 환각을 최소화하기 위한 간결한 프롬프트 템플릿 유지
 
-이 저장소는 2026-07-10에 **단일 초기 커밋으로 다시 시작**했다. `git log`·`git blame`·`git bisect`가
-그 이전을 못 보고, 그 이전의 커밋 SHA·이슈·PR 번호는 이 저장소에서 해석되지 않는다.
+### 품질 게이트 평가 파이프라인 순서 (`llm_engine.py`의 `_bad_output_reason`)
+1. `_looks_like_refusal`: 구문 기반 직접 거부 패턴 검출 (모델별 취약성 대응)
+2. `quality_filters`: 모델 무관 구조적 필터링 (스크립트 누출, 언어 불일치, 토큰 길이 비정상 폭증, 퇴행적 반복)
+3. `embedding_gate`: 최종 의미론적 거부 감지 (임베딩 벡터 코사인 유사도 판별)
+- 환경변수 `LOCALSUB_DISABLE_EMBED_GATE` 설정 시 임베딩 게이트를 비활성화할 수 있으며, 모델 파일(~250MB) 부재 시 안전하게 no-op 처리됩니다.
 
-교훈 하나는 남긴다: **검증 없이 지어낸 값을 박지 말 것.** URL·핸들·경로는 박기 전에 실제로 쳐볼 것.
-같은 부류로 `api_key`·`provider` 죽은 config 필드와, 그걸 근거로 없는 기능을 광고하던 README의
-"외부 API 연동"이 있었다(문서는 정정됨; 필드 자체는 `state.rs`에 아직 남아 있고 어디서도 읽히지
-않는다 — 제거는 별도 PR로).
+> **`translation_mode` 식별자의 문맥별 다의성 주의사항**:
+> - `config.translation_mode`: `"local"` / `"off"` (시스템 전역 번역 기능 활성화 여부 제어)
+> - `preset.translation_mode`: `"direct"` / `"pivot_2pass"` (Python 추론 엔진으로 전달되는 번역 전략 파라미터)
 
-## Important Notes
+## 7. 프로세스 오케스트레이션 및 결함 허용 (Process Orchestration & Fault Tolerance)
 
-- Python 서버는 앱 시작 시 자동 시작. `commands_runtime.rs`의 3초 폴링이 10회 연속 실패하면 `server-crashed`를 emit하고, `usePipeline.ts`가 활성 파이프라인을 전부 `failed`로 표시한다. **Rust에는 자동 재시작이 없고**, 프론트의 `useServerStatus.ts`가 `server-crashed` 수신 3초 뒤 상태가 여전히 ERROR/STOPPED면 `startServer()`를 자동 호출한다(파이프라인의 의도적 재시작 — 모델 스왑 — 과는 상태 가드로 경합 회피).
-- **Python 자식 프로세스의 stderr는 `%APPDATA%/LocalSub/logs/python-stderr.log`로 캡처된다**(2MB 초과 시 `.1`로 롤링). 서버는 `CREATE_NO_WINDOW`로 뜨고, Python은 미포착 예외의 트레이스백을 `logging`이 아니라 **stderr로** 쓴다 — 캡처가 없으면 임포트 단계에서 죽은 서버가 `server.log`에 `Server starting`만 남기고 원인을 통째로 잃는다. 실제로 그래서 새 PC 장애를 원격 진단할 수 없었다. stdout은 `null`로 버린다(uvicorn 액세스 로그가 3초 폴링마다 쌓여 트레이스백을 묻는다).
-- ⚠️ `restart_server`는 실패 시 **`mark_server_failed`로 상태를 되돌려야 한다.** 예전엔 `wait_for_healthy` 실패를 `?`로 조기 반환해 `server_status = STARTING` + `model_loading = true`가 남았고, 그 조합이 (1) 사이드바를 "서버 시작 중…"에 영구 고정, (2) `!is_model_loading` 게이트 때문에 크래시 감지기 무력화 → `server-crashed` 미발생 → 프론트 자동 재시작 미동작, (3) `start_server`는 "already running or starting"으로 거부 — **재실행 말고는 탈출구가 전부 막혔다.**
-- STT/번역 시작 전 서버 health 체크 (최대 30회 대기)
-- 프리셋의 모델·언어·스타일·용어집은 번역에 반영됨 (`commands_translate.rs`: `preset.llm_model`/`source_lang`/`translation_style`/`vocabulary_id`가 config보다 우선, 미설정 시 config 폴백). 과거의 "프리셋 미반영 TODO"는 해소됨.
-- ⚠️ **`state.app_config`는 지연 로딩**된다(첫 config 명령이 채운다). config가 필요한 명령은 **`config_manager::ensure_loaded(&mut s)`로 그때그때 로드**할 것 — 예전엔 모델 명령들이 `app_config`가 이미 Some이길 *요구*하고 아니면 "Config not loaded"로 죽었다. 프론트가 마운트 시 `getConfig`와 `getModelManifest`를 **동시에** 쏘고 Tauri는 명령을 병렬 실행하므로, `get_model_manifest`가 레이스에서 이기면 에러 → `loadManifest`가 재시도 없이 `manifest`를 []로 남길 수 있다. `ensure_loaded`가 이 순서 의존을 없앤다(잠재 레이스 방어).
-  - 📌 **주의:** 이 lazy-load는 잠재 레이스 **방어**다. "모델 전부 미설치"로 보이는 증상의 실제 원인은 거의 항상 모델이 디스크에 없는 것이고, 이 레이스가 실측에서 발동한 기록은 없다. 증상을 레이스 탓으로 돌리기 전에 매니페스트와 디스크부터 확인할 것.
-- **공급망 무결성** (`src-tauri/src/integrity.rs` + `resources/integrity.json`): 첫 실행이 받는 모든 바이너리를 sha256 검증.
-  - Python 패키지: `requirements.lock`(전체 폐포 해시 핀, cp312/win_amd64)을 `pip install --require-hashes`로 설치. `requirements.txt`는 사람이 읽는 정확-버전 핀(`==`).
-  - `llama-cpp-python`: **prebuilt 휠을 직접 다운로드 → sha256 검증 → 로컬 `pip install --no-deps`** (의존성은 lock에서 이미 해시 설치). `nvidia-smi`로 GPU 감지 → CUDA 휠 시도, 실패 시 CPU 휠 폴백. 소스 빌드 안 함. 버전은 백엔드별로 다르다 — **CUDA 0.3.31-cu124 / CPU 0.3.28**. 정본은 `integrity.json`.
-  - ffmpeg: **gyan(GyanD/codexffmpeg) 버전 태그** zip 다운로드 → sha256 검증 (`latest`·날짜 스냅샷 태그 금지). 현재 태그 `8.1.2`의 essentials 빌드(`ffmpeg-8.1.2-essentials_build.zip`).
-    - **첫 실행 셋업이 설치한다**(`ensure_ffmpeg`). PATH/앱 로컬에 이미 있으면 건너뛴다. **non-fatal** — 60분 미만은 PyAV가 디코딩하므로 실패해도 셋업을 죽이지 않는다(마커 저장 전, 마커 불변식과 무관). 예전엔 **미리보기 패널을 열어야만** 설치 버튼이 보여서, 그걸 안 쓰는 사용자는 60분+ 영상이 **청킹 없이 조용히** 처리됐다. `_probe_duration()`이 `None`을 반환하면 이제 `log.error`로 크게 남긴다.
-    - ⚠️ **ffmpeg에는 `mirror_url`을 두지 말 것.** 모든 Windows ffmpeg 빌드는 GPLv3이고, GPL 의무는 `convey`(전달)에 붙는다. 제3자 URL만 가리키면 바이트가 그쪽 서버 → 사용자로 흐르므로 전달자가 아니지만, **미러를 두는 순간 배포자가 된다** — 그리고 남이 빌드한 바이너리는 "corresponds exactly"한 Corresponding Source를 입증할 수 없다. 예전에 BtbN 빌드를 미러링하며 이 의무를 미이행하고 있었다.
-    - 그래서 `FfmpegEntry`에는 `mirror_url` 필드가 **없고** `deny_unknown_fields`가 걸려 있다. JSON에 되살리면 조용히 무시되는 대신 파싱이 실패한다. `bundled_ffmpeg_is_not_self_hosted`·`ffmpeg_entry_rejects_a_mirror_url`이 지킨다.
-    - BtbN을 떠난 이유: 날짜 태그(`autobuild-*`)를 ~1개월 뒤 삭제한다. **해시 핀 + BtbN = 미러 필연.** gyan은 버전 태그를 2021년까지 보존한다.
-  - llama_cpp 휠(MIT)만 `mirror_url`(`vendor-assets-v1` 릴리스, 바이트 동일) 폴백을 갖는다 — 재호스팅에 소스 제공 의무가 없다. 검증 불일치 시 `SetupErrorKind::Integrity`.
-  - ⚠️ `LlamaWheel::urls()`는 `[url, mirror_url]` 순으로 시도하므로 **`mirror_url`이 upstream과 같으면 폴백이 무의미**하다(죽은 URL을 두 번 침). CUDA 휠이 실제로 그 상태였다. `integrity.rs`의 `llama_cpp_mirrors_are_real_fallbacks`가 번들 JSON을 직접 검사해 재발을 막는다.
-  - **MSVC C++ 런타임**(`vcredist.rs` + `integrity.json`의 `vc_redist`): 번들 임베더블 CPython은 `vcruntime140{,_1}.dll`만 싣고 **`msvcp140.dll`·`msvcp140_1.dll`·`vcomp140.dll`은 없다.** 그런데 ctranslate2(STT)·llama_cpp(번역)·onnxruntime(화자분리·임베딩 게이트)이 전부 이걸 임포트하고 **아무도 자체 사본을 벤더링하지 않는다**(numpy·sklearn만 자기 것을 갖고 있어 무관). VC++ 재배포 패키지가 없는 새 PC에서는 **AI 백엔드가 전부 로드 실패**한다.
-    - 감지는 파일 존재가 아니라 `LoadLibraryExW(..., LOAD_LIBRARY_SEARCH_SYSTEM32)`. 로더의 실제 검색 순서를 쓰므로 사용자가 나중에 수동 설치해도 그대로 잡히고, 작업 디렉터리에 놓인 엉뚱한 사본에 속지 않는다.
-    - **셋업 마커에 넣지 않는다.** 런타임은 머신 전역 상태라 매 실행 재검사한다. 셋업은 한 번만 돌기 때문에, 설치 제안을 셋업 안에만 두면 **UAC를 한 번 거절한 사용자가 영구히 막힌다**(예전 ffmpeg 설치 버튼과 같은 함정). 그래서 `VcRedistCard`가 대시보드·설정·셋업 **세 곳**에 뜬다.
-    - 설치는 `Start-Process -Verb RunAs`. `std::process::Command`(=`CreateProcess`)로는 권한 상승이 안 되고 `ERROR_ELEVATION_REQUIRED(740)`로 실패한다. 거절은 `1223`으로 정규화해 **실패와 구분**한다(거절은 에러가 아니라 선택).
-    - 시도 기록(`%APPDATA%/LocalSub/vcredist-attempt.json`)은 **시작할 때 쓰고 끝날 때 갱신**한다. `outcome`이 `null`로 남은 것 = 그 단계에서 앱이 죽은 것. 끝날 때만 쓰면 "중단"과 "거절"이 같은 빈칸이 된다.
-    - URL은 Microsoft CDN의 content-addressed permalink라 **경로에 sha256이 박혀 있다**. `vc_redist_url_carries_the_same_sha256_as_the_pin` 테스트가 URL과 핀의 불일치를 잡는다.
-  - **빌드 타임 자산도 같은 규칙**(`scripts/download-python-embed.ps1`): 임베더블 CPython과 `get-pip.py`는 설치파일에 그대로 실리므로 sha256 핀 후 검증하고, 불일치면 중단한다(검증은 `resources/`로 옮기기 **전**에 한다). `get-pip.py`는 롤링 URL(`bootstrap.pypa.io`)이 아니라 **`pypa/get-pip`의 커밋 SHA raw URL**에서 받는다 — 롤링 URL은 핀이 불가능하고 실제로 바이트가 바뀌었다. 재호스팅은 하지 않으므로 라이선스 의무는 발생하지 않는다.
-  - `resources/python-server`에 무엇이 실리는지는 **`sync-python-resources.mjs` 한 곳만** 정한다(대상 디렉토리를 비우고 `test_*` 제외). `beforeBuildCommand`도 이걸 부른다. 예전엔 ps1이 `*.py`를 전부 복사해 테스트 파일이 번들에 섞였다.
-  - **개발자 로컬 경로 유출 가드**(`scripts/check-no-local-paths.mjs`): `npm run build`가 `sync-python` 직후 이걸 돌려 `resources/`·`python-server/`에서 `C:\Users\…`·`/home/…`·`/Users/…`를 찾으면 빌드를 중단한다. 앱이 실행될 때마다 `patch_pth_file`이 `python312._pth`에 `%APPDATA%` 절대경로를 써넣으므로, **dev 실행 직후 릴리스를 빌드하면 개발자 계정명이 공개 설치파일에 박힌다** — 실제로 검증 중에 한 번 그 상태로 빌드 직전까지 갔다. `_pth`는 gitignore라 CI로는 못 잡는다. 로컬 빌드 가드가 본체고 CI 스텝은 커밋된 파일용 2선이다. `src/__tests__/localPathGuard.test.ts`가 가드 자체를 지킨다.
-- 첫 실행 셋업 불변식 (전부 실제로 겪은 버그다):
-  - 완료 마커는 **모든 설치(llama-cpp 포함) 성공 후 맨 마지막에** 저장. `is_setup_complete`가 마커+해시만 검사하므로, 일찍 저장하면 부분 설치가 '완료'로 위장돼 재시작 후 영구히 깨진다.
-  - ⚠️ 마커 해시는 **`requirements.lock` + `integrity.json`을 함께** 해시한다(`setup_inputs_hash`). llama-cpp 휠과 CUDA 런타임은 lock 밖에서(`--no-deps`) 설치되고 핀은 `integrity.json`에 있으므로, lock만 해시하면 **휠을 올려도 셋업이 재실행되지 않아 새 휠이 기존 설치에 영원히 도달하지 못한다.** 휠은 GPU/드라이버/CPU-ISA 크래시를 고칠 때 올리는 바로 그 물건이다.
-  - ⚠️ **llama-cpp 휠 설치에는 `--upgrade`를 쓰지 말 것.** 이 휠은 최상위 `bin/`·`lib/`·`include/`를 담고 있고, 그 `bin/`이 python-env의 `bin/pip.exe`와 충돌한다. 셋업은 pip을 `env\bin\pip.exe`로 실행하는데, `--upgrade`가 붙으면 pip의 `_handle_target_dir`이 그 `bin`을 `rmtree`하려 한다 — **pip.exe 자기 자신이 그 디렉터리에서 돌고 있어** sharing violation으로 매번 실패한다(`bin`이 알파벳순 먼저라 llama_cpp를 쓰기도 전에 중단). GPU 실측에서 업그레이드가 3연속 실패한 실제 버그다. `--upgrade` 없으면 pip은 이미 있는 `bin/lib/include`를 경고만 내고 **건너뛴다**(중복본이라 무해 — llama-cpp는 `llama_cpp/lib/`에서 DLL을 로드하지 그 최상위 사본을 안 쓴다). 교체는 `--upgrade`가 아니라 **`purge_installed_llama`**가 한다: 옛 `llama_cpp`+모든 `llama_cpp_python-*.dist-info`를 먼저 지워 새 휠이 빈 자리에 설치되게 한다(그래서 "핀을 올려도 기존 설치에 반영되지 않음" 문제가 해소된다). `0.3.28`·`0.3.31` dist-info 공존이 실제로 있었다. purge의 `remove_dir_all`은 AV 실시간 스캔이 900MB CUDA DLL을 잠깐 잠글 수 있어 **재시도 백오프**를 건다. `wheel_install_does_not_use_upgrade`·`purge_removes_package_and_every_stale_dist_info`가 지킨다. (CUDA 런타임 `nvidia-*` 휠은 최상위가 `nvidia/`라 충돌 없음 → 거기는 `--upgrade` 유지.)
-  - 셋업이 고른 백엔드(`cuda`/`cpu`)와 `cuda_selftest` 결과는 로그로 남긴다(백엔드·셀프테스트 성공은 `log::info`, 셀프테스트 실패는 `log::warn`). 진행 상황은 프론트엔드 이벤트로만 흘러서, 이게 없으면 사용자가 CPU 휠로 떨어졌는지 **사후에 알 방법이 없다**.
-  - `patch_pth_file`이 번들 리소스(`python312._pth`)에 **쓰기**를 하므로 NSIS `installMode=currentUser` 필수. perMachine(Program Files)이면 ACL 거부로 셋업 실패.
-  - 셋업 ERROR 화면은 retry + "초기화 후 재설치"(`reset_setup` → python-env 통째 삭제) 제공. 막혔을 때의 탈출구다.
-- **첫 실행 E2E**: `scripts/first-run-e2e.ps1` (`-Backend cpu|cuda`)가 번들 임베드 Python으로 프로비저닝 전체를 격리 재현(get-pip → lock → 휠 → ffmpeg → 서버 `/health`). 시스템 Python/`%APPDATA%` 미접촉.
-- **CI** (`.github/workflows/ci.yml`): `push`는 `master`/`feature/*`에서만, `pull_request`는 **master를 향하는 모든 PR**에서 돈다(브랜치 이름 무관). 그래서 `feature/*` PR은 두 트리거가 겹쳐 체크가 두 번씩 뜬다. 잡 3개 — `check`(tsc+vitest+`vite build`) / `lockfile`(`requirements.lock`을 `--require-hashes`로 검증 + drift 가드) / `pytest`.
-  - ⚠️ **`cargo test`는 CI에 없다.** Rust 테스트는 로컬에서 `cargo test --lib`로 직접 돌릴 것.
-  - `pytest` 잡은 **전체 스위트**를 돌린다(`python -m pytest -q .`). 파일 목록으로 되돌리지 말 것 — 예전 목록 방식이 `test_api_endpoints.py`를 누락시켜 테스트 3개가 썩었고, 그중 하나는 *버그였던 동작을 명세로 고정*하고 있었다.
-  - ML 라이브러리는 설치하지 않는다. `faster-whisper`·`llama_cpp`·`onnxruntime`은 optional import라 없어도 엔진 모듈이 import된다. `numpy`만 `diarization_engine`의 하드 의존.
-    - ⚠️ 이 가드는 **`except Exception`이어야 한다.** `except ImportError`로는 부족하다 — llama_cpp는 `ctypes.CDLL` 실패를 `RuntimeError`로, 바이너리 부재를 `FileNotFoundError`로 바꾼다(`_ctypes_extensions.py`). 둘 다 ImportError가 아니라서 예외가 새어 나가 `import translate_router`를 깨고, `main.py`가 `uvicorn.run()` 전에 죽는다 — **백엔드 하나 때문에 서버 전체가 사라진다.** 실측: 새 Windows PC에서 `server.log`가 `Server starting`에서 끊기고 포트가 열리지 않았다. `test_native_import_guards.py`가 지킨다.
-    - 실패 사유는 `*_LOAD_ERROR`에 담아 잡 에러로 전달한다. `"X is not installed"`는 **거짓말**이다 — 패키지는 설치돼 있고 로드만 실패했으므로, 그 문구는 읽는 사람을 pip 디버깅으로 보낸다.
-- 번역 glossary는 **vocabulary(프리셋의 `vocabulary_id`) 단일 경로**. 레거시 파일 glossary(`active_glossary`/`save_glossary`/`glossaries/*.json`)는 제거됨. Rust `GlossaryEntry`는 Rust→Python 전송 wire 타입으로만 잔존.
-- 모델 선택은 **카탈로그가 아니라 매니페스트**에서 한다 (`commands_translate.rs`: `preset.llm_model` → `config.active_llm_model` → 첫 ready). 카탈로그는 그 뒤에 `n_gpu_layers`·`model_category`를 조회하는 용도라, 카탈로그에서 모델을 빼도 이미 설치된 모델은 계속 선택된다.
-- 자기정제 2-pass(`two_pass`)는 제거됨 — 같은 가중치가 두 번째 패스에서도 같은 편향을 낸다. 대체는 `preset.translation_mode = "pivot_2pass"`. config·preset의 `two_pass_translation` 필드도 함께 제거됐고, 옛 `config.json`에 남은 키는 무시된다(어느 구조체도 `deny_unknown_fields`를 쓰지 않음).
-- 라이선스: **PolyForm Noncommercial 1.0.0** (2026-07 MIT에서 재라이선스). 비상업 사용 자유, 상업적 사용은 별도 허가. 재배포 시 `LICENSE`의 `Required Notice:` 고지 포함 필수. 모델 카탈로그의 라이선스 기준(위)과는 별개.
-- **`%APPDATA%` JSON은 `utils::read_json_file`로 읽는다** (`config.json`·`presets.json`). `serde_json`은 BOM을 JSON으로 안 보고 `expected value at line 1 column 1`을 뱉는데, 이 파일을 건드릴 법한 Windows 도구들(PowerShell 5.1 `Set-Content -Encoding UTF8`, 메모장의 "UTF-8 with BOM")이 바로 그 BOM을 붙인다. 그래서 UTF-8 BOM은 벗겨내고, UTF-16(PS의 기본 `>` 리다이렉션)은 **인코딩을 지목하는 에러**로 거절한다 — 인코딩 추측은 남의 용어집을 깨먹는 방법이다. 파싱 실패 메시지에는 경로·줄·열이 들어간다.
-  - `add_preset`/`update_preset`/`remove_preset`은 전부 `load_presets()`를 먼저 부른다. 그래서 파일이 깨지면 **"프리셋 저장 실패"**로 보인다. 원인 문자열을 토스트 description으로 넘기지 않으면 (`usePresets.ts`의 `reason()`) 저장 버그를 쫓다가 시간을 버린다. 실제로 그랬다.
-- 앱 식별자: `LocalSub`, 데이터: `%APPDATA%/LocalSub/`
+- Python 서버는 애플리케이션 시작 시 자동으로 스폰됩니다. `commands_runtime.rs`의 3초 주기 폴링이 10회 연속 실패할 경우 `server-crashed` 이벤트를 브로드캐스트하며, `usePipeline.ts`가 활성 파이프라인을 `failed`로 전이합니다.
+- Rust 코어는 강제 자동 재시작 루프를 돌리지 않으며, 프론트엔드의 `useServerStatus.ts`가 `server-crashed` 이벤트 수신 후 3초 시점에 상태가 ERROR/STOPPED로 유지될 경우 `startServer()`를 원격 호출합니다 (의도적인 모델 스왑 재시작과의 경합 방지 가드 포함).
+- **표준 에러(stderr) 스트림 캡처**: Python 자식 프로세스의 stderr는 `%APPDATA%/LocalSub/logs/python-stderr.log`로 리다이렉트되어 캡처됩니다 (2MB 초과 시 `.1` 파일로 롤링). Uvicorn 액세스 로그로 인한 표준 출력 오염을 방지하기 위해 stdout은 null 스트림으로 처리합니다.
+- **`restart_server` 실패 상태 복원**: 서버 재시작 실패 시 반드시 `mark_server_failed`를 호출하여 상태를 ERROR로 전이시켜야 합니다. 상태 정리가 누락될 경우 사이드바 및 크래시 감지기가 비정상 고착될 수 있습니다.
+- **`state.app_config` 지연 로딩 (Lazy Loading)**: 애플리케이션 시작 시 프론트엔드가 `getConfig`와 `getModelManifest`를 병렬 호출할 때 발생할 수 있는 레이스 컨디션을 방지하기 위해, 설정 접근 명령은 `config_manager::ensure_loaded(&mut s)`를 호출하여 필요 시점에 안전하게 초기화합니다.
+
+## 8. 소프트웨어 공급망 무결성 정책 (Supply Chain Security Policy)
+
+LocalSub은 최초 실행 셋업 시 다운로드되는 모든 외부 바이너리 및 패키지에 대해 엄격한 암호학적 검증을 적용합니다 (`src-tauri/src/integrity.rs` 및 `resources/integrity.json`).
+
+1. **Python 패키지 폐포 무결성**:
+   - `python-server/requirements.lock`을 통해 모든 패키지(전이 의존성 포함)의 SHA-256 해시를 고정하고 `pip install --require-hashes`로 설치를 강제합니다.
+2. **`llama-cpp-python` 사전 컴파일 휠**:
+   - 사전 빌드된 휠을 공식 릴리스로부터 직접 다운로드하여 SHA-256 검증 후 `pip install --no-deps`로 설치합니다. GPU 감지 결과에 따라 CUDA 휠(`0.3.31-cu124`) 또는 CPU 휠(`0.3.28`)을 선택합니다.
+   - 휠 설치 시 `--upgrade` 옵션을 사용하지 않고 사전 제거 함수(`purge_installed_llama`)를 통해 기존 패키지 디렉토리 및 dist-info를 원자적으로 정리하여 파일 공유 충돌(Sharing Violation)을 방지합니다.
+3. **FFmpeg 배포 규정 및 GPL 준수**:
+   - FFmpeg 공식 Windows 빌드(GyanD/codexffmpeg 버전 태그 아카이브)를 업스트림으로부터 클라이언트가 직접 다운로드하도록 설계하여 제3자 미러링에 따른 GPLv3 전달자(Conveyer) 법적 의무를 배제합니다. 따라서 `FfmpegEntry`에는 미러 URL 필드가 존재하지 않으며, 임의의 미러 추가를 거부하는 단위 테스트(`bundled_ffmpeg_is_not_self_hosted`)가 유지됩니다.
+4. **MSVC C++ 재배포 패키지 거버넌스 (`vcredist.rs`)**:
+   - 임베디드 CPython 배포판에 포함되지 않은 네이티브 종속 DLL(`msvcp140.dll`, `vcomp140.dll` 등)의 부재로 인한 AI 백엔드 로드 실패를 방지하기 위해 시스템 전역 런타임 존재 여부를 `LoadLibraryExW(..., LOAD_LIBRARY_SEARCH_SYSTEM32)`로 정밀 검사합니다. 미설치 시 관리자 권한 상승(`Start-Process -Verb RunAs`)을 통해 공식 Microsoft CDN 고정 해시 인스톨러 설치를 안내합니다.
+5. **정적 로컬 경로 누출 방지 가드 (`scripts/check-no-local-paths.mjs`)**:
+   - 번들 리소스 및 Python 서버 소스코드 내에 개발자 로컬 절대 경로(`C:\Users\...`, `/home/...` 등)가 잔존할 경우 빌드를 강제 중단하는 정적 가드가 적용되어 있습니다.
+
+## 9. CI 및 회귀 방지 체계
+
+- GitHub Actions 워크플로(`.github/workflows/ci.yml`)는 프론트엔드 검증(`tsc`, `vitest`, `vite build`, `check:paths`), 락파일 무결성 검증(`requirements.lock` 해시 검증 및 requirements.txt 일치 검증), Python 전체 테스트 스위트(`python -m pytest -q .`)를 자동 실행합니다.
+- Rust 단위 테스트는 로컬 환경에서 `cd src-tauri && cargo test --lib` 명령을 통해 정기 검증합니다.
