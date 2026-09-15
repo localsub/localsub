@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 720" width="1240" height="720">
+  <defs>
+    <style>
+      .font-sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+      .title { font-weight: 700; font-size: 20px; fill: #f8fafc; }
+      .subtitle { font-weight: 400; font-size: 13px; fill: #64748b; }
+      .step-num { font-weight: 700; font-size: 11px; fill: #a5b4fc; }
+      .step-title { font-weight: 700; font-size: 13px; fill: #f8fafc; }
+      .step-desc { font-weight: 400; font-size: 11px; fill: #94a3b8; }
+      .conn-label { font-weight: 600; font-size: 10px; fill: #64748b; }
+    </style>
+    <marker id="pipe-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#818cf8" />
+    </marker>
+    <marker id="pipe-arrow-down" markerWidth="8" markerHeight="8" refX="4" refY="7" orient="auto">
+      <polygon points="0 0, 8 0, 4 7" fill="#818cf8" />
+    </marker>
+  </defs>
+
+  <!-- 캔버스 배경 -->
+  <rect id="canvas-bg" x="0" y="0" width="1240" height="720" rx="12" fill="#090d16" stroke="#1e293b" stroke-width="1.5" />
+
+  <!-- 문서 헤더 -->
+  <g id="header-group">
+    <text x="40" y="44" class="font-sans title">LocalSub — 자막 생성 및 신경망 기계번역 파이프라인 (Processing Pipeline)</text>
+    <text x="40" y="66" class="font-sans subtitle">오디오 입력부터 STT, VRAM 재할당 핸드오버, LLM 번역, 품질 게이트, 자막 출력까지의 엔드투엔드 데이터 흐름</text>
+  </g>
+
+  <!-- 상단 단계 1 ~ 3: 미디어 입력, STT 및 VAD, VRAM 핸드오버 -->
+  <g id="stage-1-input">
+    <rect id="box-stage-1" x="40" y="100" width="360" height="250" rx="10" fill="#111827" stroke="#0369a1" stroke-width="1.5" />
+    <rect id="badge-stage-1" x="56" y="116" width="58" height="22" rx="4" fill="#1e1b4b" />
+    <text x="64" y="131" class="font-sans step-num">단계 01</text>
+    <text x="124" y="132" class="font-sans step-title">미디어 입력 및 오디오 처리</text>
+    <text x="56" y="164" class="font-sans step-desc">• 미디어 파일 수신 (MP4, MKV, AVI, WAV 등)</text>
+    <text x="56" y="188" class="font-sans step-desc">• 미디어 재생 시간 분석 (ffprobe 기반 정밀 측정)</text>
+    <text x="56" y="212" class="font-sans step-desc">• 60분 초과 시 30분 오디오 청킹 (FFmpeg 분할)</text>
+    <text x="56" y="236" class="font-sans step-desc">• 60분 미만 시 PyAV 직접 디코딩 처리</text>
+    <text x="56" y="260" class="font-sans step-desc">• 16kHz 모노 오디오 버퍼 변환 생성</text>
+    <text x="56" y="284" class="font-sans step-desc">• 체크포인트 파일 초기화 (장애 복원 대비)</text>
+    <text x="56" y="308" class="font-sans step-desc">• Rust 작업 큐 등록 (JobStatus::Starting)</text>
+  </g>
+
+  <!-- 1 -> 2 화살표 -->
+  <line x1="400" y1="225" x2="438" y2="225" stroke="#818cf8" stroke-width="2" marker-end="url(#pipe-arrow)" />
+
+  <g id="stage-2-stt">
+    <rect id="box-stage-2" x="440" y="100" width="360" height="250" rx="10" fill="#111827" stroke="#15803d" stroke-width="1.5" />
+    <rect id="badge-stage-2" x="456" y="116" width="58" height="22" rx="4" fill="#1e1b4b" />
+    <text x="464" y="131" class="font-sans step-num">단계 02</text>
+    <text x="524" y="132" class="font-sans step-title">음성 인식 및 화자 분리</text>
+    <text x="456" y="164" class="font-sans step-desc">• faster-whisper (CTranslate2) 추론 가속</text>
+    <text x="456" y="188" class="font-sans step-desc">• Silero VAD 적용 (비발화 구간 필터링)</text>
+    <text x="456" y="212" class="font-sans step-desc">• 7개 언어 자동 감지 (초기 30초 오디오 분석)</text>
+    <text x="456" y="236" class="font-sans step-desc">• 타임스탬프 세그먼트 생성 (Start, End)</text>
+    <text x="456" y="260" class="font-sans step-desc">• ONNX Runtime 음향 임베딩 추출</text>
+    <text x="456" y="284" class="font-sans step-desc">• scikit-learn 응집 군집화 기반 화자 분리</text>
+    <text x="456" y="308" class="font-sans step-desc">• SSE 스트림 실시간 방출 (stt-segment 이벤트)</text>
+  </g>
+
+  <!-- 2 -> 3 화살표 -->
+  <line x1="800" y1="225" x2="838" y2="225" stroke="#818cf8" stroke-width="2" marker-end="url(#pipe-arrow)" />
+
+  <g id="stage-3-vram">
+    <rect id="box-stage-3" x="840" y="100" width="360" height="250" rx="10" fill="#111827" stroke="#b45309" stroke-width="1.5" />
+    <rect id="badge-stage-3" x="856" y="116" width="58" height="22" rx="4" fill="#1e1b4b" />
+    <text x="864" y="131" class="font-sans step-num">단계 03</text>
+    <text x="924" y="132" class="font-sans step-title">VRAM 재할당 핸드오버</text>
+    <text x="856" y="164" class="font-sans step-desc">• Whisper 런타임 세그폴트 방지 정책 적용</text>
+    <text x="856" y="188" class="font-sans step-desc">• Python 추론 서버 정상 재기동 (restart_server)</text>
+    <text x="856" y="212" class="font-sans step-desc">• Whisper 점유 VRAM 100% 완전 회수</text>
+    <text x="856" y="236" class="font-sans step-desc">• nvidia-smi 가용 VRAM &gt; 6GB 대기 (최대 20초)</text>
+    <text x="856" y="260" class="font-sans step-desc">• /health 헬스체크 정상 수신 대기</text>
+    <text x="856" y="284" class="font-sans step-desc">• 실패 시 mark_server_failed 상태 안전 복구</text>
+    <text x="856" y="308" class="font-sans step-desc">• llama-cpp-python 번역 엔진 VRAM 확보 완료</text>
+  </g>
+
+  <!-- 3단계에서 아래 4단계로 전이하는 연결선 -->
+  <path d="M 1020 350 L 1020 395 L 220 395 L 220 428" fill="none" stroke="#818cf8" stroke-width="2" marker-end="url(#pipe-arrow-down)" />
+  <rect id="card-pipe-conn" x="520" y="382" width="200" height="24" rx="4" fill="#111827" stroke="#1f293d" stroke-width="1" />
+  <text x="535" y="398" class="font-sans conn-label">세그먼트 전달 및 NMT 단계 진입</text>
+
+  <!-- 하단 단계 4 ~ 6: LLM 번역, 품질 게이트, 자막 출력 -->
+  <g id="stage-4-translate">
+    <rect id="box-stage-4" x="40" y="430" width="360" height="250" rx="10" fill="#111827" stroke="#7e22ce" stroke-width="1.5" />
+    <rect id="badge-stage-4" x="56" y="446" width="58" height="22" rx="4" fill="#1e1b4b" />
+    <text x="64" y="461" class="font-sans step-num">단계 04</text>
+    <text x="124" y="462" class="font-sans step-title">신경망 기계번역 (LLM)</text>
+    <text x="56" y="494" class="font-sans step-desc">• llama-cpp-python GGUF 양자화 모델 적재</text>
+    <text x="56" y="518" class="font-sans step-desc">• 세그먼트 단위 순차 번역 (배치 미사용)</text>
+    <text x="56" y="542" class="font-sans step-desc">• 컨텍스트 윈도우 주입 (±N 라인 문맥)</text>
+    <text x="56" y="566" class="font-sans step-desc">• 25개 세그먼트마다 롤링 요약 갱신</text>
+    <text x="56" y="590" class="font-sans step-desc">• 200개 세그먼트마다 요약 재생성 (Drift 방지)</text>
+    <text x="56" y="614" class="font-sans step-desc">• 용어집(Vocabulary) 강제 제약조건 주입</text>
+    <text x="56" y="638" class="font-sans step-desc">• 스타일 프리셋 적용 (자연스러운/격식체/직역)</text>
+  </g>
+
+  <!-- 4 -> 5 화살표 -->
+  <line x1="400" y1="555" x2="438" y2="555" stroke="#818cf8" stroke-width="2" marker-end="url(#pipe-arrow)" />
+
+  <g id="stage-5-gate">
+    <rect id="box-stage-5" x="440" y="430" width="360" height="250" rx="10" fill="#111827" stroke="#15803d" stroke-width="1.5" />
+    <rect id="badge-stage-5" x="456" y="446" width="58" height="22" rx="4" fill="#1e1b4b" />
+    <text x="464" y="461" class="font-sans step-num">단계 05</text>
+    <text x="524" y="462" class="font-sans step-title">다단계 품질 게이트 평가</text>
+    <text x="456" y="494" class="font-sans step-desc">• 1차: 구문 거부 직접 탐지 (_looks_like_refusal)</text>
+    <text x="456" y="518" class="font-sans step-desc">• 2차: 구조적 필터링 (quality_filters.py)</text>
+    <text x="456" y="542" class="font-sans step-desc">  - 스크립트 누출 탐지 (한글/영문/한자 불일치)</text>
+    <text x="456" y="566" class="font-sans step-desc">  - 텍스트 길이 폭증 및 퇴행적 반복 감지</text>
+    <text x="456" y="590" class="font-sans step-desc">• 3차: 의미론적 임베딩 게이트 (embedding_gate.py)</text>
+    <text x="456" y="614" class="font-sans step-desc">• 불량 판정 시: 고온도(High Temp) 1회 재시도</text>
+    <text x="456" y="638" class="font-sans step-desc">• 재시도 실패 시 이상 플래그 부여 및 보존</text>
+  </g>
+
+  <!-- 5 -> 6 화살표 -->
+  <line x1="800" y1="555" x2="838" y2="555" stroke="#818cf8" stroke-width="2" marker-end="url(#pipe-arrow)" />
+
+  <g id="stage-6-export">
+    <rect id="box-stage-6" x="840" y="430" width="360" height="250" rx="10" fill="#111827" stroke="#0369a1" stroke-width="1.5" />
+    <rect id="badge-stage-6" x="856" y="446" width="58" height="22" rx="4" fill="#1e1b4b" />
+    <text x="864" y="461" class="font-sans step-num">단계 06</text>
+    <text x="924" y="462" class="font-sans step-title">자막 편집 및 다중 포맷 출력</text>
+    <text x="856" y="494" class="font-sans step-desc">• 에디터 내 플래그 세그먼트 시각적 하이라이트</text>
+    <text x="856" y="518" class="font-sans step-desc">• 개별 라인 재번역 및 일괄 재번역 지원</text>
+    <text x="856" y="542" class="font-sans step-desc">• 타임코드 시프트 및 세그먼트 분할/병합</text>
+    <text x="856" y="566" class="font-sans step-desc">• 표준 SRT (SubRip) 규격 파일 출력</text>
+    <text x="856" y="590" class="font-sans step-desc">• WebVTT (HTML5 웹 비디오) 규격 파일 출력</text>
+    <text x="856" y="614" class="font-sans step-desc">• ASS (Advanced SubStation Alpha) 스타일 출력</text>
+    <text x="856" y="638" class="font-sans step-desc">• 원문 + 번역문 통합 이중 언어 자막 완벽 지원</text>
+  </g>
+</svg>

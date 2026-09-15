@@ -12,6 +12,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "generate-icons": "node scripts/generate-icons.mjs",
+    "generate-diagrams": "node scripts/generate-diagrams.mjs",
+    "verify-diagrams": "node scripts/verify-diagrams.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
