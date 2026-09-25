@@ -173,7 +173,7 @@ function generateArchitectureSvg(theme) {
       <text x="410" y="512" class="font-sans card-body">• stt_engine.py : faster-whisper 래퍼 (Silero VAD, 30분 오디오 청킹)</text>
       <text x="410" y="534" class="font-sans card-body">• llm_engine.py : llama-cpp-python 번역 (세그먼트 단위 순차 추론)</text>
       <text x="410" y="556" class="font-sans card-body">• diarization_engine.py : 화자 분리 (ONNX 임베딩 + scikit-learn 군집화)</text>
-      <text x="410" y="578" class="font-sans card-body">• prompt_builder.py : 25/200 롤링 요약 및 용어집 강제 제약조건 주입</text>
+      <text x="410" y="578" class="font-sans card-body">• prompt_builder.py : 용어집·직전 번역 few-shot 턴 및 시스템 프롬프트 구성</text>
     </g>
 
     <!-- 2-3. 품질 게이트 필터 체계 -->
@@ -311,11 +311,10 @@ function generatePipelineSvg(theme) {
     <text x="124" y="462" class="font-sans step-title">신경망 기계번역 (LLM)</text>
     <text x="56" y="494" class="font-sans step-desc">• llama-cpp-python GGUF 양자화 모델 적재</text>
     <text x="56" y="518" class="font-sans step-desc">• 세그먼트 단위 순차 번역 (배치 미사용)</text>
-    <text x="56" y="542" class="font-sans step-desc">• 컨텍스트 윈도우 주입 (±N 라인 문맥)</text>
-    <text x="56" y="566" class="font-sans step-desc">• 25개 세그먼트마다 롤링 요약 갱신</text>
-    <text x="56" y="590" class="font-sans step-desc">• 200개 세그먼트마다 요약 재생성 (Drift 방지)</text>
-    <text x="56" y="614" class="font-sans step-desc">• 용어집(Vocabulary) 강제 제약조건 주입</text>
-    <text x="56" y="638" class="font-sans step-desc">• 스타일 프리셋 적용 (자연스러운/격식체/직역)</text>
+    <text x="56" y="542" class="font-sans step-desc">• 세그먼트 원문만 입력 (앞뒤 문맥 미주입)</text>
+    <text x="56" y="566" class="font-sans step-desc">• 직전 번역 3건을 few-shot 대화 턴으로 주입</text>
+    <text x="56" y="590" class="font-sans step-desc">• 용어집(Vocabulary) 강제 제약조건 주입</text>
+    <text x="56" y="614" class="font-sans step-desc">• 스타일 프리셋 적용 (자연스러운/격식체/직역)</text>
   </g>
 
   <!-- 4 -> 5 화살표 -->

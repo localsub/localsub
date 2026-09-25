@@ -73,7 +73,7 @@ The processing pipeline isolates system resources and enforces stage-by-stage va
 
 1. **Transcription & VAD** — faster-whisper extracts timestamped speech segments. Media exceeding 60 minutes is partitioned by FFmpeg into 30-minute audio chunks to prevent memory exhaustion.
 2. **VRAM Reallocation Handover** — The Python inference server subprocess is gracefully restarted between pipeline stages to reclaim 100% of the VRAM allocated to Whisper before loading the LLM.
-3. **Neural Machine Translation & Rolling Summary** — llama-cpp-python performs segment-by-segment translation. A rolling summary updated every 25 segments maintains long-range contextual coherence.
+3. **Neural Machine Translation** — llama-cpp-python performs segment-by-segment translation. To keep small (≤9B) models from hallucinating, each prompt carries only the current segment, the glossary, and the three most recent translations as few-shot examples.
 4. **Multi-Stage Quality Gate** — Every generated segment is evaluated by structural filters (script leakage, off-target language, degenerative repetition) and a semantic refusal embedding gate. Defective outputs trigger an automated high-temperature retry and anomaly flagging.
 5. **Export & Dual Subtitles** — Verified segments are reviewed and exported into SRT, VTT, ASS, or TXT formats, with comprehensive support for dual-language alignment.
 
