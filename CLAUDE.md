@@ -84,7 +84,7 @@ python-server/        # FastAPI 기반 AI 추론 서버
   translate_router.py # 번역 REST/SSE API 라우터
 docs/                 # 시스템 설계 문서, 규격 사양서, 다이어그램, 기술 용어 사전
   glossary.md         # 정본 표준 기술 용어 사전
-  specs/SPEC.md       # 시스템 요구사항 명세서 (FR/NFR/Architecture)
+  specs/SPEC.md       # 시스템 요구사항 명세서 — 로컬 전용(gitignore), 공개 저장소에는 없음. 공개 문서에서 링크 금지
   diagrams/           # 아키텍처 및 파이프라인 SVG 다이어그램
 ```
 
@@ -120,7 +120,7 @@ Whisper 모델 구동에는 `model.bin`, `config.json`, `tokenizer.json`, `vocab
 1. `_looks_like_refusal`: 구문 기반 직접 거부 패턴 검출 (모델별 취약성 대응)
 2. `quality_filters`: 모델 무관 구조적 필터링 (스크립트 누출, 언어 불일치, 토큰 길이 비정상 폭증, 퇴행적 반복)
 3. `embedding_gate`: 최종 의미론적 거부 감지 (임베딩 벡터 코사인 유사도 판별)
-- 환경변수 `LOCALSUB_DISABLE_EMBED_GATE` 설정 시 임베딩 게이트를 비활성화할 수 있으며, 모델 파일(~250MB) 부재 시 안전하게 no-op 처리됩니다.
+- 환경변수 `LOCALSUB_DISABLE_EMBED_GATE`에 비어 있지 않은 값을 설정하면(`0` 포함) 임베딩 게이트를 비활성화합니다. 모델 파일(~250MB)이 없으면 번역 작업 시작 시 Hugging Face에서 SHA-256 고정으로 자동 다운로드하며, 다운로드·로드에 실패한 경우에만 no-op으로 전환됩니다(서버가 재시작될 때까지 유지).
 
 > **`translation_mode` 식별자의 문맥별 다의성 주의사항**:
 > - `config.translation_mode`: `"local"` / `"off"` (시스템 전역 번역 기능 활성화 여부 제어)

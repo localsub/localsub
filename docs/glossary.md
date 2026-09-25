@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | **음성 인식**<br/>(Speech-to-Text) | STT | 오디오 스트림의 음향 신호를 시계열 텍스트 토큰 및 타임스탬프 세그먼트로 변환하는 공정. CTranslate2 가속 엔진 기반 faster-whisper를 사용. | `stt_engine.py`<br/>`commands_stt.rs` | 받아쓰기, 음성 타이핑, 알아듣기 |
 | **음성 활동 감지**<br/>(Voice Activity Detection) | VAD | 오디오 신호 내에서 비음성 구간(침묵, 배경 잡음)과 유효 발화 구간을 분리 판별하는 전처리 공정. faster-whisper 내장 Silero VAD 적용 (`vad_filter=True`). | `stt_engine.py` | 음성 필터링, 말소리 골라내기 |
-| **화자 분리**<br/>(Speaker Diarization) | - | "누가 언제 발화했는가"를 기준으로 오디오 구간을 발화자별 세그먼트로 분할하고 클러스터링하는 공정. ONNX Runtime 음향 임베딩 추출 및 scikit-learn 응집 군집화(Agglomerative Clustering) 알고리즘 수행. | `diarization_engine.py`<br/>`src/lib/diarization.ts` | 화자 나누기, 목소리 구분, 발화자 쪼개기 |
+| **화자 분리**<br/>(Speaker Diarization) | - | "누가 언제 발화했는가"를 기준으로 오디오 구간을 발화자별 세그먼트로 분할하고 클러스터링하는 공정. ONNX Runtime 음향 임베딩 추출 및 scikit-learn 응집 군집화(Agglomerative Clustering) 알고리즘 수행. | `diarization_engine.py`<br/>`commands_diarization.rs` | 화자 나누기, 목소리 구분, 발화자 쪼개기 |
 | **신경망 기계번역**<br/>(Neural Machine Translation) | NMT / Translation | 거대 언어 모델(LLM)을 활용하여 원천 언어(Source) 자막 세그먼트를 목표 언어(Target) 문맥에 부합하도록 변환하는 공정. | `llm_engine.py`<br/>`commands_translate.rs` | 말 바꾸기, 자동 번역기 |
 | **거대 언어 모델**<br/>(Large Language Model) | LLM | 트랜스포머 디코더 기반 언어 모델(Qwen3 등). 로컬 환경에서 llama-cpp-python을 통해 구동. | `llm_engine.py`<br/>`model_catalog.json` | 인공지능 두뇌, 생각하는 기계 |
 | **가중치 양자화**<br/>(Weight Quantization) | - | 16비트 부동소수점(FP16) 모델 가중치를 정수 단위(Q4_K_M, Q5_K_M, Q8_0 등)로 축소하여 메모리 점유율을 줄이고 추론 속도를 최적화하는 기법. GGUF 포맷 사용. | `model_catalog.json`<br/>`SPEC.md` | 모델 압축, 용량 줄이기 |

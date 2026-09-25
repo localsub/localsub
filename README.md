@@ -77,7 +77,7 @@ The processing pipeline isolates system resources and enforces stage-by-stage va
 4. **Multi-Stage Quality Gate** — Every generated segment is evaluated by structural filters (script leakage, off-target language, degenerative repetition) and a semantic refusal embedding gate. Defective outputs trigger an automated high-temperature retry and anomaly flagging.
 5. **Export & Dual Subtitles** — Verified segments are reviewed and exported into SRT, VTT, ASS, or TXT formats, with comprehensive support for dual-language alignment.
 
-> For architectural specifications, refer to [SPEC.md](docs/specs/SPEC.md); for diagrams, see [docs/diagrams/](docs/diagrams/); for terminology, consult [docs/glossary.md](docs/glossary.md).
+> For architecture diagrams, see [docs/diagrams/](docs/diagrams/); for engineering conventions, [CLAUDE.md](CLAUDE.md); for terminology, [docs/glossary.md](docs/glossary.md).
 
 ## System Requirements
 
