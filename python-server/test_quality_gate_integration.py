@@ -71,7 +71,6 @@ def test_quality_gate_retry_recover_and_flag():
             target_lang="ko",
             translation_quality="balanced",
             model_id="mock-model",
-            media_context="A test scene.",  # provided -> skip context inference
         )
 
         async def _run():
