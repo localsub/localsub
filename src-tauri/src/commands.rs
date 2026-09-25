@@ -125,7 +125,7 @@ pub async fn start_server(
 
         match python_manager::spawn_python_server(&app, port) {
             Ok(child) => {
-                s.server_process = Some(child);
+                python_manager::replace_server_process(&mut s.server_process, child);
             }
             Err(e) => {
                 s.server_status = ServerStatus::ERROR;
@@ -182,7 +182,7 @@ pub async fn start_server(
 /// auto-restart never runs. `start_server` then refuses with "already running
 /// or starting" and the sidebar's click-to-restart only reacts to
 /// ERROR/STOPPED — every recovery path shut until the app is relaunched.
-fn mark_server_failed(s: &mut crate::state::AppState) {
+pub(crate) fn mark_server_failed(s: &mut crate::state::AppState) {
     s.server_status = ServerStatus::ERROR;
     s.model_loading = false;
     if let Some(ref mut child) = s.server_process {
@@ -237,7 +237,7 @@ pub async fn restart_server(
         let mut s = state.lock().expect("Failed to lock state");
         // Spawn new server
         match python_manager::spawn_python_server(&app, port) {
-            Ok(child) => { s.server_process = Some(child); }
+            Ok(child) => python_manager::replace_server_process(&mut s.server_process, child),
             Err(e) => {
                 mark_server_failed(&mut s);
                 let _ = app.emit("server-status", &s.server_status);

@@ -233,7 +233,10 @@ pub fn start_resource_polling(app: AppHandle, port: u16) -> CancellationToken {
                 log::error!("Server health check failed 10 times consecutively, emitting server-crashed");
                 let state = app.state::<SharedState>();
                 if let Ok(mut s) = state.lock() {
-                    s.server_status = crate::state::ServerStatus::ERROR;
+                    // Kill it as well: "crashed" may only mean hung, and a hung
+                    // server keeps port 9111 and its VRAM from the one the
+                    // frontend starts next.
+                    crate::commands::mark_server_failed(&mut s);
                     s.runtime_status = RuntimeStatus::default();
                 }
                 let _ = app.emit("server-status", "ERROR");
