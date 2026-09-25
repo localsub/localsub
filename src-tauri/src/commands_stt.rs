@@ -138,33 +138,7 @@ pub async fn start_stt(
         body["end_time"] = serde_json::json!(et);
     }
 
-    // Signal model loading (suppresses health check false alarms)
-    {
-        let mut s = state.lock().map_err(|e| AppError::InvalidState(format!("Lock error: {}", e)))?;
-        s.model_loading = true;
-    }
-
-    // POST /stt/start
-    let client = reqwest::Client::new();
-    let resp = client
-        .post(format!("http://127.0.0.1:{}/stt/start", port))
-        .json(&body)
-        .send()
-        .await?;
-
-    if !resp.status().is_success() {
-        let text = resp.text().await.unwrap_or_default();
-        return Err(AppError::PythonServer(format!(
-            "STT start failed: {}",
-            text
-        )));
-    }
-
-    let resp_body: serde_json::Value = resp.json().await?;
-    let job_id = resp_body["job_id"]
-        .as_str()
-        .ok_or_else(|| AppError::PythonServer("Invalid response: missing job_id".into()))?
-        .to_string();
+    let job_id = request_stt_start(state.inner(), port, &body).await?;
 
     let job = Job::new(job_id.clone(), file_path);
 
@@ -199,6 +173,54 @@ pub async fn start_stt(
     });
 
     Ok(job)
+}
+
+/// POST /stt/start with `model_loading` raised, so the health checker does not
+/// mistake the model load that follows for a crash. A start that fails lowers
+/// it again: nothing is loading, and a flag left up keeps the crash detector
+/// muted until something else happens to clear it.
+async fn request_stt_start(
+    state: &SharedState,
+    port: u16,
+    body: &serde_json::Value,
+) -> Result<String, AppError> {
+    // Signal model loading (suppresses health check false alarms)
+    {
+        let mut s = state.lock().map_err(|e| AppError::InvalidState(format!("Lock error: {}", e)))?;
+        s.model_loading = true;
+    }
+
+    let started = post_stt_start(port, body).await;
+    if started.is_err() {
+        if let Ok(mut s) = state.lock() {
+            s.model_loading = false;
+        }
+    }
+    started
+}
+
+async fn post_stt_start(port: u16, body: &serde_json::Value) -> Result<String, AppError> {
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(format!("http://127.0.0.1:{}/stt/start", port))
+        .json(body)
+        .send()
+        .await?;
+
+    if !resp.status().is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        return Err(AppError::PythonServer(format!(
+            "STT start failed: {}",
+            text
+        )));
+    }
+
+    let resp_body: serde_json::Value = resp.json().await?;
+    let job_id = resp_body["job_id"]
+        .as_str()
+        .ok_or_else(|| AppError::PythonServer("Invalid response: missing job_id".into()))?
+        .to_string();
+    Ok(job_id)
 }
 
 #[tauri::command]
@@ -240,4 +262,76 @@ pub async fn cancel_stt(
     }
 
     Ok(())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::AppState;
+    use std::sync::Mutex;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+
+    /// A one-shot HTTP server that answers the first request with `response`.
+    async fn answer_once(response: &'static str) -> u16 {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            let (mut sock, _) = listener.accept().await.unwrap();
+            let mut buf = [0u8; 4096];
+            let _ = sock.read(&mut buf).await;
+            let _ = sock.write_all(response.as_bytes()).await;
+        });
+        port
+    }
+
+    fn loading(state: &SharedState) -> bool {
+        state.lock().unwrap().model_loading
+    }
+
+    // model_loading mutes the crash detector. A start that failed has nothing
+    // loading, and leaving the flag up kept crashes undetected until the next
+    // successful STT start or server restart happened to clear it.
+    #[tokio::test]
+    async fn a_refused_start_lowers_model_loading() {
+        let port = {
+            let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            l.local_addr().unwrap().port()
+        }; // listener dropped: connections to it are refused
+        let state: SharedState = Mutex::new(AppState::default());
+
+        let result = request_stt_start(&state, port, &serde_json::json!({})).await;
+
+        assert!(result.is_err());
+        assert!(!loading(&state), "model_loading left raised after a failed start");
+    }
+
+    #[tokio::test]
+    async fn a_rejected_start_lowers_model_loading() {
+        let port = answer_once(
+            "HTTP/1.1 400 Bad Request\r\nContent-Length: 2\r\nConnection: close\r\n\r\nno",
+        )
+        .await;
+        let state: SharedState = Mutex::new(AppState::default());
+
+        let result = request_stt_start(&state, port, &serde_json::json!({})).await;
+
+        assert!(result.is_err());
+        assert!(!loading(&state), "model_loading left raised after a failed start");
+    }
+
+    #[tokio::test]
+    async fn a_started_job_keeps_model_loading_for_the_load_that_follows() {
+        let port = answer_once(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 16\r\nConnection: close\r\n\r\n{\"job_id\":\"j-1\"}",
+        )
+        .await;
+        let state: SharedState = Mutex::new(AppState::default());
+
+        let job_id = request_stt_start(&state, port, &serde_json::json!({})).await.unwrap();
+
+        assert_eq!(job_id, "j-1");
+        assert!(loading(&state));
+    }
 }
