@@ -489,7 +489,7 @@ export function DashboardPage({
                             <DropdownMenuSeparator />
                           </>
                         )}
-                        {(job.status === "failed" || job.status === "processing") && onRetryJob && (
+                        {job.status === "failed" && onRetryJob && (
                           <>
                             <DropdownMenuItem
                               onClick={(e) => { e.stopPropagation(); onRetryJob(job.id) }}
