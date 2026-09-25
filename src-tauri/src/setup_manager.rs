@@ -982,6 +982,10 @@ fn run_cuda_selftest(app: &AppHandle) -> bool {
     for (k, v) in &env_vars {
         cmd.env(k, v);
     }
+    // Test the GPU the server will be pinned to, not whatever CUDA lists first.
+    for (k, v) in crate::gpu::pinning_env(crate::gpu::selected().as_ref()) {
+        cmd.env(k, v);
+    }
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     #[cfg(target_os = "windows")]
     {

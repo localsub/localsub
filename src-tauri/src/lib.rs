@@ -19,6 +19,7 @@ mod config_manager;
 mod csv_reader;
 mod contracts;
 mod error;
+mod gpu;
 mod hw_detector;
 mod integrity;
 mod job;

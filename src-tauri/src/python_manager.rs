@@ -51,6 +51,14 @@ pub fn spawn_python_server(app: &AppHandle, _port: u16) -> Result<Child, AppErro
     for (k, v) in &env_vars {
         cmd.env(k, v);
     }
+    // One GPU for the whole server — see gpu.rs.
+    let gpu = crate::gpu::selected();
+    if let Some(g) = &gpu {
+        log::info!("Pinning the Python server to GPU {} ({}, {} MB, {})", g.index, g.name, g.memory_total_mb, g.uuid);
+    }
+    for (k, v) in crate::gpu::pinning_env(gpu.as_ref()) {
+        cmd.env(k, v);
+    }
 
     #[cfg(target_os = "windows")]
     {
