@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { SttSegment } from "../types";
 import { startStt, cancelStt, startTranslate, cancelTranslate } from "../lib/tauriApi";
 import { cleanSttSegments } from "../lib/sttCleaner";
+import i18n from "../i18n";
 
 export type PreviewPhase = "idle" | "stt" | "translating" | "done" | "error";
 
@@ -27,6 +28,17 @@ interface TranslateSegmentEvent {
   index: number;
   original: string;
   translated: string;
+}
+
+/**
+ * The backend's only progress signal: sse_client.rs folds the Python
+ * *_progress messages into the job and emits it as `job-updated`.
+ */
+interface JobUpdatedEvent {
+  id: string;
+  state: string;
+  progress?: number;
+  message?: string;
 }
 
 export function usePreviewPipeline() {
@@ -84,7 +96,7 @@ export function usePreviewPipeline() {
       // Full run: STT + Translation
       setPhase("stt");
       setProgress(0);
-      setMessage("STT 시작...");
+      setMessage(i18n.t("dashboard.newJob.preview.statusStt"));
       setResults([]);
       setError(null);
       cachedSegmentsRef.current = [];
@@ -105,28 +117,19 @@ export function usePreviewPipeline() {
         });
         unlistenersRef.current.push(unlistenSeg);
 
-        const unlistenProgress = await listen<{ job_id: string; progress: number; message: string }>(
-          "stt-progress",
-          (event) => {
-            if (event.payload.job_id === sttJobIdRef.current) {
-              setProgress(event.payload.progress);
-              setMessage(event.payload.message);
-            }
-          }
-        );
-        unlistenersRef.current.push(unlistenProgress);
-
         // Start STT with time range
         const sttJob = await startStt(filePath, undefined, startTime, endTime, presetId);
         sttJobIdRef.current = sttJob.id;
 
         // Wait for STT completion via job-updated event
         await new Promise<void>((resolve, reject) => {
-          const listenPromise = listen<{ id: string; state: string; message?: string }>(
+          const listenPromise = listen<JobUpdatedEvent>(
             "job-updated",
             (event) => {
               if (event.payload.id === sttJobIdRef.current) {
-                if (event.payload.state === "DONE") {
+                if (event.payload.state === "RUNNING" && typeof event.payload.progress === "number") {
+                  setProgress(Math.round(event.payload.progress));
+                } else if (event.payload.state === "DONE") {
                   resolve();
                 } else if (event.payload.state === "FAILED") {
                   reject(new Error(event.payload.message || "STT failed"));
@@ -163,7 +166,7 @@ export function usePreviewPipeline() {
     async (presetId: string) => {
       setPhase("translating");
       setProgress(0);
-      setMessage("번역 시작...");
+      setMessage(i18n.t("dashboard.newJob.preview.statusTranslating"));
       setError(null);
 
       const segments = cachedSegmentsRef.current;
@@ -201,28 +204,19 @@ export function usePreviewPipeline() {
         );
         unlistenersRef.current.push(unlistenSeg);
 
-        const unlistenProgress = await listen<{ job_id: string; progress: number; message: string }>(
-          "translate-progress",
-          (event) => {
-            if (event.payload.job_id === translateJobIdRef.current) {
-              setProgress(event.payload.progress);
-              setMessage(event.payload.message);
-            }
-          }
-        );
-        unlistenersRef.current.push(unlistenProgress);
-
         // Start translation
         const translateJob = await startTranslate(segments, presetId);
         translateJobIdRef.current = translateJob.id;
 
         // Wait for completion
         await new Promise<void>((resolve, reject) => {
-          const listenPromise = listen<{ id: string; state: string; message?: string }>(
+          const listenPromise = listen<JobUpdatedEvent>(
             "job-updated",
             (event) => {
               if (event.payload.id === translateJobIdRef.current) {
-                if (event.payload.state === "DONE") {
+                if (event.payload.state === "RUNNING" && typeof event.payload.progress === "number") {
+                  setProgress(Math.round(event.payload.progress));
+                } else if (event.payload.state === "DONE") {
                   resolve();
                 } else if (event.payload.state === "FAILED") {
                   reject(new Error(event.payload.message || "Translation failed"));
@@ -238,7 +232,7 @@ export function usePreviewPipeline() {
         translateJobIdRef.current = null;
         setPhase("done");
         setProgress(100);
-        setMessage("완료");
+        setMessage(i18n.t("dashboard.newJob.preview.statusDone"));
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (msg !== "Cancelled") {

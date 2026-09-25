@@ -120,7 +120,10 @@
         "save": "保存",
         "saving": "保存中...",
         "filesSelected": "{{count}}件のファイルを選択",
-        "clickToAdd": "— クリックして追加"
+        "clickToAdd": "— クリックして追加",
+        "statusStt": "文字起こし中...",
+        "statusTranslating": "翻訳中...",
+        "statusDone": "完了"
       },
       "ffmpegMissing": "FFmpeg がありません。60分を超える動画はチャンクに分割されません。"
     }

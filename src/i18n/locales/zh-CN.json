@@ -120,7 +120,10 @@
         "save": "保存",
         "saving": "保存中...",
         "filesSelected": "已选择{{count}}个文件",
-        "clickToAdd": "— 点击添加更多"
+        "clickToAdd": "— 点击添加更多",
+        "statusStt": "语音识别中...",
+        "statusTranslating": "翻译中...",
+        "statusDone": "完成"
       },
       "ffmpegMissing": "缺少 FFmpeg。超过 60 分钟的视频将不会分块处理。"
     }

@@ -120,7 +120,10 @@
         "save": "Guardar",
         "saving": "Guardando...",
         "filesSelected": "{{count}} archivo(s) seleccionado(s)",
-        "clickToAdd": "— clic para agregar más"
+        "clickToAdd": "— clic para agregar más",
+        "statusStt": "Transcribiendo...",
+        "statusTranslating": "Traduciendo...",
+        "statusDone": "Listo"
       },
       "ffmpegMissing": "Falta FFmpeg. Los vídeos de más de 60 minutos no se dividirán en fragmentos."
     }
