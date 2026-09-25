@@ -95,7 +95,10 @@ function App() {
 
   // ── Job queue ──
   const queueRef = useRef<QueueEntry[]>([]);
-  const activeCountRef = useRef(0);
+  // Jobs holding the (single) GPU slot. A set, not a count: releasing a slot
+  // is idempotent, so a job reported finished twice — or finishing after it
+  // was removed — can never free a slot that another job now holds.
+  const activeJobsRef = useRef<Set<string>>(new Set());
   // 이어서 번역 중복 진입 가드 (잡 상태 갱신 전 비동기 구간 보호)
   const resumeInFlightRef = useRef<Set<string>>(new Set());
   // 재시도 중복 진입 가드 — 자막 로드(await) 동안 같은 잡이 두 번 큐에 들어가지 않게
@@ -151,7 +154,7 @@ function App() {
           next.delete(jobId);
           return next;
         });
-        activeCountRef.current = Math.max(0, activeCountRef.current - 1);
+        activeJobsRef.current.delete(jobId);
         // Use setTimeout to ensure drainQueue runs after state updates
         setTimeout(() => drainQueueRef.current(), 0);
       }
@@ -167,13 +170,13 @@ function App() {
     });
   }, []);
 
-  const { processJob, retryTranslation } = usePipeline(handleJobUpdate, handleLiveSegments);
+  const { processJob, retryTranslation, abandonJob } = usePipeline(handleJobUpdate, handleLiveSegments);
 
   const drainQueue = useCallback(() => {
     // GPU pipeline must run one at a time (VRAM shared between STT and LLM)
-    while (queueRef.current.length > 0 && activeCountRef.current < 1) {
+    while (queueRef.current.length > 0 && activeJobsRef.current.size < 1) {
       const entry = queueRef.current.shift()!;
-      activeCountRef.current++;
+      activeJobsRef.current.add(entry.jobId);
       if (entry.retranslate) {
         retryTranslation(entry.jobId, entry.retranslate, entry.presetId, { filePath: entry.filePath });
       } else {
@@ -295,15 +298,20 @@ function App() {
 
   const handleRemoveJob = useCallback((id: string) => {
     queueRef.current = queueRef.current.filter((e) => e.jobId !== id);
-    setDashboardJobs((prev) => {
-      const job = prev.find((j) => j.id === id);
-      if (job && job.status === "processing") {
-        activeCountRef.current = Math.max(0, activeCountRef.current - 1);
-        setTimeout(() => drainQueueRef.current(), 0);
-      }
-      return prev.filter((j) => j.id !== id);
+    // Stop a running job's pipeline before its slot goes to the next job: left
+    // running, it would restart the server under that job once it reached
+    // translation, and free the slot a second time when it finished.
+    abandonJob(id).then(() => {
+      if (activeJobsRef.current.delete(id)) drainQueueRef.current();
     });
-  }, []);
+    setLiveLines((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+    setDashboardJobs((prev) => prev.filter((j) => j.id !== id));
+  }, [abandonJob]);
 
   const handleRetryJob = useCallback(
     async (jobId: string) => {
@@ -392,7 +400,7 @@ function App() {
 
       // GPU 파이프라인은 동시 1개 — 다른 잡 실행 중 재개하면 chainTranslation의
       // restartServer()가 그 잡의 서버 작업을 죽인다. 끝난 뒤 재개하도록 안내.
-      if (activeCountRef.current >= 1) {
+      if (activeJobsRef.current.size >= 1) {
         toastError(t("toast.resumeBusy"));
         resumeInFlightRef.current.delete(jobId);
         return;
@@ -403,7 +411,7 @@ function App() {
       const baseLines = existing.filter(isTranslated);
       const remaining = existing.filter((l) => !isTranslated(l));
 
-      activeCountRef.current++;
+      activeJobsRef.current.add(jobId);
       setDashboardJobs((prev) =>
         prev.map((j) =>
           j.id === jobId
