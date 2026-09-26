@@ -2,7 +2,6 @@
 
 from prompt_builder import (
     build_system_prompt,
-    _format_timestamp,
     build_user_prompt,
     build_messages,
 )
@@ -38,17 +37,6 @@ def test_build_system_prompt_unknown_style():
     assert "English" in prompt
     assert "Korean" in prompt
     assert "translate" in prompt.lower()
-
-
-# ── _format_timestamp ─────────────────────────────────────────────
-
-
-def test_format_timestamp_zero():
-    assert _format_timestamp(0.0) == "00:00:00"
-
-
-def test_format_timestamp_complex():
-    assert _format_timestamp(3661.0) == "01:01:01"
 
 
 # ── build_user_prompt ─────────────────────────────────────────────

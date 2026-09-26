@@ -15,8 +15,7 @@
 | **신경망 기계번역**<br/>(Neural Machine Translation) | NMT / Translation | 거대 언어 모델(LLM)을 활용하여 원천 언어(Source) 자막 세그먼트를 목표 언어(Target) 문맥에 부합하도록 변환하는 공정. | `llm_engine.py`<br/>`commands_translate.rs` | 말 바꾸기, 자동 번역기 |
 | **거대 언어 모델**<br/>(Large Language Model) | LLM | 트랜스포머 디코더 기반 언어 모델(Qwen3 등). 로컬 환경에서 llama-cpp-python을 통해 구동. | `llm_engine.py`<br/>`model_catalog.json` | 인공지능 두뇌, 생각하는 기계 |
 | **가중치 양자화**<br/>(Weight Quantization) | - | 16비트 부동소수점(FP16) 모델 가중치를 정수 단위(Q4_K_M, Q5_K_M, Q8_0 등)로 축소하여 메모리 점유율을 줄이고 추론 속도를 최적화하는 기법. GGUF 포맷 사용. | `model_catalog.json`<br/>`SPEC.md` | 모델 압축, 용량 줄이기 |
-| **컨텍스트 윈도우**<br/>(Context Window) | - | 번역 품질과 문맥 일관성을 유지하기 위해 현재 세그먼트와 함께 LLM 프롬프트에 주입되는 이전 세그먼트 및 롤링 요약 텍스트의 허용 범위. | `prompt_builder.py` | 기억 공간, 앞뒤 문맥 창 |
-| **롤링 요약**<br/>(Rolling Summary) | - | 긴 미디어의 장기 문맥을 압축하여 유지하는 메커니즘. 25개 세그먼트 단위로 점진 갱신하고, 누적 왜곡(Drift) 방지를 위해 200개 세그먼트마다 전체 재생성. | `llm_engine.py`<br/>`prompt_builder.py` | 요약본 돌리기, 문맥 이어붙이기 |
+| **퓨샷 예시 턴**<br/>(Few-shot Example Turns) | - | 현재 세그먼트 앞에 사용자/어시스턴트 대화 턴 쌍으로 주입되는 번역 예시. 용어집 항목과 직전 번역 3건(`RECENT_FEW_SHOT_WINDOW`)으로 구성되며, 앞뒤 세그먼트 원문이나 요약문은 주입하지 않음. | `prompt_builder.py`<br/>`llm_engine.py` | 기억 공간, 앞뒤 문맥 창 |
 | **오디오 청킹**<br/>(Audio Chunking) | - | 60분 초과 미디어 파일의 메모리 오버플로우를 방지하기 위해 30분 단위 오디오 청크로 분할하여 순차 처리하는 배치 분할 기법. FFmpeg를 통해 수행. | `stt_engine.py`<br/>`commands_ffmpeg.rs` | 오디오 자르기, 쪼개기, 토막내기 |
 
 ---

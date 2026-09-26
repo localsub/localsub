@@ -367,10 +367,6 @@ class TranslateJobState(str, Enum):
 _translate_jobs: dict[str, dict[str, Any]] = {}
 
 
-SUMMARY_INTERVAL = 25  # Generate rolling summary every N segments
-SUMMARY_REFRESH = 200  # Regenerate summary from scratch every N segments
-
-
 def create_translate_job(
     segments: list[dict[str, Any]],
     source_lang: str,
@@ -530,60 +526,12 @@ async def run_translate(job_id: str) -> AsyncGenerator[dict[str, Any], None]:
     all_results: list[dict[str, Any]] = []
     completed_translations: dict[int, str] = {}
     sampling = QUALITY_SAMPLING.get(quality, QUALITY_SAMPLING["balanced"])
-    rolling_summary: str | None = None
     # Count of segments still flagged as bad output after a retry (for the
     # completion log / review). See _bad_output_reason.
     _flagged_count = 0
     # Dynamic few-shot: ring buffer of the last N successful (non-echo) translations.
     # Injected into each segment's prompt as additional chat turns.
     recent_buffer: list[dict[str, str]] = []
-
-    # Auto-infer media context from first segments if not provided
-    if not media_context and total > 0:
-        yield {
-            "type": "translate_progress",
-            "job_id": job_id,
-            "progress": 0,
-            "message": "Analyzing content for context...",
-        }
-        try:
-            loop = asyncio.get_running_loop()
-            sample_count = min(100, total)
-            sample_lines = "\n".join(
-                seg.get("text", "") for seg in segments[:sample_count]
-            )
-            context_msgs = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a media analyst. Based on the subtitle lines below, "
-                        "write a brief context description (3-5 sentences) covering:\n"
-                        "- What type of content this is (movie, drama, documentary, etc.)\n"
-                        "- Genre and tone (comedy, thriller, romance, etc.)\n"
-                        "- Key character names mentioned and their apparent roles\n"
-                        "- General setting or situation\n"
-                        "Output ONLY the description. No labels or formatting.\n"
-                        "/no_think"
-                    ),
-                },
-                {"role": "user", "content": f"Subtitle lines:\n{sample_lines}"},
-            ]
-
-            def _infer_context(msgs=context_msgs):
-                return _model.create_chat_completion(
-                    messages=msgs, max_tokens=300,
-                    temperature=0.2, top_p=0.9,
-                )
-
-            ctx_resp = await loop.run_in_executor(None, _infer_context)
-            if ctx_resp and "choices" in ctx_resp:
-                raw = ctx_resp["choices"][0].get("message", {}).get("content") or ""
-                raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
-                if raw:
-                    media_context = raw
-                    log.info("Auto-inferred media context: %s", media_context[:200])
-        except Exception as e:
-            log.warning("Failed to auto-infer media context: %s", e)
 
     yield {
         "type": "translate_progress",
@@ -751,7 +699,6 @@ async def run_translate(job_id: str) -> AsyncGenerator[dict[str, Any], None]:
                     translations=completed_translations,
                     custom_prompt=custom_prompt,
                     model_category=model_category,
-                    rolling_summary=rolling_summary,
                     media_filename=media_filename,
                     media_context=media_context,
                     media_type=media_type,
@@ -892,38 +839,6 @@ async def run_translate(job_id: str) -> AsyncGenerator[dict[str, Any], None]:
                 "message": f"Translating... ({i + 1}/{total} segments)",
             }
             i += 1
-
-            # Rolling summary generation
-            if i > 0 and i % SUMMARY_INTERVAL == 0:
-                try:
-                    # Refresh from scratch periodically to prevent drift
-                    prev_summary = None if (i % SUMMARY_REFRESH == 0) else rolling_summary
-                    summary_start = max(0, i - SUMMARY_INTERVAL)
-                    summary_msgs = prompt_builder.build_summary_messages(
-                        segments, completed_translations,
-                        summary_start, i - 1,
-                        prev_summary, source_lang, target_lang,
-                        model_category=model_category,
-                    )
-
-                    def _infer_summary(msgs=summary_msgs):
-                        return _model.create_chat_completion(
-                            messages=msgs,
-                            max_tokens=256,
-                            temperature=0.2,
-                            top_p=0.9,
-                            repeat_penalty=1.0,
-                        )
-
-                    summary_resp = await loop.run_in_executor(None, _infer_summary)
-                    if summary_resp and "choices" in summary_resp:
-                        raw = summary_resp["choices"][0].get("message", {}).get("content") or ""
-                        raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
-                        if raw:
-                            rolling_summary = raw
-                            log.info("Rolling summary updated at segment %d: %s", i, rolling_summary[:100])
-                except Exception as e:
-                    log.warning("Summary generation failed at segment %d: %s", i, e)
 
             await asyncio.sleep(0)  # yield control
 

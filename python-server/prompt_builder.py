@@ -1,7 +1,7 @@
 """Prompt builder for LLM subtitle translation.
 
-Constructs system and user prompts with glossary injection (as chat turns),
-rolling summary, and style presets for segment-by-segment translation.
+Constructs system and user prompts with glossary injection (as chat turns)
+and style presets for segment-by-segment translation.
 Glossary entries serve as both term dictionary and few-shot style examples.
 """
 
@@ -73,19 +73,12 @@ def build_system_prompt(
     return prompt
 
 
-def _format_timestamp(seconds: float) -> str:
-    m, s = divmod(int(seconds), 60)
-    h, m = divmod(m, 60)
-    return f"{h:02d}:{m:02d}:{s:02d}"
-
-
 def build_user_prompt(
     segments: list[dict[str, Any]],
     current_index: int,
     context_window: int,
     glossary: list[dict[str, str]],
     translations: dict[int, str] | None = None,
-    rolling_summary: str | None = None,
     recent_translations_count: int = 10,
 ) -> str:
     # Direct translation — no context (9B models perform better without it)
@@ -103,7 +96,6 @@ def build_messages(
     translations: dict[int, str] | None = None,
     custom_prompt: str | None = None,
     model_category: str = "instruct",
-    rolling_summary: str | None = None,
     recent_translations_count: int = 10,
     media_filename: str | None = None,
     media_context: str | None = None,
@@ -160,59 +152,8 @@ def build_messages(
         "content": build_user_prompt(
             segments, current_index, context_window, glossary or [],
             translations=translations,
-            rolling_summary=rolling_summary,
             recent_translations_count=recent_translations_count,
         ),
     })
 
     return msgs
-
-
-# ── Rolling summary ──────────────────────────────────────────────
-
-def build_summary_messages(
-    segments: list[dict[str, Any]],
-    translations: dict[int, str],
-    start_index: int,
-    end_index: int,
-    previous_summary: str | None,
-    source_lang: str,
-    target_lang: str,
-    model_category: str = "instruct",
-) -> list[dict[str, str]]:
-    """Build messages for generating a rolling scene summary."""
-    system = (
-        "You are a subtitle analyst. Summarize the subtitle segments below in 2-3 sentences.\n"
-        "Focus on: scene setting, character names, emotional tone, key events.\n"
-        "If a previous summary exists, update it with new information.\n"
-        "Keep total under 100 words. Output ONLY the summary.\n"
-    )
-    if model_category == "general":
-        system += "\n/no_think"
-
-    parts: list[str] = []
-    if previous_summary:
-        parts.append("[Previous summary]")
-        parts.append(previous_summary)
-        parts.append("")
-
-    parts.append(f"[New segments {start_index + 1}-{end_index + 1}]")
-    for i in range(start_index, min(end_index + 1, len(segments))):
-        seg = segments[i]
-        ts = _format_timestamp(seg.get("start", 0))
-        text = seg.get("text", "")
-        trans = translations.get(i, "")
-        if trans:
-            parts.append(f"[{ts}] {text} → {trans}")
-        else:
-            parts.append(f"[{ts}] {text}")
-
-    parts.append("")
-    parts.append("Write an updated summary incorporating the new segments.")
-
-    return [
-        {"role": "system", "content": system},
-        {"role": "user", "content": "\n".join(parts)},
-    ]
-
-
