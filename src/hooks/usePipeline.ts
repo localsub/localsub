@@ -75,7 +75,24 @@ interface ActivePipeline {
    * would overwrite (destroy) the earlier translations on disk.
    */
   resumeBaseLines?: SubtitleLine[];
+  /**
+   * Set when the job is removed while it runs. Every step that resumes after
+   * an await checks it, so a removed job never restarts the server, starts or
+   * keeps a server job, exports, or reports back.
+   */
+  abandoned?: boolean;
+  /** The server-facing call (start or restart) this pipeline last awaited. */
+  inFlight?: Promise<unknown>;
 }
+
+/**
+ * How long abandonJob waits for a removed job's in-flight server call before
+ * letting the next job run anyway. Above restart_server's worst case (≈20 s of
+ * VRAM polling, then 60 health checks × (2 s timeout + 0.5 s) ≈ 150 s); the cap
+ * only exists so a hung call can never leave the queue stuck behind a job the
+ * user removed.
+ */
+const ABANDON_WAIT_MS = 200_000;
 
 // 주의: 이 결과를 직접 저장(saveJobSubtitles)하지 말 것 — 재개된 잡에서는
 // resumeBaseLines가 빠져 기번역분이 파괴된다. 저장은 buildPersistedLines로.
@@ -360,6 +377,13 @@ export function usePipeline(
     };
   }, [onJobUpdate, onLiveSegments]);
 
+  // Record the server-facing call a pipeline is waiting on, so abandonJob can
+  // keep the job's GPU slot until that call has returned.
+  function inFlight<T>(pipeline: ActivePipeline, call: Promise<T>): Promise<T> {
+    pipeline.inFlight = call;
+    return call;
+  }
+
   async function chainDiarization(pipeline: ActivePipeline) {
     if (pipeline.segments.length === 0) {
       if (pipeline.skipTranslation) {
@@ -385,9 +409,11 @@ export function usePipeline(
         end: s.end,
         text: s.text,
       }));
-      const job = await startDiarization(pipeline.filePath, diarSegments);
+      const job = await inFlight(pipeline, startDiarization(pipeline.filePath, diarSegments));
       pipeline.diarizationJobId = job.id;
+      if (pipeline.abandoned) cancelDiarization(job.id).catch(() => {});
     } catch {
+      if (pipeline.abandoned) return;
       // Diarization start failed — graceful fallback
       console.warn("Diarization start failed, skipping to next phase");
       if (pipeline.skipTranslation) {
@@ -445,6 +471,11 @@ export function usePipeline(
       console.error("Failed to save intermediate STT results:", e);
     }
 
+    if (pipeline.abandoned) {
+      translationStartingRef.current.delete(pipeline.dashboardJobId);
+      return;
+    }
+
     onJobUpdate(pipeline.dashboardJobId, {
       status: "processing",
       stage: "translating",
@@ -455,11 +486,14 @@ export function usePipeline(
     try {
       // Restart server to cleanly free VRAM
       // (ctranslate2 Whisper unload segfaults on Windows — known CTranslate2 bug)
-      await restartServer();
+      await inFlight(pipeline, restartServer());
+      if (pipeline.abandoned) return;
 
-      const job = await startTranslate(pipeline.segments, pipeline.presetId);
+      const job = await inFlight(pipeline, startTranslate(pipeline.segments, pipeline.presetId));
       pipeline.translateJobId = job.id;
+      if (pipeline.abandoned) cancelTranslate(job.id).catch(() => {});
     } catch (e) {
+      if (pipeline.abandoned) return;
       // Translation start failed — save STT results but mark as failed
       pipeline.phase = "error";
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -480,6 +514,7 @@ export function usePipeline(
   }
 
   async function finalizePipeline(pipeline: ActivePipeline) {
+    if (pipeline.abandoned) return;
     const lines = buildPersistedLines(pipeline);
 
     // Save to disk (internal format)
@@ -489,6 +524,7 @@ export function usePipeline(
       console.error("Failed to save subtitles:", e);
       toastError(i18n.t("toast.subtitleSaveFailed"));
     }
+    if (pipeline.abandoned) return;
 
     // Auto-export subtitle file to output directory
     try {
@@ -514,6 +550,7 @@ export function usePipeline(
       console.error("Auto-export failed:", e);
       // Non-critical — user can still export manually from editor
     }
+    if (pipeline.abandoned) return;
 
     etaTimesRef.current.delete(pipeline.dashboardJobId);
       etaLabelRef.current.delete(pipeline.dashboardJobId);
@@ -561,6 +598,7 @@ export function usePipeline(
         if (isSubtitleImport) {
           // Subtitle file: parse cues and go straight to translation — no STT.
           const imported = await readSubtitleFile(filePath);
+          if (pipeline.abandoned) return;
           pipeline.segments = imported.map((s) => ({
             index: s.index,
             start: s.start,
@@ -574,10 +612,12 @@ export function usePipeline(
           onLiveSegments?.(dashboardJobId, buildSubtitleLines(pipeline));
           chainTranslation(pipeline);
         } else {
-          const job = await startStt(filePath, sourceLanguage, undefined, undefined, pipeline.presetId);
+          const job = await inFlight(pipeline, startStt(filePath, sourceLanguage, undefined, undefined, pipeline.presetId));
           pipeline.sttJobId = job.id;
+          if (pipeline.abandoned) cancelStt(job.id).catch(() => {});
         }
       } catch (e) {
+        if (pipeline.abandoned) return;
         pipeline.phase = "error";
         const errorMsg = e instanceof Error ? e.message : String(e);
         toastError(i18n.t("toast.pipelineFailed"), errorMsg);
@@ -650,5 +690,38 @@ export function usePipeline(
     }
   }, []);
 
-  return { processJob, retryTranslation, cancelJob };
+  /**
+   * Drop a job that is removed while it runs: stop tracking it (so its server
+   * jobs' events no longer match anything) and ask the server to cancel the
+   * step it is on. Resolves once no call of the job is still reaching the
+   * server: a start or restart in flight is waited for (bounded by
+   * ABANDON_WAIT_MS), and a server job it started is cancelled on the spot
+   * (see `abandoned`). Only then may another job use the server.
+   */
+  const abandonJob = useCallback(async (dashboardJobId: string): Promise<void> => {
+    const pipeline = pipelinesRef.current.get(dashboardJobId);
+    if (!pipeline) return;
+    pipeline.abandoned = true;
+    pipelinesRef.current.delete(dashboardJobId);
+    etaTimesRef.current.delete(dashboardJobId);
+    etaLabelRef.current.delete(dashboardJobId);
+
+    const cancel =
+      pipeline.phase === "stt" && pipeline.sttJobId ? cancelStt(pipeline.sttJobId)
+      : pipeline.phase === "diarizing" && pipeline.diarizationJobId ? cancelDiarization(pipeline.diarizationJobId)
+      : pipeline.phase === "translating" && pipeline.translateJobId ? cancelTranslate(pipeline.translateJobId)
+      : null;
+    cancel?.catch((e) => console.warn("Failed to cancel removed job:", e));
+
+    if (pipeline.inFlight) {
+      let cap: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        pipeline.inFlight.catch(() => {}),
+        new Promise((resolve) => { cap = setTimeout(resolve, ABANDON_WAIT_MS); }),
+      ]);
+      clearTimeout(cap);
+    }
+  }, []);
+
+  return { processJob, retryTranslation, cancelJob, abandonJob };
 }
