@@ -26,7 +26,7 @@ import { SettingsPage } from "./components/settings/SettingsPage";
 import { Toaster } from "./components/ui/sonner";
 import { Button } from "./components/ui/button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import type { AppScreen, MainPage, DashboardJob, SubtitleLine, JobSourceType } from "./types";
+import type { AppScreen, MainPage, DashboardJob, SubtitleLine, JobSourceType, SttSegment } from "./types";
 import { loadDashboardJobs, saveDashboardJobs, loadJobSubtitles, openLogDir } from "./lib/tauriApi";
 import { getSourceType } from "./lib/sourceType";
 import { sendNotification, isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
@@ -57,6 +57,8 @@ interface QueueEntry {
   skipTranslation: boolean;
   presetId?: string;
   sourceType: JobSourceType;
+  /** Retry that re-runs translation only, over this job's saved STT segments. */
+  retranslate?: SttSegment[];
 }
 
 function App() {
@@ -96,6 +98,8 @@ function App() {
   const activeCountRef = useRef(0);
   // 이어서 번역 중복 진입 가드 (잡 상태 갱신 전 비동기 구간 보호)
   const resumeInFlightRef = useRef<Set<string>>(new Set());
+  // 재시도 중복 진입 가드 — 자막 로드(await) 동안 같은 잡이 두 번 큐에 들어가지 않게
+  const retryInFlightRef = useRef<Set<string>>(new Set());
   const drainQueueRef = useRef(() => {});
   // handleJobUpdate는 deps가 비어 있어 dashboardJobs를 클로저로 잡으면 초기값(빈 배열)만 봄.
   // 완료 알림에서 파일명을 얻으려면 최신 잡 목록을 ref로 참조한다.
@@ -170,9 +174,13 @@ function App() {
     while (queueRef.current.length > 0 && activeCountRef.current < 1) {
       const entry = queueRef.current.shift()!;
       activeCountRef.current++;
-      processJob(entry.jobId, entry.filePath, entry.sourceLanguage, entry.enableDiarization, entry.skipTranslation, entry.presetId, entry.sourceType);
+      if (entry.retranslate) {
+        retryTranslation(entry.jobId, entry.retranslate, entry.presetId, { filePath: entry.filePath });
+      } else {
+        processJob(entry.jobId, entry.filePath, entry.sourceLanguage, entry.enableDiarization, entry.skipTranslation, entry.presetId, entry.sourceType);
+      }
     }
-  }, [processJob]);
+  }, [processJob, retryTranslation]);
   drainQueueRef.current = drainQueue;
 
   const screen = determineScreen(configLoading, config, setupStatus);
@@ -300,60 +308,58 @@ function App() {
   const handleRetryJob = useCallback(
     async (jobId: string) => {
       const job = dashboardJobs.find((j) => j.id === jobId);
-      if (!job) return;
+      // A running job holds the GPU and a pending one already has a turn —
+      // retrying either would start a second pipeline for the same job.
+      if (!job || job.status === "processing" || job.status === "pending") return;
+      if (retryInFlightRef.current.has(jobId)) return;
+      retryInFlightRef.current.add(jobId);
 
-      // Try to load existing subtitles — if they have original_text, skip STT
-      try {
-        const existing = await loadJobSubtitles(jobId);
-        if (existing.length > 0 && existing[0].original_text) {
-          // Has STT results — retry translation only
-          activeCountRef.current++;
-          setDashboardJobs((prev) =>
-            prev.map((j) =>
-              j.id === jobId
-                ? { ...j, status: "processing" as const, stage: "translating" as const, progress: 50, error: undefined, completed_at: undefined }
-                : j,
-            ),
-          );
-          const segments = existing.map((l) => ({
-            index: l.index,
-            start: l.start_time,
-            end: l.end_time,
-            text: l.original_text,
-          }));
-          // Pass the job's preset_id so the retry picks up the current
-          // preset on disk — lets users change translation_mode
-          // (e.g. direct → pivot_2pass) and re-run translation without
-          // redoing STT.
-          retryTranslation(jobId, segments, job.preset_id, { filePath: job.file_path });
-          return;
-        }
-      } catch {
-        // No existing subtitles — full retry
-      }
-
-      // Full retry — subtitle jobs re-import the file (never re-run STT)
       const sourceType = job.source_type ?? "media";
-      setDashboardJobs((prev) =>
-        prev.map((j) =>
-          j.id === jobId
-            ? { ...j, status: "pending" as const, stage: sourceType === "subtitle" ? ("translating" as const) : ("stt" as const), progress: 0, error: undefined, completed_at: undefined }
-            : j,
-        ),
-      );
       const sourceLanguage = config?.source_language;
-      queueRef.current.push({
+      const entry: QueueEntry = {
         jobId: job.id,
         filePath: job.file_path,
         sourceLanguage: sourceLanguage === "auto" ? undefined : sourceLanguage,
         enableDiarization: false,
         skipTranslation: false,
+        // The job's preset_id makes the retry pick up the current preset on
+        // disk — lets users change translation_mode (e.g. direct →
+        // pivot_2pass) and re-run translation without redoing STT.
         presetId: job.preset_id,
         sourceType,
-      });
+      };
+
+      // Try to load existing subtitles — if they have original_text, skip STT
+      try {
+        const existing = await loadJobSubtitles(jobId);
+        if (existing.length > 0 && existing[0].original_text) {
+          entry.retranslate = existing.map((l) => ({
+            index: l.index,
+            start: l.start_time,
+            end: l.end_time,
+            text: l.original_text,
+          }));
+        }
+      } catch {
+        // No existing subtitles — full retry
+      }
+
+      // Every retry waits its turn in the queue: starting a translation
+      // restarts the server to free VRAM, which kills whatever job is running.
+      // A full retry of a subtitle job re-imports the file (never re-runs STT).
+      const stage = entry.retranslate || sourceType === "subtitle" ? ("translating" as const) : ("stt" as const);
+      setDashboardJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId
+            ? { ...j, status: "pending" as const, stage, progress: 0, error: undefined, completed_at: undefined }
+            : j,
+        ),
+      );
+      queueRef.current.push(entry);
+      retryInFlightRef.current.delete(jobId);
       drainQueue();
     },
-    [dashboardJobs, drainQueue, retryTranslation, config?.source_language],
+    [dashboardJobs, drainQueue, config?.source_language],
   );
 
   // Resume an interrupted job: re-feed only the untranslated lines and keep
