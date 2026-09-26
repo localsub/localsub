@@ -11,10 +11,11 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 import uuid
 from enum import Enum
 from pathlib import Path
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Callable
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +51,10 @@ import gpu_utils
 # them one at a time; both fixes above stay in effect per-chunk.
 LONG_FILE_THRESHOLD_S = 60 * 60   # 3600s — single-pass for ≤60 min
 CHUNK_DURATION_S = 30 * 60        # 1800s — 30-min chunks when splitting
+# Extracting a range may take up to its own length (real time) and never less
+# than this — a 30-minute slice of a large video on a USB disk or a network
+# share is minutes of reading. Cancel stops it at once regardless.
+EXTRACT_MIN_TIMEOUT_S = 5 * 60
 
 
 def _compute_chunks(
@@ -149,6 +154,48 @@ def _find_ffmpeg() -> str:
     if os.path.isfile(local_ffmpeg):
         return local_ffmpeg
     return "ffmpeg"
+
+
+def _run_ffmpeg(
+    cmd: list[str], should_stop: Callable[[], bool], timeout_s: float,
+) -> tuple[str, str]:
+    """Run an ffmpeg command to completion; blocking, so call it off the loop.
+
+    Polls ``should_stop`` so a cancelled job kills ffmpeg at once instead of
+    waiting out the slice. stderr goes to a temp file, not a pipe: ffmpeg can
+    write more than a pipe buffer holds and would then stall forever.
+
+    Returns ``("ok", "")``, ``("cancelled", "")`` or ``("failed", reason)``.
+    """
+    with tempfile.TemporaryFile() as err:
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=err,
+                creationflags=0x08000000 if os.name == "nt" else 0,
+            )
+        except OSError as e:
+            return "failed", str(e)
+        deadline = time.monotonic() + timeout_s
+        while True:
+            try:
+                rc = proc.wait(timeout=0.25)
+                break
+            except subprocess.TimeoutExpired:
+                if should_stop():
+                    proc.kill()
+                    proc.wait()
+                    return "cancelled", ""
+                if time.monotonic() > deadline:
+                    proc.kill()
+                    proc.wait()
+                    return "failed", f"timed out after {timeout_s:.0f}s"
+        if rc == 0:
+            return "ok", ""
+        err.seek(0)
+        tail = err.read()[-500:].decode("utf-8", errors="replace").strip()
+        return "failed", f"exit code {rc}" + (f": {tail}" if tail else "")
 
 
 def _find_ffprobe() -> str:
@@ -427,9 +474,15 @@ async def _transcribe_range(
     progress_span: float,
     index_base: int,
     duration_hint: float,
+    whole_file: bool = False,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Run a single faster-whisper transcription pass, optionally on a
     time slice of `source_file`.
+
+    `whole_file` says the slice spans the entire file, so a failed
+    extraction may fall back to reading the file directly. For any
+    narrower slice (a chunk, a preview window) that fallback would be
+    wrong, and a failed extraction fails the job instead.
 
     Yields stt_segment + stt_progress events exactly like the old
     single-shot path. The caller yields the final `done` event.
@@ -448,15 +501,15 @@ async def _transcribe_range(
     temp_audio_path: str | None = None
     transcribe_file = source_file
 
-    # Extract slice if requested
-    if range_start is not None and range_end is not None:
-        try:
+    try:
+        # Extract slice if requested
+        if range_start is not None and range_end is not None:
             temp_audio_path = os.path.join(
                 tempfile.gettempdir(),
                 f"localsub_chunk_{job_id}_{int(range_start)}_{int(range_end)}.wav",
             )
             cmd = [
-                _find_ffmpeg(), "-y",
+                _find_ffmpeg(), "-hide_banner", "-loglevel", "error", "-y",
                 "-ss", str(range_start),
                 "-to", str(range_end),
                 "-i", source_file,
@@ -467,99 +520,113 @@ async def _transcribe_range(
                 "[STT] Extracting audio segment: %s -> %s (%.1fs~%.1fs)",
                 source_file, temp_audio_path, range_start, range_end,
             )
-            result = subprocess.run(cmd, capture_output=True, timeout=120)
-            if result.returncode != 0:
-                log.warning("[STT] ffmpeg failed (rc=%d), using original file", result.returncode)
-                temp_audio_path = None
-            else:
+            # Off the event loop: while ffmpeg reads a slice (minutes, on a slow
+            # disk) the server must keep answering /health, or the app
+            # declares it crashed.
+            status, detail = await loop.run_in_executor(
+                None,
+                _run_ffmpeg,
+                cmd,
+                lambda: job["cancel_flag"],
+                max(EXTRACT_MIN_TIMEOUT_S, range_end - range_start),
+            )
+            if status == "cancelled":
+                job["state"] = SttJobState.CANCELED
+                yield {"type": "cancelled", "job_id": job_id}
+                return
+            if status == "ok":
                 transcribe_file = temp_audio_path
-        except FileNotFoundError:
-            log.warning("[STT] ffmpeg not found, using original file")
-            temp_audio_path = None
-        except Exception as e:
-            log.warning("[STT] ffmpeg extraction failed: %s, using original file", e)
-            temp_audio_path = None
+            elif whole_file:
+                # The range is the whole file: reading it directly loses nothing.
+                log.warning("[STT] ffmpeg extraction failed (%s), using original file", detail)
+            else:
+                # Anything else would transcribe the WHOLE file at this range's
+                # offset — a duplicated timeline running past the end.
+                raise RuntimeError(
+                    f"Could not extract audio {range_start:.0f}s-{range_end:.0f}s "
+                    f"from {os.path.basename(source_file)}: ffmpeg {detail}"
+                )
 
-    log.info(
-        "[STT] Transcribing range: file=%s, lang=%s, offset=%.1fs, base_idx=%d",
-        transcribe_file, language_arg, time_offset, index_base,
-    )
+        log.info(
+            "[STT] Transcribing range: file=%s, lang=%s, offset=%.1fs, base_idx=%d",
+            transcribe_file, language_arg, time_offset, index_base,
+        )
 
-    segments_iter, info = await loop.run_in_executor(
-        None,
-        lambda: _model.transcribe(
-            transcribe_file,
-            language=language_arg,
-            beam_size=5,
-            word_timestamps=True,
-            vad_filter=True,
-            vad_parameters=dict(
-                max_speech_duration_s=15,
-                min_silence_duration_ms=200,
-                speech_pad_ms=300,
-                threshold=0.3,
+        segments_iter, info = await loop.run_in_executor(
+            None,
+            lambda: _model.transcribe(
+                transcribe_file,
+                language=language_arg,
+                beam_size=5,
+                word_timestamps=True,
+                vad_filter=True,
+                vad_parameters=dict(
+                    max_speech_duration_s=15,
+                    min_silence_duration_ms=200,
+                    speech_pad_ms=300,
+                    threshold=0.3,
+                ),
+                condition_on_previous_text=False,
+                no_speech_threshold=0.3,
+                temperature=0.0,
             ),
-            condition_on_previous_text=False,
-            no_speech_threshold=0.3,
-            temperature=0.0,
-        ),
-    )
+        )
 
-    info_duration = info.duration if info.duration and info.duration > 0 else (duration_hint or 1.0)
+        info_duration = info.duration if info.duration and info.duration > 0 else (duration_hint or 1.0)
 
-    yielded_segments: list[dict[str, Any]] = []
-    local_index = 0
+        yielded_segments: list[dict[str, Any]] = []
+        local_index = 0
 
-    def _consume_next(it):
-        try:
-            return next(it)
-        except StopIteration:
-            return None
+        def _consume_next(it):
+            try:
+                return next(it)
+            except StopIteration:
+                return None
 
-    while True:
-        if job["cancel_flag"]:
-            job["state"] = SttJobState.CANCELED
-            yield {"type": "cancelled", "job_id": job_id}
-            return
+        while True:
+            if job["cancel_flag"]:
+                job["state"] = SttJobState.CANCELED
+                yield {"type": "cancelled", "job_id": job_id}
+                return
 
-        segment = await loop.run_in_executor(None, _consume_next, segments_iter)
-        if segment is None:
-            break
+            segment = await loop.run_in_executor(None, _consume_next, segments_iter)
+            if segment is None:
+                break
 
-        seg_data = {
-            "index": index_base + local_index,
-            "start": round(segment.start + time_offset, 3),
-            "end": round(segment.end + time_offset, 3),
-            "text": segment.text.strip(),
-        }
-        yielded_segments.append(seg_data)
+            seg_data = {
+                "index": index_base + local_index,
+                "start": round(segment.start + time_offset, 3),
+                "end": round(segment.end + time_offset, 3),
+                "text": segment.text.strip(),
+            }
+            yielded_segments.append(seg_data)
 
-        yield {"type": "stt_segment", "job_id": job_id, **seg_data}
+            yield {"type": "stt_segment", "job_id": job_id, **seg_data}
 
-        inner_frac = min(segment.end / info_duration, 1.0)
-        progress = min(int(progress_base + inner_frac * progress_span), 99)
+            inner_frac = min(segment.end / info_duration, 1.0)
+            progress = min(int(progress_base + inner_frac * progress_span), 99)
+            yield {
+                "type": "stt_progress",
+                "job_id": job_id,
+                "progress": progress,
+                "message": f"Transcribing... ({index_base + local_index + 1} segments)",
+            }
+
+            local_index += 1
+            await asyncio.sleep(0)
+
+        # Internal "end of this range" signal — orchestrator strips it.
         yield {
-            "type": "stt_progress",
-            "job_id": job_id,
-            "progress": progress,
-            "message": f"Transcribing... ({index_base + local_index + 1} segments)",
+            "type": "_range_complete",
+            "yielded": yielded_segments,
+            "count": local_index,
         }
-
-        local_index += 1
-        await asyncio.sleep(0)
-
-    if temp_audio_path and os.path.exists(temp_audio_path):
-        try:
-            os.remove(temp_audio_path)
-        except OSError:
-            pass
-
-    # Internal "end of this range" signal — orchestrator strips it.
-    yield {
-        "type": "_range_complete",
-        "yielded": yielded_segments,
-        "count": local_index,
-    }
+    finally:
+        if temp_audio_path and os.path.exists(temp_audio_path):
+            try:
+                os.remove(temp_audio_path)
+            except OSError:
+                pass
 
 
 async def _run_whisper(job_id: str, job: dict) -> AsyncGenerator[dict[str, Any], None]:
@@ -627,6 +694,7 @@ async def _run_whisper(job_id: str, job: dict) -> AsyncGenerator[dict[str, Any],
                     (c_end - c_start) if (c_start is not None and c_end is not None)
                     else (duration or 1.0)
                 ),
+                whole_file=len(chunks) == 1,
             ):
                 if ev.get("type") == "_range_complete":
                     all_segments.extend(ev["yielded"])
