@@ -120,7 +120,10 @@
         "save": "저장",
         "saving": "저장 중...",
         "filesSelected": "{{count}}개 파일 선택됨",
-        "clickToAdd": "— 클릭하여 추가"
+        "clickToAdd": "— 클릭하여 추가",
+        "statusStt": "음성 인식 중...",
+        "statusTranslating": "번역 중...",
+        "statusDone": "완료"
       },
       "ffmpegMissing": "FFmpeg가 없습니다. 60분이 넘는 영상은 청크로 분할되지 않습니다."
     }

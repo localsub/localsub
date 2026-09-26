@@ -5,30 +5,31 @@ use crate::contracts::SubtitleSegment;
 
 // ── Timestamp helpers ────────────────────────────────────────────
 
+/// Split `secs` into (hours, minutes, seconds, fraction), the fraction in
+/// 1/`units` of a second. Rounding happens once, on the whole value, so a
+/// fraction that rounds up carries into the seconds: 1.9996 s is
+/// 00:00:02,000 — rounding the fraction alone gave 00:00:01,1000.
+fn split_time(secs: f64, units: u64) -> (u64, u64, u64, u64) {
+    let total = (secs.max(0.0) * units as f64).round() as u64;
+    let whole = total / units;
+    (whole / 3600, whole % 3600 / 60, whole % 60, total % units)
+}
+
 /// SRT format: "00:01:23,456"
 fn ts_srt(secs: f64) -> String {
-    let h = (secs / 3600.0) as u32;
-    let m = ((secs % 3600.0) / 60.0) as u32;
-    let s = (secs % 60.0) as u32;
-    let ms = ((secs % 1.0) * 1000.0).round() as u32;
+    let (h, m, s, ms) = split_time(secs, 1000);
     format!("{:02}:{:02}:{:02},{:03}", h, m, s, ms)
 }
 
 /// VTT format: "00:01:23.456"
 fn ts_vtt(secs: f64) -> String {
-    let h = (secs / 3600.0) as u32;
-    let m = ((secs % 3600.0) / 60.0) as u32;
-    let s = (secs % 60.0) as u32;
-    let ms = ((secs % 1.0) * 1000.0).round() as u32;
+    let (h, m, s, ms) = split_time(secs, 1000);
     format!("{:02}:{:02}:{:02}.{:03}", h, m, s, ms)
 }
 
 /// ASS format: "0:01:23.45" (centiseconds)
 fn ts_ass(secs: f64) -> String {
-    let h = (secs / 3600.0) as u32;
-    let m = ((secs % 3600.0) / 60.0) as u32;
-    let s = (secs % 60.0) as u32;
-    let cs = ((secs % 1.0) * 100.0).round() as u32;
+    let (h, m, s, cs) = split_time(secs, 100);
     format!("{}:{:02}:{:02}.{:02}", h, m, s, cs)
 }
 
@@ -313,5 +314,32 @@ mod tests {
             speaker: Some("".to_string()),
         };
         assert_eq!(speaker_prefix(&seg), "", "Empty speaker string should produce no prefix");
+    }
+
+    fn one_line(start: f64, end: f64) -> Vec<SubtitleSegment> {
+        vec![SubtitleSegment {
+            index: 0,
+            start,
+            end,
+            text: "x".to_string(),
+            translated: None,
+            speaker: None,
+        }]
+    }
+
+    #[test]
+    fn ass_fraction_that_rounds_up_carries_into_the_next_second() {
+        let out = format_ass(&one_line(1.996, 59.996));
+        assert!(
+            out.contains("Dialogue: 0,0:00:02.00,0:01:00.00,"),
+            "{}",
+            out.lines().last().unwrap()
+        );
+    }
+
+    #[test]
+    fn srt_fraction_that_rounds_up_carries_into_the_next_second() {
+        let out = format_srt(&one_line(1.9996, 3599.9996));
+        assert!(out.contains("00:00:02,000 --> 01:00:00,000"), "{}", out);
     }
 }

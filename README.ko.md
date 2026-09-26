@@ -77,7 +77,7 @@ LocalSub의 자막 처리 파이프라인은 리소스 격리와 단계별 무�
 4. **다단계 품질 게이트 검증 (Multi-Stage Quality Gate)**: 각 세그먼트는 모델 무관 구조적 필터(스크립트 누출, 언어 불일치, 퇴행적 반복 탐지) 및 의미론적 거부 감지 게이트(Embedding Gate)를 거칩니다. 불량 출력 검출 시 높은 Temperature 조건으로 1회 자동 재시도 후 이상 플래그를 기록합니다.
 5. **편집 및 다중 포맷 내보내기 (Export & Dual Subtitles)**: 내장 에디터 검토 후 SRT, VTT, ASS, TXT 포맷으로 변환 내보내기를 수행하며, 원문과 번역문이 결합된 이중 언어 자막 출력을 완벽히 지원합니다.
 
-> 시스템 아키텍처 및 세부 설계는 [SPEC.md](docs/specs/SPEC.md), 아키텍처 다이어그램은 [docs/diagrams/](docs/diagrams/), 표준 기술 용어는 [docs/glossary.md](docs/glossary.md)를 참조하십시오.
+> 아키텍처 다이어그램은 [docs/diagrams/](docs/diagrams/), 엔지니어링 규약은 [CLAUDE.md](CLAUDE.md), 표준 기술 용어는 [docs/glossary.md](docs/glossary.md)를 참조하십시오.
 
 ## 시스템 요구 사양
 
