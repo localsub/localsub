@@ -51,6 +51,14 @@ pub fn spawn_python_server(app: &AppHandle, _port: u16) -> Result<Child, AppErro
     for (k, v) in &env_vars {
         cmd.env(k, v);
     }
+    // One GPU for the whole server — see gpu.rs.
+    let gpu = crate::gpu::selected();
+    if let Some(g) = &gpu {
+        log::info!("Pinning the Python server to GPU {} ({}, {} MB, {})", g.index, g.name, g.memory_total_mb, g.uuid);
+    }
+    for (k, v) in crate::gpu::pinning_env(gpu.as_ref()) {
+        cmd.env(k, v);
+    }
 
     #[cfg(target_os = "windows")]
     {
@@ -103,6 +111,154 @@ pub async fn wait_for_healthy(port: u16) -> Result<(), AppError> {
     ))
 }
 
+/// Put a freshly spawned server into `slot`, killing whatever was there first.
+///
+/// Overwriting the handle instead orphaned the old process: after a crash is
+/// declared the old server may only be hung, still holding port 9111 and its
+/// VRAM, and nothing tracked it any more — not even the app's exit handler,
+/// which only kills the handle it still has.
+pub fn replace_server_process(slot: &mut Option<Child>, child: Child) {
+    if let Some(mut old) = slot.take() {
+        let _ = kill_server(&mut old);
+    }
+    #[cfg(target_os = "windows")]
+    server_job::adopt(&child);
+    *slot = Some(child);
+}
+
+/// The Windows job that owns every Python server this app starts.
+///
+/// Windows does not end a child when its parent dies, so an app that crashed —
+/// or was ended from Task Manager — left its server running, holding port 9111
+/// and VRAM into the next launch. The job is created with KILL_ON_JOB_CLOSE and
+/// never closed by us: when the app process goes away, however it goes, Windows
+/// closes the handle and terminates everything still in the job.
+#[cfg(target_os = "windows")]
+pub(crate) mod server_job {
+    use std::ffi::c_void;
+    use std::os::windows::io::AsRawHandle;
+    use std::process::Child;
+    use std::sync::OnceLock;
+
+    type Handle = *mut c_void;
+
+    // JOBOBJECT_EXTENDED_LIMIT_INFORMATION and its members, laid out as in
+    // winnt.h. SetInformationJobObject rejects the call if the size is wrong.
+    #[repr(C)]
+    #[derive(Default)]
+    struct BasicLimitInformation {
+        per_process_user_time_limit: i64,
+        per_job_user_time_limit: i64,
+        limit_flags: u32,
+        minimum_working_set_size: usize,
+        maximum_working_set_size: usize,
+        active_process_limit: u32,
+        affinity: usize,
+        priority_class: u32,
+        scheduling_class: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Default)]
+    struct IoCounters {
+        read_operation_count: u64,
+        write_operation_count: u64,
+        other_operation_count: u64,
+        read_transfer_count: u64,
+        write_transfer_count: u64,
+        other_transfer_count: u64,
+    }
+
+    #[repr(C)]
+    #[derive(Default)]
+    struct ExtendedLimitInformation {
+        basic: BasicLimitInformation,
+        io: IoCounters,
+        process_memory_limit: usize,
+        job_memory_limit: usize,
+        peak_process_memory_used: usize,
+        peak_job_memory_used: usize,
+    }
+
+    const JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS: i32 = 9;
+    const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: u32 = 0x2000;
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn CreateJobObjectW(attributes: *mut c_void, name: *const u16) -> Handle;
+        fn SetInformationJobObject(job: Handle, class: i32, info: *mut c_void, len: u32) -> i32;
+        fn AssignProcessToJobObject(job: Handle, process: Handle) -> i32;
+        fn CloseHandle(handle: Handle) -> i32;
+    }
+
+    pub(crate) struct Job(Handle);
+
+    // A job handle is a kernel handle: usable from any thread.
+    unsafe impl Send for Job {}
+    unsafe impl Sync for Job {}
+
+    impl Job {
+        pub(crate) fn kill_on_close() -> std::io::Result<Job> {
+            let handle = unsafe { CreateJobObjectW(std::ptr::null_mut(), std::ptr::null()) };
+            if handle.is_null() {
+                return Err(std::io::Error::last_os_error());
+            }
+            let job = Job(handle);
+            let mut info = ExtendedLimitInformation::default();
+            info.basic.limit_flags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            let ok = unsafe {
+                SetInformationJobObject(
+                    job.0,
+                    JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS,
+                    &mut info as *mut _ as *mut c_void,
+                    std::mem::size_of::<ExtendedLimitInformation>() as u32,
+                )
+            };
+            if ok == 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(job)
+        }
+
+        pub(crate) fn assign(&self, child: &Child) -> std::io::Result<()> {
+            let ok = unsafe { AssignProcessToJobObject(self.0, child.as_raw_handle() as Handle) };
+            if ok == 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        }
+    }
+
+    impl Drop for Job {
+        fn drop(&mut self) {
+            unsafe {
+                CloseHandle(self.0);
+            }
+        }
+    }
+
+    /// Lives for the whole process and is never dropped: its handle closes
+    /// only when the app itself goes away.
+    static SERVER_JOB: OnceLock<Option<Job>> = OnceLock::new();
+
+    /// Tie `child` to the app's lifetime. Best effort: if the job cannot be
+    /// made or joined, the server still runs, just without this guarantee.
+    pub(crate) fn adopt(child: &Child) {
+        let job = SERVER_JOB.get_or_init(|| match Job::kill_on_close() {
+            Ok(job) => Some(job),
+            Err(e) => {
+                log::warn!("Could not create the server job object: {}", e);
+                None
+            }
+        });
+        if let Some(job) = job {
+            if let Err(e) = job.assign(child) {
+                log::warn!("Could not put the Python server (pid {}) in the job: {}", child.id(), e);
+            }
+        }
+    }
+}
+
 pub fn kill_server(child: &mut Child) -> Result<(), AppError> {
     kill_process_tree(child)?;
     let _ = child.wait();
@@ -145,6 +301,75 @@ fn kill_process_tree(child: &mut Child) -> Result<(), AppError> {
 mod tests {
     use super::*;
     use std::fs;
+    use sysinfo::{Pid, ProcessesToUpdate, System};
+
+    /// A child that would run for 30 s unless something kills it.
+    fn sleeper() -> Child {
+        let mut cmd = if cfg!(target_os = "windows") {
+            let mut c = Command::new("ping");
+            c.args(["-n", "30", "127.0.0.1"]);
+            c
+        } else {
+            let mut c = Command::new("sleep");
+            c.arg("30");
+            c
+        };
+        cmd.stdout(Stdio::null()).stderr(Stdio::null());
+        cmd.spawn().expect("spawn sleeper")
+    }
+
+    fn is_alive(pid: u32) -> bool {
+        let pid = Pid::from_u32(pid);
+        let mut sys = System::new();
+        sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+        sys.process(pid).is_some()
+    }
+
+    fn exits_within(child: &mut Child, limit: Duration) -> bool {
+        let t0 = std::time::Instant::now();
+        while t0.elapsed() < limit {
+            if let Ok(Some(_)) = child.try_wait() {
+                return true;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        false
+    }
+
+    /// After a crash is declared the old server may only be hung — still
+    /// holding port 9111 and its VRAM. Overwriting its handle orphaned it:
+    /// nothing tracked it any more, not even the app's exit handler.
+    #[test]
+    fn replacing_the_server_process_kills_the_old_one() {
+        let old = sleeper();
+        let old_pid = old.id();
+        let mut slot = Some(old);
+
+        replace_server_process(&mut slot, sleeper());
+
+        assert!(!is_alive(old_pid), "the replaced server process is still running");
+        let _ = kill_server(slot.as_mut().unwrap());
+    }
+
+    /// Windows does not end a child when its parent dies. The job is what
+    /// takes the server down with the app — including when the app crashes and
+    /// never runs its exit handler: closing the job handle is what the OS does
+    /// to a dead process's handles.
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn closing_the_server_job_kills_the_processes_in_it() {
+        let mut child = sleeper();
+        let job = server_job::Job::kill_on_close().expect("create job");
+        job.assign(&child).expect("assign child");
+
+        drop(job);
+
+        let died = exits_within(&mut child, Duration::from_secs(5));
+        if !died {
+            let _ = kill_server(&mut child);
+        }
+        assert!(died, "a process in a closed kill-on-close job must be terminated");
+    }
 
     fn scratch(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join("localsub_python_manager_test");

@@ -45,35 +45,14 @@ fn detect_avx() -> (bool, bool) {
     (false, false)
 }
 
+/// The GPU the server will be pinned to (see gpu.rs) — the one the profile
+/// recommendation and the sidebar should describe.
 fn detect_nvidia_gpu() -> Option<GpuInfo> {
-    let output = crate::utils::hidden_command("nvidia-smi")
-        .args([
-            "--query-gpu=name,memory.total",
-            "--format=csv,noheader,nounits",
-        ])
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let line = stdout.lines().next()?.trim().to_string();
-    let parts: Vec<&str> = line.splitn(2, ',').collect();
-    if parts.len() < 2 {
-        return None;
-    }
-
-    let name = parts[0].trim().to_string();
-    let vram_mb = parts[1].trim().parse::<u64>().ok()?;
-
-    let cuda_version = detect_cuda_version();
-
+    let gpu = crate::gpu::selected()?;
     Some(GpuInfo {
-        name,
-        vram_mb,
-        cuda_version,
+        name: gpu.name,
+        vram_mb: gpu.memory_total_mb,
+        cuda_version: detect_cuda_version(),
     })
 }
 

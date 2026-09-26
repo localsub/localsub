@@ -122,9 +122,17 @@ async def get_resources():
     vram_used_mb = None
     vram_total_mb = None
 
+    # The app pins this server to one GPU and names it here; nvidia-smi ignores
+    # CUDA_VISIBLE_DEVICES, so without --id it would report every card.
+    pinned = os.environ.get("LOCALSUB_GPU_UUID")
     try:
         result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=memory.used,memory.total", "--format=csv,noheader,nounits"],
+            [
+                "nvidia-smi",
+                *([f"--id={pinned}"] if pinned else []),
+                "--query-gpu=memory.used,memory.total",
+                "--format=csv,noheader,nounits",
+            ],
             capture_output=True,
             text=True,
             timeout=5,

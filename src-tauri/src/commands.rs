@@ -8,16 +8,36 @@ use crate::setup_manager;
 use crate::state::{RuntimeModelStatus, RuntimeStatus, ServerStatus, SetupStatus, SharedState};
 
 /// Query free VRAM in MB via nvidia-smi. Returns None if unavailable.
-fn get_vram_free_mb() -> Option<u64> {
-    let output = crate::utils::hidden_command("nvidia-smi")
-        .args(["--query-gpu=memory.free", "--format=csv,noheader,nounits"])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
+/// Upper bound on waiting for a killed server's VRAM to come back.
+const VRAM_RELEASE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
+
+/// Wait until the pinned GPU has taken back the killed server's memory.
+///
+/// Measured against the usage just before the kill (see gpu::vram_settled)
+/// rather than an absolute "free > 6000 MB": that read nvidia-smi's answer as
+/// one number, so with two GPUs it failed to parse and the wait was skipped,
+/// and on a 6 GB card it could never be met, so every restart waited 20 s.
+async fn wait_for_vram_release(uuid: Option<&str>, used_before: Option<u64>) {
+    let (Some(uuid), Some(before)) = (uuid, used_before) else {
+        // Nothing to measure (no NVIDIA GPU / no nvidia-smi). The process has
+        // already exited — kill_server waits for it — so give the driver a moment.
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        return;
+    };
+    let started = std::time::Instant::now();
+    let mut prev: Option<u64> = None;
+    while started.elapsed() < VRAM_RELEASE_TIMEOUT {
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        let Some(now) = crate::gpu::memory_used_mb(uuid) else { return };
+        log::info!("VRAM in use on the pinned GPU: {} MB ({} MB before the kill)", now, before);
+        if let Some(p) = prev {
+            if crate::gpu::vram_settled(before, p, now, started.elapsed()) {
+                return;
+            }
+        }
+        prev = Some(now);
     }
-    let text = String::from_utf8_lossy(&output.stdout);
-    text.trim().parse::<u64>().ok()
+    log::warn!("VRAM did not settle within {:?}; starting the server anyway", VRAM_RELEASE_TIMEOUT);
 }
 
 #[tauri::command]
@@ -125,7 +145,7 @@ pub async fn start_server(
 
         match python_manager::spawn_python_server(&app, port) {
             Ok(child) => {
-                s.server_process = Some(child);
+                python_manager::replace_server_process(&mut s.server_process, child);
             }
             Err(e) => {
                 s.server_status = ServerStatus::ERROR;
@@ -182,7 +202,7 @@ pub async fn start_server(
 /// auto-restart never runs. `start_server` then refuses with "already running
 /// or starting" and the sidebar's click-to-restart only reacts to
 /// ERROR/STOPPED — every recovery path shut until the app is relaunched.
-fn mark_server_failed(s: &mut crate::state::AppState) {
+pub(crate) fn mark_server_failed(s: &mut crate::state::AppState) {
     s.server_status = ServerStatus::ERROR;
     s.model_loading = false;
     if let Some(ref mut child) = s.server_process {
@@ -197,6 +217,10 @@ pub async fn restart_server(
     state: State<'_, SharedState>,
 ) -> Result<(), AppError> {
     log::info!("Restarting Python server (VRAM cleanup)");
+    // The release is measured on the GPU the old server was pinned to, from
+    // what it held just before the kill.
+    let gpu = crate::gpu::selected();
+    let used_before = gpu.as_ref().and_then(|g| crate::gpu::memory_used_mb(&g.uuid));
     let port;
     {
         let mut s = state.lock().expect("Failed to lock state");
@@ -215,29 +239,13 @@ pub async fn restart_server(
         port = s.python_port;
     }
 
-    // Wait for CUDA VRAM to be released after process kill
-    for attempt in 0..20 {
-        let vram_free = get_vram_free_mb();
-        if let Some(free) = vram_free {
-            log::info!("VRAM free: {} MB (attempt {})", free, attempt + 1);
-            // Need at least 6000 MB free for LLM (9B Q4 model)
-            if free > 6000 {
-                break;
-            }
-        } else {
-            // nvidia-smi not available, just wait a fixed time
-            if attempt >= 3 {
-                break;
-            }
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-    }
+    wait_for_vram_release(gpu.as_ref().map(|g| g.uuid.as_str()), used_before).await;
 
     {
         let mut s = state.lock().expect("Failed to lock state");
         // Spawn new server
         match python_manager::spawn_python_server(&app, port) {
-            Ok(child) => { s.server_process = Some(child); }
+            Ok(child) => python_manager::replace_server_process(&mut s.server_process, child),
             Err(e) => {
                 mark_server_failed(&mut s);
                 let _ = app.emit("server-status", &s.server_status);

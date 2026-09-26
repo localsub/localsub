@@ -28,7 +28,8 @@ AI Models (faster-whisper, llama-cpp-python, ONNX Runtime)
 ### 비디오 메모리(VRAM) 거버넌스 및 단계별 핸드오버
 - Windows 환경에서 CTranslate2 기반 Whisper 런타임의 동적 언로드(`unload_runtime_model`) 호출 시 세그멘테이션 오류(Segmentation Fault)가 발생할 수 있습니다.
 - 따라서 번역 단계 진입 전 **Python 추론 서버 프로세스를 정상 재시작**하여 Whisper가 점유하던 VRAM을 운영체제 차원에서 100% 완전 회수합니다 (`usePipeline.ts`).
-- `restart_server`는 `nvidia-smi`를 통해 가용 VRAM이 6GB를 초과할 때까지 최대 20초간 대기한 후 자식 프로세스를 재스폰합니다.
+- `restart_server`는 기존 서버를 종료한 뒤, 서버가 고정된 GPU의 사용량이 종료 직전보다 줄어들고 안정될 때까지 최대 20초간 대기한 후 자식 프로세스를 재스폰합니다 (`gpu::vram_settled`). 과거의 절대 문턱("가용 VRAM 6GB 초과")은 6GB 이하 카드에서 충족될 수 없어 매 재시작마다 20초를 소모했으므로 사용하지 마십시오.
+- **GPU 한 장 고정 정책**: 추론 서버와 CUDA 셀프테스트는 VRAM이 가장 큰 NVIDIA GPU 한 장에 `CUDA_VISIBLE_DEVICES=<GPU UUID>`로 고정됩니다 (`gpu.rs`). 고정하지 않으면 Whisper는 CUDA 0번을, llama.cpp는 보이는 모든 GPU를 사용하며, nvidia-smi(PCI 순서)와 CUDA(기본: 빠른 GPU 순)의 번호 순서도 다를 수 있습니다. 하드웨어 감지·프로파일 추천·`/runtime/resources`(`LOCALSUB_GPU_UUID`)도 같은 GPU를 기준으로 합니다. nvidia-smi 출력은 여러 GPU를 전제로 줄 단위로 파싱하며, 모든 호출에 5초 타임아웃이 걸려 있습니다.
 
 ## 3. 개발 및 빌드 환경 (Development & Build)
 
@@ -129,6 +130,7 @@ Whisper 모델 구동에는 `model.bin`, `config.json`, `tokenizer.json`, `vocab
 ## 7. 프로세스 오케스트레이션 및 결함 허용 (Process Orchestration & Fault Tolerance)
 
 - Python 서버는 애플리케이션 시작 시 자동으로 스폰됩니다. `commands_runtime.rs`의 3초 주기 폴링이 10회 연속 실패할 경우 `server-crashed` 이벤트를 브로드캐스트하며, `usePipeline.ts`가 활성 파이프라인을 `failed`로 전이합니다.
+- **서버 프로세스는 항상 하나**: 서버 핸들은 반드시 `python_manager::replace_server_process`로 교체합니다(이전 프로세스를 먼저 종료). 크래시 판정 시에도 `mark_server_failed`로 프로세스를 종료합니다(멈춘 서버가 포트 9111과 VRAM을 쥐고 남지 않도록). Windows에서는 모든 서버 프로세스를 KILL_ON_JOB_CLOSE Job Object(`python_manager::server_job`)에 넣어, 앱이 비정상 종료되어도 운영체제가 서버를 함께 정리합니다.
 - Rust 코어는 강제 자동 재시작 루프를 돌리지 않으며, 프론트엔드의 `useServerStatus.ts`가 `server-crashed` 이벤트 수신 후 3초 시점에 상태가 ERROR/STOPPED로 유지될 경우 `startServer()`를 원격 호출합니다 (의도적인 모델 스왑 재시작과의 경합 방지 가드 포함).
 - **표준 에러(stderr) 스트림 캡처**: Python 자식 프로세스의 stderr는 `%APPDATA%/LocalSub/logs/python-stderr.log`로 리다이렉트되어 캡처됩니다 (2MB 초과 시 `.1` 파일로 롤링). Uvicorn 액세스 로그로 인한 표준 출력 오염을 방지하기 위해 stdout은 null 스트림으로 처리합니다.
 - **`restart_server` 실패 상태 복원**: 서버 재시작 실패 시 반드시 `mark_server_failed`를 호출하여 상태를 ERROR로 전이시켜야 합니다. 상태 정리가 누락될 경우 사이드바 및 크래시 감지기가 비정상 고착될 수 있습니다.
