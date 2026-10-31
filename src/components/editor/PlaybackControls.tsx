@@ -53,20 +53,25 @@ export function PlaybackControls({
   const VolumeIcon = volume === 0 ? VolumeX : Volume2
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 border-t bg-muted/20">
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSkipPrev} aria-label={t("editor.a11y.skipPrev")}>
-          <SkipBack className="h-3.5 w-3.5" />
+    <div className="flex h-10 items-center gap-4 px-1.5 text-foreground-secondary">
+      <div className="flex items-center gap-1.5">
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-sm [&_svg]:size-[18px]" onClick={onSkipPrev} aria-label={t("editor.a11y.skipPrev")}>
+          <SkipBack />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onTogglePlay} aria-label={isPlaying ? t("editor.a11y.pause") : t("editor.a11y.play")}>
-          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        <Button
+          size="icon"
+          className="h-[38px] w-[38px] rounded-full [&_svg]:size-4"
+          onClick={onTogglePlay}
+          aria-label={isPlaying ? t("editor.a11y.pause") : t("editor.a11y.play")}
+        >
+          {isPlaying ? <Pause fill="currentColor" /> : <Play fill="currentColor" className="ml-0.5" />}
         </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSkipNext} aria-label={t("editor.a11y.skipNext")}>
-          <SkipForward className="h-3.5 w-3.5" />
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-sm [&_svg]:size-[18px]" onClick={onSkipNext} aria-label={t("editor.a11y.skipNext")}>
+          <SkipForward />
         </Button>
       </div>
 
-      <span className="text-xs tabular-nums text-muted-foreground w-20">
+      <span className="w-[72px] text-sm font-semibold tabular-nums text-foreground">
         {formatTime(currentTime)}
       </span>
 
@@ -79,13 +84,16 @@ export function PlaybackControls({
         className="flex-1 cursor-pointer"
       />
 
-      <span className="text-xs tabular-nums text-muted-foreground w-20 text-right">
+      <span className="w-[72px] text-right text-sm tabular-nums text-muted-foreground">
         {formatTime(duration)}
       </span>
 
       {/* Playback speed */}
       <Select value={String(playbackRate)} onValueChange={(v) => onPlaybackRateChange(Number(v))}>
-        <SelectTrigger className="h-7 w-16 text-xs">
+        <SelectTrigger
+          aria-label={t("editor.playbackSpeed")}
+          className="h-8 w-auto gap-1 rounded-[9px] px-2.5 text-[13px] font-bold text-foreground [&>svg]:size-3.5"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -97,13 +105,13 @@ export function PlaybackControls({
 
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t("editor.a11y.volume")}>
-            <VolumeIcon className="h-3.5 w-3.5 text-muted-foreground" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-sm [&_svg]:size-[18px]" aria-label={t("editor.a11y.volume")}>
+            <VolumeIcon />
           </Button>
         </PopoverTrigger>
-        <PopoverContent side="top" className="w-40 p-3">
-          <div className="flex items-center gap-2">
-            <VolumeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <PopoverContent side="top" className="w-44 px-4 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <VolumeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
             <Slider
               value={[volume]}
               onValueChange={([v]) => onVolumeChange(v)}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import {
   Plus,
   Pencil,
@@ -6,17 +6,14 @@ import {
   Trash2,
   BookOpen,
   SlidersHorizontal,
-  ChevronRight,
-  ArrowRight,
+  ChevronDown,
   MoreHorizontal,
   Star,
-  FileUp,
   Info,
   ArrowLeftRight,
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
@@ -25,6 +22,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
+  DialogScrollLayout,
 } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -34,6 +32,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogIcon,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
@@ -47,24 +46,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { PageActions } from "@/components/page-header"
 import { toastSuccess, toastError } from "@/lib/toast"
 import { pickFile, readCsvFile } from "@/lib/tauriApi"
+import { cn } from "@/lib/utils"
 import type { Preset, Vocabulary, VocabularyEntry, ModelManifestEntry } from "@/types"
 
 const LANG_KEYS = ["ko", "en", "ja", "zh"] as const
@@ -75,6 +67,37 @@ type StyleKey = (typeof STYLE_KEYS)[number]
  *  The stored value only changes when the user saves the preset. */
 function normalizeStyle(style: string | undefined): StyleKey {
   return (STYLE_KEYS as readonly string[]).includes(style ?? "") ? (style as StyleKey) : "natural"
+}
+
+/** Label + control stack used by both dialogs. */
+function Field({
+  label,
+  htmlFor,
+  hint,
+  children,
+}: {
+  label: ReactNode
+  htmlFor?: string
+  hint?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-[7px]">
+      <Label htmlFor={htmlFor} className="flex items-center gap-1.5 text-[13.5px] font-bold text-foreground-secondary">
+        {label}
+      </Label>
+      {children}
+      {hint}
+    </div>
+  )
+}
+
+function Chip({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <span className={cn("inline-flex h-6 shrink-0 items-center gap-1 rounded-[7px] bg-muted px-2 text-xs font-bold text-foreground-secondary", className)}>
+      {children}
+    </span>
+  )
 }
 
 // ─── Preset Card ─────────────────────────────────────────────────
@@ -97,70 +120,78 @@ function PresetCard({
   onSetDefault?: () => void
 }) {
   const { t } = useTranslation()
+  const tiles: { label: string; value: string }[] = [
+    { label: "STT", value: preset.whisper_model },
+    { label: "LLM", value: preset.llm_model },
+    {
+      label: "Language",
+      value: `${t(`presets.lang.${preset.source_lang}`, preset.source_lang)} → ${t(`presets.lang.${preset.target_lang}`, preset.target_lang)}`,
+    },
+    { label: "Style", value: t(`presets.style.${normalizeStyle(preset.translation_style)}`, preset.translation_style) },
+  ]
+  if (preset.translation_quality) {
+    tiles.push({ label: "Quality", value: t(`presets.quality.${preset.translation_quality}`, preset.translation_quality) })
+  }
+  if (vocabName) {
+    tiles.push({ label: t("presets.dialog.vocabDictionary"), value: vocabName })
+  }
+
   return (
-    <div className="group rounded-lg border p-4 transition-colors hover:bg-muted/30">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold truncate">{preset.name}</h3>
-            <Badge variant="outline" className="text-[10px] shrink-0">
-              {preset.output_format.toUpperCase()}
-            </Badge>
+    <div className="flex flex-col gap-[18px] rounded-[20px] bg-card px-7 py-6 shadow-card">
+      <div className="flex items-start gap-2.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <h3 className="truncate text-lg font-extrabold">{preset.name}</h3>
+            <Chip>{preset.output_format.toUpperCase()}</Chip>
             {isDefault && (
-              <Badge variant="secondary" className="text-[10px] shrink-0">
-                <Star className="mr-0.5 h-2.5 w-2.5" />
+              <Chip className="bg-primary-soft text-primary-text">
+                <Star className="h-3 w-3" fill="currentColor" />
                 {t("presets.default")}
-              </Badge>
+              </Chip>
             )}
           </div>
           {preset.description && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{preset.description}</p>
+            <p className="line-clamp-1 text-sm text-muted-foreground">{preset.description}</p>
           )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-              <MoreHorizontal className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-mr-2 -mt-1 h-9 w-9 shrink-0 rounded-[10px] text-muted-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground"
+              aria-label="Preset actions"
+            >
+              <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-[200px]">
             <DropdownMenuItem onClick={onEdit}>
-              <Pencil className="mr-2 h-3.5 w-3.5" /> {t("presets.actions.edit")}
+              <Pencil /> {t("presets.actions.edit")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onDuplicate}>
-              <Copy className="mr-2 h-3.5 w-3.5" /> {t("presets.actions.duplicate")}
+              <Copy /> {t("presets.actions.duplicate")}
             </DropdownMenuItem>
             {onSetDefault && !isDefault && (
               <DropdownMenuItem onClick={onSetDefault}>
-                <Star className="mr-2 h-3.5 w-3.5" /> {t("presets.actions.setDefault")}
+                <Star /> {t("presets.actions.setDefault")}
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-              <Trash2 className="mr-2 h-3.5 w-3.5" /> {t("presets.actions.delete")}
+            <DropdownMenuItem onClick={onDelete} className="text-status-error focus:text-status-error">
+              <Trash2 /> {t("presets.actions.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span>STT: <span className="text-foreground font-medium">{preset.whisper_model}</span></span>
-        <span>LLM: <span className="text-foreground font-medium">{preset.llm_model}</span></span>
-        <span className="flex items-center gap-1">
-          {t(`presets.lang.${preset.source_lang}`, preset.source_lang)}
-          <ArrowRight className="h-3 w-3" />
-          {t(`presets.lang.${preset.target_lang}`, preset.target_lang)}
-        </span>
-        <span>Style: <span className="text-foreground font-medium">{t(`presets.style.${normalizeStyle(preset.translation_style)}`, preset.translation_style)}</span></span>
-        {preset.translation_quality && (
-          <span>Quality: <span className="text-foreground font-medium">{t(`presets.quality.${preset.translation_quality}`, preset.translation_quality)}</span></span>
-        )}
-        {vocabName && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5">
-            <BookOpen className="h-3 w-3 text-primary" />
-            <span className="text-foreground font-medium">{vocabName}</span>
-          </span>
-        )}
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}>
+        {tiles.map((tile) => (
+          <div key={tile.label} className="flex min-w-0 flex-col gap-1 rounded-md bg-muted px-3.5 py-3">
+            <span className="truncate text-xs text-muted-foreground">{tile.label}</span>
+            <span className="truncate text-sm font-bold" title={tile.value}>{tile.value}</span>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -181,55 +212,70 @@ function VocabCard({
 }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
+  const langPair = `${t(`presets.lang.${vocab.source_lang}`, vocab.source_lang)} → ${t(`presets.lang.${vocab.target_lang}`, vocab.target_lang)}`
 
   return (
-    <div className="rounded-lg border">
+    <div className="overflow-hidden rounded-[20px] bg-card shadow-card">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-3 px-7 py-[22px] text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10">
-              <BookOpen className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <h3 className="text-sm font-semibold truncate">{vocab.name}</h3>
-            <Badge variant="secondary" className="text-[10px]">{t("presets.dialog.entriesCount", { count: vocab.entries.length })}</Badge>
-          </div>
-          {vocab.description && <p className="text-xs text-muted-foreground mt-1 ml-6">{vocab.description}</p>}
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary-text">
+          <BookOpen className="h-5 w-5" />
         </div>
-        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${expanded ? "rotate-90" : ""}`} />
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <div className="flex min-w-0 items-center gap-2">
+            <h3 className="truncate text-[17px] font-extrabold">{vocab.name}</h3>
+            <Chip className="h-[22px] rounded-[6px] px-[7px]">
+              {t("presets.dialog.entriesCount", { count: vocab.entries.length })}
+            </Chip>
+          </div>
+          <p className="truncate text-[13.5px] text-muted-foreground" title={vocab.description || undefined}>
+            {langPair}
+            {vocab.description && ` · ${vocab.description}`}
+          </p>
+        </div>
+        <ChevronDown
+          className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-150", expanded && "rotate-180")}
+        />
       </button>
 
       {expanded && (
-        <div className="border-t">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50%]">{t("presets.dialog.source")}</TableHead>
-                <TableHead className="w-[50%]">{t("presets.dialog.target")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {vocab.entries.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell className="font-medium text-sm">{entry.source}</TableCell>
-                  <TableCell className="text-sm">{entry.target}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="flex items-center justify-end gap-2 p-3 border-t">
-            <Button variant="outline" size="sm" onClick={onEdit}><Pencil className="mr-1.5 h-3.5 w-3.5" /> {t("presets.actions.edit")}</Button>
-            <Button variant="outline" size="sm" onClick={onDuplicate}>
-              <Copy className="mr-1.5 h-3.5 w-3.5" /> {t("presets.actions.duplicate")}
+        <>
+          <div className="mx-5 rounded-[14px] bg-muted px-4 py-1.5">
+            <div className="grid h-10 grid-cols-2 items-center gap-4 text-[13px] font-semibold text-muted-foreground">
+              <span>{t("presets.dialog.source")}</span>
+              <span>{t("presets.dialog.target")}</span>
+            </div>
+            {vocab.entries.map((entry) => (
+              <div
+                key={entry.id}
+                className="grid min-h-[42px] grid-cols-2 items-center gap-4 border-t border-border py-2 text-[15px]"
+              >
+                <span className="break-words font-bold">{entry.source}</span>
+                <span className="break-words">{entry.target}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 px-5 py-4">
+            <Button variant="secondary" size="sm" className="h-10 px-4" onClick={onEdit}>
+              {t("presets.actions.edit")}
             </Button>
-            <Button variant="outline" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive">
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" /> {t("presets.actions.delete")}
+            <Button variant="secondary" size="sm" className="h-10 px-4" onClick={onDuplicate}>
+              {t("presets.actions.duplicate")}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 px-4 text-status-error hover:bg-status-error-soft hover:text-status-error"
+              onClick={onDelete}
+            >
+              {t("presets.actions.delete")}
             </Button>
           </div>
-        </div>
+        </>
       )}
     </div>
   )
@@ -260,9 +306,6 @@ function PresetDialog({
   const [translationQuality, setTranslationQuality] = useState(initial?.translation_quality ?? "balanced")
   const [customPrompt, setCustomPrompt] = useState(initial?.custom_translation_prompt ?? "")
   const [mediaType, setMediaType] = useState(initial?.media_type ?? "movie")
-  const [translationMode, setTranslationMode] = useState(initial?.translation_mode ?? "direct")
-  const [pivotLanguage, setPivotLanguage] = useState(initial?.pivot_language ?? "en")
-  const [pivotVocabularyId, setPivotVocabularyId] = useState<string>(initial?.pivot_vocabulary_id ?? "none")
 
   // Reset form state whenever dialog is opened (or `initial` changes while open).
   // Without this, useState initializers only run once — editing another preset
@@ -281,13 +324,16 @@ function PresetDialog({
     setTranslationQuality(initial?.translation_quality ?? "balanced")
     setCustomPrompt(initial?.custom_translation_prompt ?? "")
     setMediaType(initial?.media_type ?? "movie")
-    setTranslationMode(initial?.translation_mode ?? "direct")
-    setPivotLanguage(initial?.pivot_language ?? "en")
-    setPivotVocabularyId(initial?.pivot_vocabulary_id ?? "none")
   }, [open, initial])
 
   function handleSave() {
     if (!name.trim()) return
+    // The select lists only source→target vocabularies. An id picked for another
+    // pair (or a former pivot preset's pivot→target one) would otherwise be saved
+    // while the select shows "none".
+    const vocab = vocabularies.find(
+      (v) => v.id === vocabularyId && v.source_lang === sourceLang && v.target_lang === targetLang,
+    )
     onSave({
       name: name.trim(),
       description: description.trim(),
@@ -297,285 +343,203 @@ function PresetDialog({
       output_format: outputFormat,
       translation_style: translationStyle,
       llm_model: llmModel,
-      vocabulary_id: vocabularyId === "none" ? null : vocabularyId,
+      vocabulary_id: vocab ? vocab.id : null,
       translation_quality: translationQuality,
       custom_translation_prompt: customPrompt || undefined,
       media_type: mediaType || "movie",
-      translation_mode: translationMode || "direct",
-      pivot_language: pivotLanguage || "en",
-      pivot_vocabulary_id:
-        translationMode === "pivot_2pass"
-          ? (pivotVocabularyId === "none" ? null : pivotVocabularyId)
-          : null,
+      // The dialog no longer offers pivot 2-pass, so saving writes what it
+      // shows: a direct translation with the one vocabulary above.
+      translation_mode: "direct",
+      pivot_language: initial?.pivot_language ?? "en",
+      pivot_vocabulary_id: null,
     })
     onOpenChange(false)
   }
 
+  const whisperModels = manifest.filter((m) => m.model_type === "whisper" && m.status === "ready")
+  const llmModels = manifest.filter((m) => m.model_type === "llm" && m.status === "ready")
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{initial ? t("presets.dialog.editPreset") : t("presets.dialog.newPreset")}</DialogTitle>
-          <DialogDescription>{t("presets.dialog.presetDescription")}</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="flex max-h-[min(820px,calc(100vh-3.5rem))] w-[680px] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[680px]">
+        <DialogScrollLayout
+          bodyClassName="gap-[18px] pt-1"
+          header={
+            <DialogHeader>
+              <DialogTitle>{initial ? t("presets.dialog.editPreset") : t("presets.dialog.newPreset")}</DialogTitle>
+              <DialogDescription>{t("presets.dialog.presetDescription")}</DialogDescription>
+            </DialogHeader>
+          }
+          footer={
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => onOpenChange(false)}>{t("presets.dialog.cancel")}</Button>
+              <Button className="px-[22px]" onClick={handleSave} disabled={!name.trim()}>
+                {initial ? t("presets.dialog.saveChanges") : t("presets.dialog.createPreset")}
+              </Button>
+            </DialogFooter>
+          }
+        >
+          <Field label={t("presets.dialog.name")} htmlFor="preset-name">
+            <Input id="preset-name" value={name} onChange={(e) => setName(e.target.value)} className="font-semibold" />
+          </Field>
+          <Field label={t("presets.dialog.description")} htmlFor="preset-desc">
+            <Textarea
+              id="preset-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="h-16 min-h-16 resize-none"
+            />
+          </Field>
 
-        <ScrollArea className="max-h-[60vh]">
-          <div className="flex flex-col gap-4 py-2 px-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="preset-name">{t("presets.dialog.name")}</Label>
-              <Input id="preset-name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="preset-desc">{t("presets.dialog.description")}</Label>
-              <Textarea id="preset-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="resize-none" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("presets.dialog.whisperModel")}</Label>
-                <Select value={whisperModel} onValueChange={setWhisperModel}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {manifest
-                      .filter((m) => m.model_type === "whisper" && m.status === "ready")
-                      .map((m) => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))}
-                    {manifest.filter((m) => m.model_type === "whisper" && m.status === "ready").length === 0 && (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">{t("presets.dialog.noModelsInstalled")}</div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("presets.dialog.llmModel")}</Label>
-                <Select value={llmModel} onValueChange={setLlmModel}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {manifest
-                      .filter((m) => m.model_type === "llm" && m.status === "ready")
-                      .map((m) => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))}
-                    {manifest.filter((m) => m.model_type === "llm" && m.status === "ready").length === 0 && (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">{t("presets.dialog.noModelsInstalled")}</div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("presets.dialog.sourceLang")}</Label>
-                <Select value={sourceLang} onValueChange={setSourceLang}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LANG_KEYS.map((k) => (
-                      <SelectItem key={k} value={k}>{t(`presets.lang.${k}`, k)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("presets.dialog.targetLang")}</Label>
-                <Select value={targetLang} onValueChange={setTargetLang}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LANG_KEYS.map((k) => (
-                      <SelectItem key={k} value={k}>{t(`presets.lang.${k}`, k)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("presets.dialog.outputFormat")}</Label>
-                <Select value={outputFormat} onValueChange={setOutputFormat}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="srt">SRT</SelectItem>
-                    <SelectItem value="ass">ASS</SelectItem>
-                    <SelectItem value="vtt">VTT</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("presets.dialog.translationStyle")}</Label>
-                <Select value={translationStyle} onValueChange={setTranslationStyle}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STYLE_KEYS.map((k) => (
-                      <SelectItem key={k} value={k}>{t(`presets.style.${k}`, k)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("presets.dialog.translationMode", "Translation mode")}</Label>
-              <Select value={translationMode} onValueChange={setTranslationMode}>
+          <div className="grid grid-cols-2 gap-x-2.5 gap-y-3">
+            <Field label={t("presets.dialog.whisperModel")}>
+              <Select value={whisperModel} onValueChange={setWhisperModel}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="direct">
-                    {t("presets.mode.direct", "Direct")}
-                  </SelectItem>
-                  <SelectItem value="pivot_2pass">
-                    {t("presets.mode.pivot2pass", "Pivot 2-pass")}
-                  </SelectItem>
+                  {whisperModels.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                  {whisperModels.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">{t("presets.dialog.noModelsInstalled")}</div>
+                  )}
                 </SelectContent>
               </Select>
-            </div>
-
-            {translationMode === "pivot_2pass" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <Label>{t("presets.dialog.pivotLanguage", "Pivot language")}</Label>
-                  <Select value={pivotLanguage} onValueChange={setPivotLanguage}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">
-                        {t("presets.lang.en", "English")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label>
-                    {t(
-                      "presets.dialog.pivotVocab",
-                      "Vocabulary (source → pivot)",
-                    )}
-                  </Label>
-                  <Select
-                    value={pivotVocabularyId ?? "none"}
-                    onValueChange={setPivotVocabularyId}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">
-                        {t("presets.dialog.none")}
-                      </SelectItem>
-                      {vocabularies
-                        .filter(
-                          (v) =>
-                            v.source_lang === sourceLang &&
-                            v.target_lang === pivotLanguage,
-                        )
-                        .map((v) => (
-                          <SelectItem key={v.id} value={v.id}>
-                            {v.name} (
-                            {t("presets.dialog.entriesCount", {
-                              count: v.entries.length,
-                            })}
-                            )
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1.5">
-              <Label>
-                {translationMode === "pivot_2pass"
-                  ? t("presets.dialog.finalVocab", "Vocabulary (pivot → target)")
-                  : t("presets.dialog.vocabDictionary")}
-              </Label>
-              <Select value={vocabularyId ?? "none"} onValueChange={setVocabularyId}>
+            </Field>
+            <Field label={t("presets.dialog.llmModel")}>
+              <Select value={llmModel} onValueChange={setLlmModel}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{t("presets.dialog.none")}</SelectItem>
-                  {vocabularies
-                    .filter((v) => {
-                      if (translationMode === "pivot_2pass") {
-                        return (
-                          v.source_lang === pivotLanguage &&
-                          v.target_lang === targetLang
-                        )
-                      }
-                      return (
-                        v.source_lang === sourceLang &&
-                        v.target_lang === targetLang
-                      )
-                    })
-                    .map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.name} (
-                        {t("presets.dialog.entriesCount", {
-                          count: v.entries.length,
-                        })}
-                        )
-                      </SelectItem>
-                    ))}
+                  {llmModels.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                  {llmModels.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">{t("presets.dialog.noModelsInstalled")}</div>
+                  )}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
+            <Field label={t("presets.dialog.sourceLang")}>
+              <Select value={sourceLang} onValueChange={setSourceLang}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LANG_KEYS.map((k) => (
+                    <SelectItem key={k} value={k}>{t(`presets.lang.${k}`, k)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label={t("presets.dialog.targetLang")}>
+              <Select value={targetLang} onValueChange={setTargetLang}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LANG_KEYS.map((k) => (
+                    <SelectItem key={k} value={k}>{t(`presets.lang.${k}`, k)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label={t("presets.dialog.outputFormat")}>
+              <Select value={outputFormat} onValueChange={setOutputFormat}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="srt">SRT</SelectItem>
+                  <SelectItem value="ass">ASS</SelectItem>
+                  <SelectItem value="vtt">VTT</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label={t("presets.dialog.translationStyle")}>
+              <Select value={translationStyle} onValueChange={setTranslationStyle}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STYLE_KEYS.map((k) => (
+                    <SelectItem key={k} value={k}>{t(`presets.style.${k}`, k)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("presets.quality.fast", "Translation Quality")}</Label>
-              <div className="flex gap-2">
-                {(["fast", "balanced", "best"] as const).map((tier) => (
-                  <Button
+          <Field label={t("presets.dialog.vocabDictionary")}>
+            <Select value={vocabularyId ?? "none"} onValueChange={setVocabularyId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("presets.dialog.none")}</SelectItem>
+                {vocabularies
+                  .filter((v) => v.source_lang === sourceLang && v.target_lang === targetLang)
+                  .map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name} ({t("presets.dialog.entriesCount", { count: v.entries.length })})
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label={t("settings.translation.quality.title", "Translation Quality")}>
+            <div role="radiogroup" className="grid grid-cols-3 gap-0.5 rounded-[14px] bg-muted p-1">
+              {(["fast", "balanced", "best"] as const).map((tier) => {
+                const selected = translationQuality === tier
+                return (
+                  <button
                     key={tier}
-                    variant={translationQuality === tier ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1"
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
                     onClick={() => setTranslationQuality(tier)}
+                    className={cn(
+                      "h-10 rounded-[10px] text-[14.5px] outline-none transition-[background-color,color,box-shadow] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring",
+                      selected
+                        ? "bg-card font-bold text-foreground shadow-segment"
+                        : "font-semibold text-foreground-secondary hover:text-foreground",
+                    )}
                   >
                     {t(`presets.quality.${tier}`, tier)}
-                  </Button>
-                ))}
-              </div>
+                  </button>
+                )
+              })}
             </div>
+          </Field>
 
-<div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5">
-                <Label>Media Type</Label>
+          <Field
+            label={
+              <>
+                Media Type
                 <TooltipProvider delayDuration={200}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <Info className="h-3.5 w-3.5 cursor-help text-muted-foreground" />
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[260px]">
                       <p>영상 유형에 따라 번역 톤이 달라집니다. 자유롭게 입력 가능합니다.</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              </div>
-              <Input value={mediaType} onChange={(e) => setMediaType(e.target.value)} placeholder="movie, anime, drama..." />
-            </div>
+              </>
+            }
+            hint={<p className="text-[12.5px] text-muted-foreground">영상 유형에 따라 번역 톤이 달라집니다. 자유롭게 입력 가능합니다.</p>}
+          >
+            <Input value={mediaType} onChange={(e) => setMediaType(e.target.value)} placeholder="movie, anime, drama..." />
+          </Field>
 
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("presets.customPrompt", "Custom Instructions")}</Label>
-              <p className="text-[11px] text-muted-foreground -mt-0.5">LLM이 이해할 수 있도록 영문으로 작성하세요.</p>
-              <Textarea
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                rows={2}
-                placeholder="e.g., Use casual tone, preserve honorifics, keep character names in katakana..."
-                className="resize-none"
-              />
-            </div>
-          </div>
-        </ScrollArea>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("presets.dialog.cancel")}</Button>
-          <Button onClick={handleSave} disabled={!name.trim()}>
-            {initial ? t("presets.dialog.saveChanges") : t("presets.dialog.createPreset")}
-          </Button>
-        </DialogFooter>
+          <Field label={t("presets.customPrompt", "Custom Instructions")}>
+            <p className="text-[12.5px] text-muted-foreground">LLM이 이해할 수 있도록 영문으로 작성하세요.</p>
+            <Textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              rows={3}
+              placeholder="e.g., Use casual tone, preserve honorifics, keep character names in katakana..."
+              className="h-24 min-h-24 resize-none text-[14.5px] leading-[1.55]"
+            />
+          </Field>
+        </DialogScrollLayout>
       </DialogContent>
     </Dialog>
   )
 }
 
-// ─── Vocabulary entries table (shared by both tabs in VocabDialog) ──
+// ─── Vocabulary entries list (shared by both tabs in VocabDialog) ──
 
 function EntriesTable({
   entries,
@@ -593,71 +557,55 @@ function EntriesTable({
   const { t } = useTranslation()
   if (entries.length === 0) {
     return (
-      <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+      <div className="rounded-[14px] bg-muted p-6 text-center text-[13px] text-muted-foreground">
         {t("presets.vocab.tabs.empty", "아직 항목이 없습니다. 아래 '항목 추가' 버튼을 눌러 시작하세요.")}
       </div>
     )
   }
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("presets.dialog.source")}</TableHead>
-              <TableHead>{t("presets.dialog.target")}</TableHead>
-              <TableHead className="w-[40px]" />
-              <TableHead className="w-[40px]" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entries.map((entry) => (
-              <TableRow key={entry.id}>
-                <TableCell className="p-1">
-                  <Input
-                    value={entry.source}
-                    onChange={(e) => updateEntry(entry.id, "source", e.target.value)}
-                    placeholder={t("presets.dialog.source")}
-                    className="h-8 text-sm"
-                  />
-                </TableCell>
-                <TableCell className="p-1">
-                  <Input
-                    value={entry.target}
-                    onChange={(e) => updateEntry(entry.id, "target", e.target.value)}
-                    placeholder={t("presets.dialog.target")}
-                    className="h-8 text-sm"
-                  />
-                </TableCell>
-                <TableCell className="p-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => onToggleFallback(entry.id)}
-                      >
-                        <ArrowLeftRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">{toggleLabel}</TooltipContent>
-                  </Tooltip>
-                </TableCell>
-                <TableCell className="p-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => removeEntry(entry.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="flex flex-col gap-1.5">
+        {entries.map((entry) => (
+          <div key={entry.id} className="flex items-center gap-1.5">
+            <Input
+              value={entry.source}
+              onChange={(e) => updateEntry(entry.id, "source", e.target.value)}
+              placeholder={t("presets.dialog.source")}
+              aria-label={t("presets.dialog.source")}
+              className="h-10 min-w-0 flex-1 rounded-[10px] px-3 text-[14.5px] font-semibold"
+            />
+            <Input
+              value={entry.target}
+              onChange={(e) => updateEntry(entry.id, "target", e.target.value)}
+              placeholder={t("presets.dialog.target")}
+              aria-label={t("presets.dialog.target")}
+              className="h-10 min-w-0 flex-1 rounded-[10px] px-3 text-[14.5px]"
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-sm text-muted-foreground [&_svg]:size-4"
+                  onClick={() => onToggleFallback(entry.id)}
+                  aria-label={toggleLabel}
+                >
+                  <ArrowLeftRight />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">{toggleLabel}</TooltipContent>
+            </Tooltip>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-sm text-muted-foreground hover:bg-status-error-soft hover:text-status-error [&_svg]:size-4"
+              onClick={() => removeEntry(entry.id)}
+              aria-label={t("presets.actions.delete")}
+            >
+              <Trash2 />
+            </Button>
+          </div>
+        ))}
       </div>
     </TooltipProvider>
   )
@@ -762,114 +710,116 @@ function VocabDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{initial ? t("presets.dialog.editVocab") : t("presets.dialog.newVocab")}</DialogTitle>
-          <DialogDescription>{t("presets.dialog.vocabDescription")}</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="flex max-h-[min(840px,calc(100vh-3.5rem))] w-[660px] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[660px]">
+        <DialogScrollLayout
+          bodyClassName="gap-4"
+          header={
+            <DialogHeader>
+              <DialogTitle>{initial ? t("presets.dialog.editVocab") : t("presets.dialog.newVocab")}</DialogTitle>
+              <DialogDescription>{t("presets.dialog.vocabDescription")}</DialogDescription>
+            </DialogHeader>
+          }
+          footer={
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => onOpenChange(false)}>{t("presets.dialog.cancel")}</Button>
+              <Button className="px-[22px]" onClick={handleSave} disabled={!name.trim()}>
+                {initial ? t("presets.dialog.saveChanges") : t("presets.dialog.createVocab")}
+              </Button>
+            </DialogFooter>
+          }
+        >
+          <div className="grid grid-cols-2 gap-2.5">
+            <Field label={t("presets.dialog.name")} htmlFor="vocab-name">
+              <Input id="vocab-name" value={name} onChange={(e) => setName(e.target.value)} className="h-[46px] px-3.5 font-semibold" />
+            </Field>
+            <Field label={t("presets.dialog.description")} htmlFor="vocab-desc">
+              <Input id="vocab-desc" value={description} onChange={(e) => setDescription(e.target.value)} className="h-[46px] px-3.5" />
+            </Field>
+            <Field label={t("presets.dialog.sourceLang")}>
+              <Select value={sourceLang} onValueChange={setSourceLang}>
+                <SelectTrigger className="h-[46px] px-3.5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LANG_KEYS.map((k) => (
+                    <SelectItem key={k} value={k}>{t(`presets.lang.${k}`, k)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label={t("presets.dialog.targetLang")}>
+              <Select value={targetLang} onValueChange={setTargetLang}>
+                <SelectTrigger className="h-[46px] px-3.5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LANG_KEYS.map((k) => (
+                    <SelectItem key={k} value={k}>{t(`presets.lang.${k}`, k)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
 
-        <ScrollArea className="max-h-[60vh]">
-          <div className="flex flex-col gap-4 py-2 px-1">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="vocab-name">{t("presets.dialog.name")}</Label>
-                <Input id="vocab-name" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="vocab-desc">{t("presets.dialog.description")}</Label>
-                <Input id="vocab-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("presets.dialog.sourceLang")}</Label>
-                <Select value={sourceLang} onValueChange={setSourceLang}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LANG_KEYS.map((k) => (
-                      <SelectItem key={k} value={k}>{t(`presets.lang.${k}`, k)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("presets.dialog.targetLang")}</Label>
-                <Select value={targetLang} onValueChange={setTargetLang}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LANG_KEYS.map((k) => (
-                      <SelectItem key={k} value={k}>{t(`presets.lang.${k}`, k)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>{t("presets.dialog.entries")}</Label>
+          <div className="flex flex-col gap-2">
+            <Label className="text-[13.5px] font-bold text-foreground-secondary">{t("presets.dialog.entries")}</Label>
 
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "fewshot" | "fallback")}>
-                <TabsList className="w-full grid grid-cols-2">
-                  <TabsTrigger value="fewshot">
-                    {t("presets.vocab.tabs.fewshot", "Few-shot 주입")}
-                    <span className="ml-1.5 text-[10px] text-muted-foreground">({fewshotEntries.length})</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="fallback">
-                    {t("presets.vocab.tabs.fallback", "후처리 치환")}
-                    <span className="ml-1.5 text-[10px] text-muted-foreground">({fallbackEntries.length})</span>
-                  </TabsTrigger>
-                </TabsList>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "fewshot" | "fallback")}>
+              <TabsList className="grid w-full grid-cols-2 gap-0.5 rounded-md">
+                <TabsTrigger value="fewshot" className="group h-[38px] gap-1.5 rounded-[9px] text-sm">
+                  {t("presets.vocab.tabs.fewshot", "Few-shot 주입")}
+                  <span className="text-muted-foreground group-data-[state=active]:text-primary-text">{fewshotEntries.length}</span>
+                </TabsTrigger>
+                <TabsTrigger value="fallback" className="group h-[38px] gap-1.5 rounded-[9px] text-sm">
+                  {t("presets.vocab.tabs.fallback", "후처리 치환")}
+                  <span className="text-muted-foreground group-data-[state=active]:text-primary-text">{fallbackEntries.length}</span>
+                </TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="fewshot" className="mt-2 flex flex-col gap-2">
-                  <p className="text-[11px] text-muted-foreground">
-                    {t(
-                      "presets.vocab.tabs.fewshotHint",
-                      "고유명사, 용어, 스타일 예시 문장. 매 번역마다 LLM 프롬프트에 chat turn으로 주입됩니다.",
-                    )}
-                  </p>
-                  <EntriesTable
-                    entries={fewshotEntries}
-                    updateEntry={updateEntry}
-                    removeEntry={removeEntry}
-                    onToggleFallback={toggleFallbackOnly}
-                    toggleLabel={t("presets.vocab.moveToFallback", "→ 후처리 탭으로 이동")}
-                  />
-                </TabsContent>
+              <TabsContent value="fewshot" className="flex flex-col gap-2">
+                <p className="text-[12.5px] text-muted-foreground">
+                  {t(
+                    "presets.vocab.tabs.fewshotHint",
+                    "고유명사, 용어, 스타일 예시 문장. 매 번역마다 LLM 프롬프트에 chat turn으로 주입됩니다.",
+                  )}
+                </p>
+                <EntriesTable
+                  entries={fewshotEntries}
+                  updateEntry={updateEntry}
+                  removeEntry={removeEntry}
+                  onToggleFallback={toggleFallbackOnly}
+                  toggleLabel={t("presets.vocab.moveToFallback", "→ 후처리 탭으로 이동")}
+                />
+              </TabsContent>
 
-                <TabsContent value="fallback" className="mt-2 flex flex-col gap-2">
-                  <p className="text-[11px] text-muted-foreground">
-                    {t(
-                      "presets.vocab.tabs.fallbackHint",
-                      "LLM이 번역하지 못해 원문 그대로 반환할 때만 쓰이는 짧은 표현들. LLM 프롬프트에는 주입되지 않습니다.",
-                    )}
-                  </p>
-                  <EntriesTable
-                    entries={fallbackEntries}
-                    updateEntry={updateEntry}
-                    removeEntry={removeEntry}
-                    onToggleFallback={toggleFallbackOnly}
-                    toggleLabel={t("presets.vocab.moveToFewshot", "← Few-shot 탭으로 이동")}
-                  />
-                </TabsContent>
-              </Tabs>
+              <TabsContent value="fallback" className="flex flex-col gap-2">
+                <p className="text-[12.5px] text-muted-foreground">
+                  {t(
+                    "presets.vocab.tabs.fallbackHint",
+                    "LLM이 번역하지 못해 원문 그대로 반환할 때만 쓰이는 짧은 표현들. LLM 프롬프트에는 주입되지 않습니다.",
+                  )}
+                </p>
+                <EntriesTable
+                  entries={fallbackEntries}
+                  updateEntry={updateEntry}
+                  removeEntry={removeEntry}
+                  onToggleFallback={toggleFallbackOnly}
+                  toggleLabel={t("presets.vocab.moveToFewshot", "← Few-shot 탭으로 이동")}
+                />
+              </TabsContent>
+            </Tabs>
 
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={addEntry}>
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> {t("presets.dialog.addEntry")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleImportCsv}>
-                  <FileUp className="mr-1.5 h-3.5 w-3.5" /> {t("presets.vocab.importCsv")}
-                </Button>
-              </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-10 bg-primary-soft px-3.5 text-primary-text hover:bg-primary-soft/70"
+                onClick={addEntry}
+              >
+                <Plus /> {t("presets.dialog.addEntry")}
+              </Button>
+              <Button variant="secondary" size="sm" className="h-10 px-3.5" onClick={handleImportCsv}>
+                {t("presets.vocab.importCsv")}
+              </Button>
             </div>
           </div>
-        </ScrollArea>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("presets.dialog.cancel")}</Button>
-          <Button onClick={handleSave} disabled={!name.trim()}>
-            {initial ? t("presets.dialog.saveChanges") : t("presets.dialog.createVocab")}
-          </Button>
-        </DialogFooter>
+        </DialogScrollLayout>
       </DialogContent>
     </Dialog>
   )
@@ -889,12 +839,26 @@ interface PresetsPageProps {
   onRemoveVocabulary: (id: string) => Promise<unknown>
 }
 
+function EmptyState({ icon, title, description, action }: { icon: ReactNode; title: string; description: string; action: ReactNode }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-card p-8 text-center shadow-card">
+      <div className="mb-3 flex h-[72px] w-[72px] items-center justify-center rounded-[22px] bg-primary-soft text-primary-text [&_svg]:h-8 [&_svg]:w-8">
+        {icon}
+      </div>
+      <p className="text-[22px] font-extrabold">{title}</p>
+      <p className="text-[15px] text-muted-foreground">{description}</p>
+      <div className="mt-5">{action}</div>
+    </div>
+  )
+}
+
 export function PresetsPage({
   presets, vocabularies, manifest,
   onAddPreset, onUpdatePreset, onRemovePreset,
   onAddVocabulary, onUpdateVocabulary, onRemoveVocabulary,
 }: PresetsPageProps) {
   const { t } = useTranslation()
+  const [tab, setTab] = useState<"presets" | "vocabularies">("presets")
   const [presetDialogOpen, setPresetDialogOpen] = useState(false)
   const [editingPreset, setEditingPreset] = useState<Preset | undefined>()
   const [vocabDialogOpen, setVocabDialogOpen] = useState(false)
@@ -967,88 +931,74 @@ export function PresetsPage({
 
   return (
     <>
-      <Tabs defaultValue="presets" className="flex flex-col flex-1">
-        <div className="border-b">
-          <TabsList className="h-10 bg-transparent p-0 gap-4">
-            <TabsTrigger value="presets" className="relative h-10 rounded-none border-b-2 border-transparent px-0 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-              <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
+      <PageActions>
+        {tab === "presets" ? (
+          <Button className="h-[46px]" onClick={openNewPreset}><Plus /> {t("presets.newPreset", "New Preset")}</Button>
+        ) : (
+          <Button className="h-[46px]" onClick={openNewVocab}><Plus /> {t("presets.newVocab", "New Vocabulary")}</Button>
+        )}
+      </PageActions>
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "presets" | "vocabularies")} className="flex flex-1 flex-col gap-5">
+        <div className="flex items-center gap-4">
+          <TabsList className="gap-0.5">
+            <TabsTrigger value="presets" className="group h-9 gap-1.5 text-sm">
               {t("presets.tabs.presets", "Job Presets")}
-              <Badge variant="secondary" className="ml-1.5 text-[10px] h-5">{presets.length}</Badge>
+              <span className="text-muted-foreground group-data-[state=active]:text-primary-text">{presets.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="vocabularies" className="relative h-10 rounded-none border-b-2 border-transparent px-0 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-              <BookOpen className="mr-1.5 h-3.5 w-3.5" />
+            <TabsTrigger value="vocabularies" className="group h-9 gap-1.5 text-sm">
               {t("presets.tabs.vocabularies", "Vocabularies")}
-              <Badge variant="secondary" className="ml-1.5 text-[10px] h-5">{vocabularies.length}</Badge>
+              <span className="text-muted-foreground group-data-[state=active]:text-primary-text">{vocabularies.length}</span>
             </TabsTrigger>
           </TabsList>
+          <p className="min-w-0 truncate text-sm text-muted-foreground">
+            {tab === "presets"
+              ? t("presets.presetsDesc", "Presets combine STT, translation, and vocabulary settings into reusable configurations.")
+              : t("presets.vocabDesc", "Define how specific terms should be translated for consistency across jobs.")}
+          </p>
         </div>
 
-        <TabsContent value="presets" className="flex flex-col flex-1 mt-0 pt-4">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-muted-foreground">
-              {t("presets.presetsDesc", "Presets combine STT, translation, and vocabulary settings into reusable configurations.")}
-            </p>
-            <Button size="sm" onClick={openNewPreset}><Plus className="mr-1.5 h-4 w-4" /> {t("presets.newPreset", "New Preset")}</Button>
-          </div>
-          <div className="flex flex-1 flex-col gap-2">
-            {presets.map((p) => (
-              <PresetCard
-                key={p.id} preset={p}
-                vocabName={getVocabName(p.vocabulary_id)}
-                isDefault={!!p.is_default}
-                onEdit={() => openEditPreset(p)}
-                onDuplicate={() => handleDuplicatePreset(p)}
-                onDelete={() => setDeleteTarget({ type: "preset", id: p.id, name: p.name })}
-                onSetDefault={() => handleSetDefault(p.id)}
-              />
-            ))}
-            {presets.length === 0 && (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-                <div className="rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
-                  <SlidersHorizontal className="h-8 w-8 text-muted-foreground/70" />
-                </div>
-                <div>
-                  <p className="font-medium">{t("presets.emptyPresets.title", "No presets yet")}</p>
-                  <p className="text-sm text-muted-foreground mt-1">{t("presets.emptyPresets.description", "Create your first preset to get started.")}</p>
-                </div>
-                <Button size="sm" className="mt-2" onClick={openNewPreset}><Plus className="mr-1.5 h-4 w-4" /> {t("presets.newPreset", "New Preset")}</Button>
-              </div>
-            )}
-          </div>
+        <TabsContent value="presets" className="mt-0 flex flex-1 flex-col gap-3">
+          {presets.map((p) => (
+            <PresetCard
+              key={p.id} preset={p}
+              vocabName={getVocabName(p.vocabulary_id)}
+              isDefault={!!p.is_default}
+              onEdit={() => openEditPreset(p)}
+              onDuplicate={() => handleDuplicatePreset(p)}
+              onDelete={() => setDeleteTarget({ type: "preset", id: p.id, name: p.name })}
+              onSetDefault={() => handleSetDefault(p.id)}
+            />
+          ))}
+          {presets.length === 0 && (
+            <EmptyState
+              icon={<SlidersHorizontal />}
+              title={t("presets.emptyPresets.title", "No presets yet")}
+              description={t("presets.emptyPresets.description", "Create your first preset to get started.")}
+              action={<Button size="lg" onClick={openNewPreset}><Plus /> {t("presets.newPreset", "New Preset")}</Button>}
+            />
+          )}
         </TabsContent>
 
-        <TabsContent value="vocabularies" className="flex flex-col flex-1 mt-0 pt-4">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-muted-foreground">
-              {t("presets.vocabDesc", "Define how specific terms should be translated for consistency across jobs.")}
-            </p>
-            <Button size="sm" onClick={openNewVocab}><Plus className="mr-1.5 h-4 w-4" /> {t("presets.newVocab", "New Vocabulary")}</Button>
-          </div>
-          <div className="flex flex-1 flex-col gap-2">
-            {vocabularies.map((v) => (
-              <VocabCard
-                key={v.id}
-                vocab={v}
-                onEdit={() => openEditVocab(v)}
-                onDuplicate={() => handleDuplicateVocab(v)}
-                onDelete={() => setDeleteTarget({ type: "vocab", id: v.id, name: v.name })}
-              />
-            ))}
-            {vocabularies.length === 0 && (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-                <div className="rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
-                  <BookOpen className="h-8 w-8 text-muted-foreground/70" />
-                </div>
-                <div>
-                  <p className="font-medium">{t("presets.emptyVocab.title", "No vocabularies yet")}</p>
-                  <p className="text-sm text-muted-foreground mt-1">{t("presets.emptyVocab.description", "Create a vocabulary dictionary to ensure consistent translations.")}</p>
-                </div>
-                <Button size="sm" className="mt-2" onClick={openNewVocab}><Plus className="mr-1.5 h-4 w-4" /> {t("presets.newVocab", "New Vocabulary")}</Button>
-              </div>
-            )}
-          </div>
+        <TabsContent value="vocabularies" className="mt-0 flex flex-1 flex-col gap-3">
+          {vocabularies.map((v) => (
+            <VocabCard
+              key={v.id}
+              vocab={v}
+              onEdit={() => openEditVocab(v)}
+              onDuplicate={() => handleDuplicateVocab(v)}
+              onDelete={() => setDeleteTarget({ type: "vocab", id: v.id, name: v.name })}
+            />
+          ))}
+          {vocabularies.length === 0 && (
+            <EmptyState
+              icon={<BookOpen />}
+              title={t("presets.emptyVocab.title", "No vocabularies yet")}
+              description={t("presets.emptyVocab.description", "Create a vocabulary dictionary to ensure consistent translations.")}
+              action={<Button size="lg" onClick={openNewVocab}><Plus /> {t("presets.newVocab", "New Vocabulary")}</Button>}
+            />
+          )}
         </TabsContent>
-
       </Tabs>
 
       <PresetDialog open={presetDialogOpen} onOpenChange={setPresetDialogOpen} initial={editingPreset} vocabularies={vocabularies} manifest={manifest} onSave={handleSavePreset} />
@@ -1057,6 +1007,7 @@ export function PresetsPage({
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
+            <AlertDialogIcon><Trash2 /></AlertDialogIcon>
             <AlertDialogTitle>
               {deleteTarget?.type === "preset" ? t("confirm.deletePreset") : t("confirm.deleteVocab")}
             </AlertDialogTitle>

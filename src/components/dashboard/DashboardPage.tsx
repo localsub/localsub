@@ -1,8 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from "react"
-import { Plus, Trash2, FileVideo, FileText, Clock, Filter, MoreHorizontal, RotateCcw, Languages, Search, ArrowUpDown, PenLine, CheckCircle2, AlertCircle, Loader2, Play, PauseCircle } from "lucide-react"
+import { Plus, Trash2, FileVideo, FileText, MoreHorizontal, RotateCcw, Languages, Search, PenLine, Play } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toastInfo, toastError } from "@/lib/toast"
 import { formatEta } from "@/lib/eta"
+import { cn } from "@/lib/utils"
+import { PageActions } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -198,138 +200,125 @@ export function DashboardPage({
     return presets.find((p) => p.id === presetId)?.name ?? "Unknown"
   }
 
-  const FILTER_OPTIONS: { value: FilterStatus; label: string }[] = [
-    { value: "all", label: `${t("dashboard.filter.all", "All")} (${counts.all})` },
-    { value: "processing", label: `${t("dashboard.filter.processing", "Processing")} (${counts.processing})` },
-    { value: "pending", label: `${t("dashboard.filter.pending", "Pending")} (${counts.pending})` },
-    { value: "completed", label: `${t("dashboard.filter.completed", "Completed")} (${counts.completed})` },
-    { value: "failed", label: `${t("dashboard.filter.failed", "Failed")} (${counts.failed})` },
+  const FILTER_OPTIONS: { value: FilterStatus; label: string; count: number }[] = [
+    { value: "all", label: t("dashboard.filter.all", "All"), count: counts.all },
+    { value: "processing", label: t("dashboard.filter.processing", "Processing"), count: counts.processing },
+    { value: "pending", label: t("dashboard.filter.pending", "Pending"), count: counts.pending },
+    { value: "completed", label: t("dashboard.filter.completed", "Completed"), count: counts.completed },
+    { value: "failed", label: t("dashboard.filter.failed", "Failed"), count: counts.failed },
     // Rare state — only worth a filter slot while it exists
     ...(counts.interrupted > 0 || filter === "interrupted"
-      ? [{ value: "interrupted" as const, label: `${t("dashboard.filter.interrupted", "Interrupted")} (${counts.interrupted})` }]
+      ? [{ value: "interrupted" as const, label: t("dashboard.filter.interrupted", "Interrupted"), count: counts.interrupted }]
       : []),
   ]
 
   return (
     <div
-      className="relative flex flex-col flex-1"
+      className="relative flex flex-col flex-1 gap-5"
       onDragOver={handlePageDragOver}
       onDragLeave={handlePageDragLeave}
       onDrop={handlePageDrop}
     >
+      <PageActions>
+        <Button className="h-[46px]" onClick={() => setNewJobOpen(true)}>
+          <Plus />
+          {t("dashboard.newJob.button", "New Job")}
+        </Button>
+      </PageActions>
+
       {/* Drag overlay */}
       {isDraggingOver && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/5 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-2 text-primary">
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 rounded-3xl bg-primary-soft shadow-[inset_0_0_0_3px_hsl(var(--primary))] backdrop-blur-sm">
+          <div className="flex h-[88px] w-[88px] items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-[0_16px_40px_hsl(var(--primary)/0.35)]">
             <FileVideo className="h-10 w-10" />
-            <p className="text-sm font-medium">{t("dashboard.dropOverlay")}</p>
           </div>
+          <p className="mt-2 text-2xl font-extrabold text-primary-text">{t("dashboard.dropOverlay")}</p>
+          <p className="text-sm text-foreground-secondary">{t("dashboard.newJob.supportedFormats")}</p>
         </div>
       )}
 
       {/* Filter bar */}
-      <div className="flex items-center gap-2 border-b px-0 pb-3 mb-4">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted">
-          <Filter className="h-3 w-3 text-muted-foreground" />
-        </div>
-        {FILTER_OPTIONS.map((opt) => (
-          <Button
-            key={opt.value}
-            variant={filter === opt.value ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setFilter(opt.value)}
-            className="h-7 text-xs"
-          >
-            {opt.label}
-          </Button>
-        ))}
-        <div className="flex-1" />
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("dashboard.search")}
-            className="h-7 w-40 pl-8 text-xs"
-          />
-        </div>
-        <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-          <SelectTrigger className="h-7 w-36 text-xs">
-            <ArrowUpDown className="mr-1.5 h-3 w-3" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest">{t("dashboard.sort.newest")}</SelectItem>
-            <SelectItem value="oldest">{t("dashboard.sort.oldest")}</SelectItem>
-            <SelectItem value="nameAsc">{t("dashboard.sort.nameAsc")}</SelectItem>
-            <SelectItem value="nameDesc">{t("dashboard.sort.nameDesc")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button size="sm" onClick={() => setNewJobOpen(true)}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          {t("dashboard.newJob.button", "New Job")}
-        </Button>
-      </div>
-
-      {/* Stats summary */}
       {jobs.length > 0 && (
-        <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <CheckCircle2 className="h-3 w-3 text-green-500" />
-            {counts.completed} {t("dashboard.filter.completed")}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Loader2 className="h-3 w-3 text-blue-500" />
-            {counts.processing} {t("dashboard.filter.processing")}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <AlertCircle className="h-3 w-3 text-red-500" />
-            {counts.failed} {t("dashboard.filter.failed")}
-          </span>
-          {counts.interrupted > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <PauseCircle className="h-3 w-3 text-status-warning" />
-              {counts.interrupted} {t("dashboard.filter.interrupted")}
-            </span>
-          )}
+        <div className="flex items-center gap-3">
+          <div className="flex shrink-0 gap-0.5 rounded-lg bg-muted p-1">
+            {FILTER_OPTIONS.map((opt) => {
+              const active = filter === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFilter(opt.value)}
+                  className={cn(
+                    "flex h-9 items-center gap-1.5 whitespace-nowrap rounded-sm px-3.5 text-sm transition-[background-color,color,box-shadow] duration-150 ease-out",
+                    active
+                      ? "bg-card font-bold text-foreground shadow-segment"
+                      : "font-semibold text-foreground-secondary hover:text-foreground",
+                  )}
+                >
+                  {opt.label}
+                  <span className={active ? "text-primary-text" : "text-muted-foreground"}>{opt.count}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex-1" />
+          <div className="relative min-w-[140px] max-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("dashboard.search")}
+              className="h-11 w-full bg-card pl-10 text-sm shadow-card"
+            />
+          </div>
+          <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+            <SelectTrigger className="h-11 w-auto shrink-0 gap-2 whitespace-nowrap bg-card px-3.5 text-sm font-semibold text-foreground-secondary shadow-card">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="newest">{t("dashboard.sort.newest")}</SelectItem>
+              <SelectItem value="oldest">{t("dashboard.sort.oldest")}</SelectItem>
+              <SelectItem value="nameAsc">{t("dashboard.sort.nameAsc")}</SelectItem>
+              <SelectItem value="nameDesc">{t("dashboard.sort.nameDesc")}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       )}
 
       {/* Job table */}
       {filteredJobs.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-          <div className="rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
-            <FileVideo className="h-8 w-8 text-muted-foreground/70" />
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-card p-8 text-center shadow-card">
+          <div className="mb-3 flex h-[72px] w-[72px] items-center justify-center rounded-[22px] bg-primary-soft text-primary-text">
+            <FileVideo className="h-8 w-8" />
           </div>
-          <div>
-            <p className="font-medium">{t("dashboard.empty.title", "No jobs yet")}</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {t("dashboard.empty.description", "Create a new job to start processing subtitles.")}
-            </p>
-          </div>
-          <Button size="sm" onClick={() => setNewJobOpen(true)} className="mt-2">
-            <Plus className="mr-1.5 h-4 w-4" />
+          <p className="text-[22px] font-extrabold">{t("dashboard.empty.title", "No jobs yet")}</p>
+          <p className="text-[15px] text-muted-foreground">
+            {t("dashboard.empty.description", "Create a new job to start processing subtitles.")}
+          </p>
+          <Button size="lg" onClick={() => setNewJobOpen(true)} className="mt-5">
+            <Plus />
             {t("dashboard.newJob.button", "New Job")}
           </Button>
         </div>
       ) : (
         <TooltipProvider>
-          <Table>
+          <div className="rounded-xl bg-card px-3 py-2 shadow-card">
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[300px]">{t("dashboard.table.file", "File")}</TableHead>
-                <TableHead>{t("dashboard.table.preset", "Preset")}</TableHead>
-                <TableHead>{t("dashboard.table.status", "Status")}</TableHead>
-                <TableHead>{t("dashboard.table.progress", "Progress")}</TableHead>
+                <TableHead className="w-[30%]">{t("dashboard.table.file", "File")}</TableHead>
+                <TableHead className="w-[16%]">{t("dashboard.table.preset", "Preset")}</TableHead>
+                <TableHead className="w-[16%]">{t("dashboard.table.status", "Status")}</TableHead>
+                <TableHead className="w-[20%]">{t("dashboard.table.progress", "Progress")}</TableHead>
                 <TableHead className="text-right">{t("dashboard.table.created", "Created")}</TableHead>
-                <TableHead className="w-[80px]" />
+                <TableHead className="w-[56px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredJobs.map((job) => (
                 <TableRow
                   key={job.id}
-                  className="group cursor-pointer"
+                  className="group cursor-pointer has-[[data-state=open]]:[&>td]:bg-muted"
                   onClick={() => {
                     if (job.status === "completed" || job.status === "processing" || job.status === "interrupted") {
                       // Interrupted jobs have checkpointed lines worth inspecting
@@ -342,18 +331,18 @@ export function DashboardPage({
                   }}
                 >
                   <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted">
+                    <div className="flex items-center gap-3.5">
+                      <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-md bg-muted text-foreground-secondary transition-colors group-hover:bg-card">
                         {job.source_type === "subtitle" ? (
-                          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                          <FileText className="h-[18px] w-[18px]" />
                         ) : (
-                          <FileVideo className="h-3.5 w-3.5 text-muted-foreground" />
+                          <FileVideo className="h-[18px] w-[18px]" />
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{job.file_name}</p>
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <p className="truncate text-[15px] font-bold" title={job.file_name}>{job.file_name}</p>
                         {job.duration > 0 && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[13px] text-muted-foreground">
                             {formatDuration(job.duration)}
                           </p>
                         )}
@@ -361,7 +350,7 @@ export function DashboardPage({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="block truncate text-sm text-foreground-secondary" title={getPresetName(job.preset_id)}>
                       {getPresetName(job.preset_id)}
                     </span>
                   </TableCell>
@@ -370,141 +359,124 @@ export function DashboardPage({
                   </TableCell>
                   <TableCell>
                     {job.status === "processing" ? (
-                      <div className="flex flex-col gap-1 min-w-[140px]">
-                        {/* Subtitle imports have no STT stage — show only translation progress */}
-                        {job.source_type !== "subtitle" && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-muted-foreground w-8 shrink-0">STT</span>
-                            <Progress
-                              value={job.stage === "stt" ? job.progress : 100}
-                              className="h-1.5 flex-1"
-                            />
-                            <span className="text-[10px] tabular-nums text-muted-foreground w-7 text-right">
-                              {job.stage === "stt" ? `${job.progress}%` : "100%"}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground w-8 shrink-0">{t("dashboard.table.translate", "번역")}</span>
-                          <Progress
-                            value={job.stage === "translating" ? job.progress : job.stage === "stt" || job.stage === "diarizing" ? 0 : 100}
-                            className="h-1.5 flex-1"
-                          />
-                          <span className="text-[10px] tabular-nums text-muted-foreground w-7 text-right">
-                            {job.stage === "translating" ? `${job.progress}%` : job.stage === "stt" || job.stage === "diarizing" ? "—" : "100%"}
-                          </span>
-                        </div>
-                        {job.stage === "translating" && job.etaMs != null && (() => {
-                          const eta = formatEta(job.etaMs)
+                      <div className="flex max-w-[230px] flex-col gap-2">
+                        {(() => {
+                          // One bar for the stage that is running now.
+                          const eta = job.stage === "translating" && job.etaMs != null ? formatEta(job.etaMs) : null
                           return (
-                            <span className="text-[10px] tabular-nums text-muted-foreground text-right">
-                              {t(eta.key as never, { count: eta.count, minutes: eta.minutes })}
-                            </span>
+                            <>
+                              <div className="flex items-baseline justify-between gap-2 text-[13px] font-semibold text-foreground-secondary">
+                                <span className="truncate">
+                                  {t(`dashboard.stage.${job.stage}` as never)}{" "}
+                                  <span className="font-bold tabular-nums text-primary-text">{job.progress}%</span>
+                                </span>
+                                {eta && (
+                                  <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+                                    {t(eta.key as never, { count: eta.count, minutes: eta.minutes })}
+                                  </span>
+                                )}
+                              </div>
+                              <Progress value={job.progress} className="h-1.5" />
+                              {/* Subtitle imports have no STT stage to report */}
+                              {job.stage === "translating" && job.source_type !== "subtitle" && (
+                                <span className="text-xs text-muted-foreground">
+                                  {t("dashboard.stage.stt")} {t("dashboard.stage.done")}
+                                </span>
+                              )}
+                            </>
                           )
                         })()}
                       </div>
                     ) : job.status === "completed" ? (
-                      <span className="text-xs text-muted-foreground">100%</span>
+                      <span className="text-sm text-foreground-secondary">100%</span>
                     ) : job.status === "failed" ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="text-xs text-status-error cursor-help">
+                          <span className="cursor-help text-sm font-semibold text-status-error underline decoration-dotted underline-offset-[3px]">
                             Error
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-xs">{job.error}</p>
+                          <p>{job.error}</p>
                         </TooltipContent>
                       </Tooltip>
                     ) : job.status === "interrupted" ? (
-                      <span className="text-xs text-muted-foreground tabular-nums">
+                      <span className="text-sm tabular-nums text-foreground-secondary">
                         {job.translated_count != null && job.translated_count > 0
                           ? t("dashboard.interruptedCount", { count: job.translated_count })
                           : "--"}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">--</span>
+                      <span className="text-sm text-muted-foreground">--</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex flex-col items-end gap-0.5">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-sm text-foreground-secondary">
                         {(() => {
                           const rel = getRelativeTime(job.created_at)
                           return rel ? t(rel.key as never, rel.count != null ? { count: rel.count } : undefined) : formatDateAbsolute(job.created_at, i18n.language)
                         })()}
-                      </div>
+                      </span>
                       {job.status === "completed" && job.completed_at && (
-                        <span className="text-[10px] text-muted-foreground/60">
+                        <span className="whitespace-nowrap text-xs text-muted-foreground">
                           {t("dashboard.stats.processedIn", { time: formatProcessingTime(job.created_at, job.completed_at) })}
                         </span>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="pl-0 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-[34px] w-[34px] rounded-sm opacity-0 transition-opacity hover:bg-card group-hover:opacity-100 data-[state=open]:bg-card data-[state=open]:text-foreground data-[state=open]:opacity-100"
                           aria-label="Job actions"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <MoreHorizontal className="h-4 w-4" />
+                          <MoreHorizontal />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="w-[220px]">
                         {(job.status === "completed" || job.status === "processing" || job.status === "interrupted") && onOpenEditor && (
-                          <>
-                            <DropdownMenuItem
-                              onClick={(e) => { e.stopPropagation(); onOpenEditor(job.id, job.file_path) }}
-                            >
-                              <PenLine className="mr-2 h-3.5 w-3.5" />
-                              {t("dashboard.actions.openEditor")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); onOpenEditor(job.id, job.file_path) }}
+                          >
+                            <PenLine />
+                            {t("dashboard.actions.openEditor")}
+                          </DropdownMenuItem>
                         )}
                         {job.status === "completed" && onRetryJob && (
-                          <>
-                            <DropdownMenuItem
-                              onClick={(e) => { e.stopPropagation(); onRetryJob(job.id) }}
-                            >
-                              <Languages className="mr-2 h-3.5 w-3.5" />
-                              {t("dashboard.actions.retryTranslation", "Retry translation")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); onRetryJob(job.id) }}
+                          >
+                            <Languages />
+                            {t("dashboard.actions.retryTranslation", "Retry translation")}
+                          </DropdownMenuItem>
                         )}
                         {job.status === "interrupted" && onResumeJob && (
-                          <>
-                            <DropdownMenuItem
-                              onClick={(e) => { e.stopPropagation(); onResumeJob(job.id) }}
-                            >
-                              <Play className="mr-2 h-3.5 w-3.5" />
-                              {t("dashboard.actions.resume", "Resume translation")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); onResumeJob(job.id) }}
+                          >
+                            <Play />
+                            {t("dashboard.actions.resume", "Resume translation")}
+                          </DropdownMenuItem>
                         )}
                         {job.status === "failed" && onRetryJob && (
-                          <>
-                            <DropdownMenuItem
-                              onClick={(e) => { e.stopPropagation(); onRetryJob(job.id) }}
-                            >
-                              <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                              {t("dashboard.actions.retry", "Retry")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); onRetryJob(job.id) }}
+                          >
+                            <RotateCcw />
+                            {t("dashboard.actions.retry", "Retry")}
+                          </DropdownMenuItem>
                         )}
+                        {job.status !== "pending" && <DropdownMenuSeparator />}
                         <DropdownMenuItem
                           onClick={(e) => { e.stopPropagation(); onRemoveJob(job.id) }}
-                          className="text-destructive focus:text-destructive"
+                          className="text-status-error focus:text-status-error"
                         >
-                          <Trash2 className="mr-2 h-3.5 w-3.5" />
+                          <Trash2 />
                           {t("dashboard.actions.remove", "Remove")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -514,6 +486,7 @@ export function DashboardPage({
               ))}
             </TableBody>
           </Table>
+          </div>
         </TooltipProvider>
       )}
 

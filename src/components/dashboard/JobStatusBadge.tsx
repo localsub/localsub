@@ -3,11 +3,11 @@ import { Badge } from "@/components/ui/badge"
 import type { JobStatus, JobStage } from "@/types"
 
 const STATUS_STYLES: Record<JobStatus, string> = {
-  pending: "bg-muted text-muted-foreground",
-  processing: "bg-status-info/15 text-status-info border-status-info/25",
-  completed: "bg-status-success/15 text-status-success border-status-success/25",
-  failed: "bg-status-error/15 text-status-error border-status-error/25",
-  interrupted: "bg-status-warning/15 text-status-warning border-status-warning/25",
+  pending: "bg-muted text-foreground-secondary",
+  processing: "bg-primary-soft text-primary-text",
+  completed: "bg-status-success-soft text-status-success",
+  failed: "bg-status-error-soft text-status-error",
+  interrupted: "bg-status-warning-soft text-status-warning",
 }
 
 export function JobStatusBadge({ status, stage }: { status: JobStatus; stage: JobStage }) {
@@ -17,15 +17,16 @@ export function JobStatusBadge({ status, stage }: { status: JobStatus; stage: Jo
   const stageLabel = status === "processing" ? t(`dashboard.stage.${stage}`, stage) : undefined
 
   return (
-    <Badge variant="outline" className={`${STATUS_STYLES[status]} text-xs font-medium`}>
+    <Badge
+      className={`${STATUS_STYLES[status]} max-w-full gap-1.5`}
+      title={stageLabel ? `${statusLabel} (${stageLabel})` : undefined}
+    >
       {status === "processing" && (
-        <span className="relative mr-1.5 flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-info opacity-50" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-status-info" />
-        </span>
+        <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-primary" />
       )}
-      {statusLabel}
-      {stageLabel && <span className="ml-1 opacity-70">({stageLabel})</span>}
+      <span className="shrink-0">{statusLabel}</span>
+      {/* Long stage names (e.g. "Translating") give way inside the fixed status column */}
+      {stageLabel && <span className="min-w-0 truncate font-semibold opacity-75">({stageLabel})</span>}
     </Badge>
   )
 }

@@ -11,7 +11,7 @@ export function HardwareOverview({ hardware }: HardwareOverviewProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-2">
       <HwCard
         icon={Cpu}
         label={t("wizard.environment.cpuCard")}
@@ -52,15 +52,13 @@ function HwCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-lg bg-surface-inset p-3">
-      <div className="mb-1 flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5 text-slate-500" />
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-          {label}
-        </p>
+    <div className="flex min-w-0 flex-col gap-1 rounded-[14px] bg-muted px-4 py-3.5">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <Icon className="size-3.5 shrink-0" />
+        <p className="truncate text-xs font-semibold">{label}</p>
       </div>
-      <p className="truncate text-sm font-medium text-slate-200">{value}</p>
-      {sub && <p className="truncate text-xs text-slate-500">{sub}</p>}
+      <p className="truncate text-[15px] font-bold">{value}</p>
+      {sub && <p className="truncate text-[12.5px] text-muted-foreground">{sub}</p>}
     </div>
   );
 }

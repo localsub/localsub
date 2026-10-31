@@ -47,7 +47,7 @@ export function WaveformMinimap({
       const centerY = h / 2
       const maxBarH = h * 0.4
       const barW = Math.max(w / peaks.length, 1)
-      ctx.fillStyle = `hsl(${v("--waveform")} / 0.3)`
+      ctx.fillStyle = `hsl(${v("--waveform")} / 0.7)`
       for (let i = 0; i < peaks.length; i++) {
         const x = (i / peaks.length) * w
         const barH = peaks[i] * maxBarH
@@ -59,11 +59,13 @@ export function WaveformMinimap({
     // Visible area highlight
     const x1 = (viewStart / dur) * w
     const x2 = ((viewStart + visibleDuration) / dur) * w
-    ctx.fillStyle = `hsl(${v("--primary")} / 0.15)`
-    ctx.fillRect(x1, 0, x2 - x1, h)
-    ctx.strokeStyle = `hsl(${v("--primary")} / 0.5)`
-    ctx.lineWidth = 1
-    ctx.strokeRect(x1, 0, x2 - x1, h)
+    ctx.fillStyle = `hsl(${v("--primary")} / 0.12)`
+    ctx.strokeStyle = `hsl(${v("--primary")} / 0.6)`
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.roundRect(x1 + 0.75, 0.75, Math.max(x2 - x1 - 1.5, 2), h - 1.5, 6)
+    ctx.fill()
+    ctx.stroke()
   }, [peaks, duration, viewStart, visibleDuration])
 
   useEffect(() => {
@@ -116,7 +118,7 @@ export function WaveformMinimap({
   }, [handlePointer])
 
   return (
-    <div ref={containerRef} className="relative w-full h-[30px] border-b cursor-pointer">
+    <div ref={containerRef} className="relative h-[30px] w-full shrink-0 cursor-pointer overflow-hidden rounded-[10px]">
       <canvas
         ref={canvasRef}
         className="w-full h-full"

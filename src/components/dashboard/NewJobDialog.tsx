@@ -4,13 +4,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
   DialogDescription,
+  DialogScrollLayout,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -20,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Upload, X, FileVideo, FileText, Eye, RefreshCw, Play, BookOpen, Plus, Trash2, Languages } from "lucide-react"
+import { Upload, X, FileVideo, FileText, Eye, RefreshCw, Play, BookOpen, Plus, Trash2, Languages, AlertTriangle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
@@ -32,6 +31,7 @@ import {
 } from "@/components/ui/tooltip"
 import { pickFile, checkFfmpeg, downloadFfmpeg } from "@/lib/tauriApi"
 import { usePreviewPipeline } from "@/hooks/usePreviewPipeline"
+import { cn } from "@/lib/utils"
 import { isAcceptedFile, isSubtitleFile } from "@/lib/sourceType"
 import type { Preset, Vocabulary, VocabularyEntry } from "@/types"
 
@@ -105,43 +105,43 @@ function InlineVocabEditor({ vocab, onSave }: { vocab: Vocabulary; onSave: (v: V
   }
 
   return (
-    <div className="rounded-md border p-3 flex flex-col gap-2 bg-background">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium">{vocab.name}</span>
-        <span className="text-[11px] text-muted-foreground">{entries.length} entries</span>
+    <div className="flex flex-col gap-2.5 rounded-[14px] bg-card p-4">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm font-bold">{vocab.name}</span>
+        <span className="text-[12.5px] text-muted-foreground">{entries.length} entries</span>
       </div>
-      <div className="flex flex-col gap-1.5 max-h-52 overflow-y-auto p-0.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+      <div className="flex max-h-52 flex-col gap-2 overflow-y-auto p-0.5">
         {entries.map((entry) => (
-          <div key={entry.id} className="flex items-center gap-1.5">
+          <div key={entry.id} className="flex items-center gap-2">
             <Input
               value={entry.source}
               onChange={(e) => updateEntry(entry.id, "source", e.target.value)}
               placeholder={t("dashboard.newJob.preview.source")}
-              className="h-7 text-xs flex-1 min-w-0 focus-visible:ring-1 focus-visible:ring-offset-0"
+              className="h-[38px] min-w-0 flex-1 rounded-[10px] px-3 text-sm"
             />
-            <span className="text-muted-foreground text-xs shrink-0">→</span>
+            <span className="shrink-0 text-[13px] text-muted-foreground">→</span>
             <Input
               value={entry.target}
               onChange={(e) => updateEntry(entry.id, "target", e.target.value)}
               placeholder={t("dashboard.newJob.preview.target")}
-              className="h-7 text-xs flex-1 min-w-0 focus-visible:ring-1 focus-visible:ring-offset-0"
+              className="h-[38px] min-w-0 flex-1 rounded-[10px] px-3 text-sm"
             />
             <button
               type="button"
               onClick={() => removeEntry(entry.id)}
-              className="shrink-0 p-0.5 text-muted-foreground hover:text-destructive"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-status-error"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-[15px] w-[15px]" />
             </button>
           </div>
         ))}
       </div>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addEntry}>
-          <Plus className="mr-1 h-3 w-3" /> {t("dashboard.newJob.preview.add")}
+        <Button variant="secondary" size="sm" className="h-9" onClick={addEntry}>
+          <Plus /> {t("dashboard.newJob.preview.add")}
         </Button>
         <div className="flex-1" />
-        <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={saving}>
+        <Button size="sm" className="h-9" onClick={handleSave} disabled={saving}>
           {saving ? t("dashboard.newJob.preview.saving") : t("dashboard.newJob.preview.save")}
         </Button>
       </div>
@@ -280,8 +280,16 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${showPreview ? "sm:max-w-3xl" : "sm:max-w-xl"} max-h-[85vh] flex flex-col overflow-hidden`}>
-        <DialogHeader className="shrink-0">
+      <DialogContent
+        className={cn(
+          "flex max-h-[min(840px,calc(100vh-3.5rem))] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0",
+          showPreview ? "w-[780px] sm:max-w-[780px]" : "w-[580px] sm:max-w-[580px]",
+        )}
+      >
+        <DialogScrollLayout
+          bodyClassName={showPreview ? "gap-3.5" : "gap-5"}
+          header={<>
+        <DialogHeader>
           <DialogTitle>{t("dashboard.newJob.title", "New Job")}</DialogTitle>
           <DialogDescription>
             {t("dashboard.newJob.description", "Upload files and select a preset to start processing.")}
@@ -292,14 +300,15 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
             it, and it must sit outside the preview pane — that is where it was
             hidden while long videos silently went unchunked. */}
         {ffmpegReady === false && (
-          <div className="shrink-0 flex items-center gap-2 rounded-md bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-xs">
-            <span className="text-yellow-600 dark:text-yellow-400 flex-1">
+          <div className="mt-5 flex items-center gap-3 rounded-[14px] bg-status-warning-soft px-4 py-3">
+            <AlertTriangle className="h-[18px] w-[18px] shrink-0 text-status-warning" />
+            <span className="flex-1 text-[13.5px] font-semibold leading-snug text-status-warning">
               {t("dashboard.newJob.ffmpegMissing")}
             </span>
             <Button
               size="sm"
-              variant="outline"
-              className="h-6 text-xs shrink-0"
+              variant="secondary"
+              className="h-9 shrink-0 bg-card hover:bg-card/70"
               onClick={handleDownloadFfmpeg}
               disabled={ffmpegDownloading}
             >
@@ -309,9 +318,46 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
             </Button>
           </div>
         )}
-
-        <div className="flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
-          <div className="flex flex-col gap-5 py-2 pr-1">
+          </>}
+          footer={
+          <div className="flex w-full items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* span wrapper: disabled buttons swallow hover, so the tooltip needs an enabled target */}
+                  <span className="mr-auto">
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "gap-1.5 px-1.5 text-[14.5px] hover:bg-transparent [&_svg]:size-[17px]",
+                        showPreview ? "text-primary-text hover:text-primary-text" : "text-foreground-secondary",
+                      )}
+                      onClick={() => setShowPreview(!showPreview)}
+                      disabled={files.length === 0 || !selectedPreset || previewUnavailable}
+                    >
+                      <Eye />
+                      {showPreview ? t("dashboard.newJob.preview.close") : t("dashboard.newJob.preview.open")}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {previewUnavailable && (
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p>{t("dashboard.newJob.subtitleMode.unavailable")}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>
+              {t("shared.cancel", "Cancel")}
+            </Button>
+            <Button className="px-[22px]" onClick={handleSubmit} disabled={files.length === 0 || !selectedPreset}>
+              {files.length > 1
+                ? t("dashboard.newJob.startMultiple", { count: files.length, defaultValue: `Start ${files.length} jobs` })
+                : t("dashboard.newJob.start", "Start job")}
+            </Button>
+          </div>
+          }
+        >
           {/* File drop zone */}
           <div
             onDragOver={handleDragOver}
@@ -321,31 +367,29 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleFileSelect() }}
-            className={`flex items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-colors cursor-pointer ${
-              files.length > 0 ? "p-3" : "flex-col p-6"
-            } ${
-              isDragging
-                ? "border-primary bg-primary/5"
-                : files.length > 0
-                  ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                  : "border-muted-foreground/25 hover:border-muted-foreground/50"
-            }`}
+            className={cn(
+              "flex cursor-pointer items-center rounded-[14px] outline-none transition-[background-color,box-shadow] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring",
+              files.length > 0
+                ? "h-[52px] shrink-0 gap-2 bg-primary-soft px-4 text-[14.5px] font-bold text-primary-text"
+                : "flex-col justify-center gap-1.5 rounded-[18px] bg-muted px-6 py-8 text-center hover:bg-muted-hover",
+              isDragging && "bg-primary-soft shadow-[inset_0_0_0_2px_hsl(var(--primary))] hover:bg-primary-soft",
+            )}
           >
             {files.length > 0 ? (
               <>
-                <FileVideo className="h-4 w-4 text-primary shrink-0" />
-                <span className="text-sm text-primary font-medium">{t("dashboard.newJob.preview.filesSelected", { count: files.length })}</span>
-                <span className="text-xs text-muted-foreground ml-1">{t("dashboard.newJob.preview.clickToAdd")}</span>
+                <Upload className="h-[18px] w-[18px] shrink-0" />
+                <span>{t("dashboard.newJob.preview.filesSelected", { count: files.length })}</span>
+                <span className="font-medium opacity-80">{t("dashboard.newJob.preview.clickToAdd")}</span>
               </>
             ) : (
               <>
-                <div className="rounded-xl bg-muted/60 p-3 ring-1 ring-border">
-                  <Upload className="h-5 w-5 text-muted-foreground" />
+                <div className="mb-2 flex h-[52px] w-[52px] items-center justify-center rounded-[16px] bg-primary-soft text-primary-text">
+                  <Upload className="h-[22px] w-[22px]" />
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-[15px] font-bold">
                   {t("dashboard.newJob.dropzone", "Drag and drop files here, or click to browse")}
                 </p>
-                <p className="text-xs text-muted-foreground/60">
+                <p className="text-[12.5px] text-muted-foreground">
                   {t("dashboard.newJob.supportedFormats")}
                 </p>
               </>
@@ -354,12 +398,12 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
 
           {/* Subtitle translation mode notice */}
           {subtitleCount > 0 && (
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="shrink-0 gap-1.5 font-medium">
-                <Languages className="h-3 w-3" />
+            <div className="flex items-center gap-2.5">
+              <Badge className="shrink-0">
+                <Languages className="h-3.5 w-3.5" />
                 {t("dashboard.newJob.subtitleMode.badge")}
               </Badge>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[12.5px] text-muted-foreground">
                 {t("dashboard.newJob.subtitleMode.hint")}
               </span>
             </div>
@@ -367,71 +411,64 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
 
           {/* File list */}
           {files.length > 0 && (
-            <ScrollArea className="max-h-36">
-              <div className="flex flex-col gap-1.5">
-                {files.map((file, i) => (
-                  <div
-                    key={`${file.name}-${i}`}
-                    className="flex items-center gap-3 rounded-md bg-muted/50 px-3 py-2 text-sm"
+            <div className="flex max-h-[156px] shrink-0 flex-col gap-1.5 overflow-y-auto">
+              {files.map((file, i) => (
+                <div
+                  key={`${file.name}-${i}`}
+                  className="flex h-12 shrink-0 items-center gap-3 rounded-md bg-muted px-3.5 text-[14.5px]"
+                >
+                  {isSubtitleFile(file.path) ? (
+                    <FileText className="h-[17px] w-[17px] shrink-0 text-muted-foreground" />
+                  ) : (
+                    <FileVideo className="h-[17px] w-[17px] shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="flex-1 truncate font-semibold">{file.name}</span>
+                  {file.size > 0 && (
+                    <span className="shrink-0 text-[13px] text-muted-foreground">
+                      {formatSize(file.size)}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeFile(i) }}
+                    className="-mr-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+                    aria-label={`Remove ${file.name}`}
                   >
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted">
-                      {isSubtitleFile(file.path) ? (
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      ) : (
-                        <FileVideo className="h-3.5 w-3.5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <span className="flex-1 truncate">{file.name}</span>
-                    {file.size > 0 && (
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {formatSize(file.size)}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); removeFile(i) }}
-                      className="shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label={`Remove ${file.name}`}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
 
           {/* Preset selection */}
           {presets.length > 0 && (
-            <div className="flex flex-col gap-2.5">
-              <Label className="text-sm font-medium">{t("dashboard.newJob.preset", "Preset")}</Label>
-              <RadioGroup value={selectedPreset} onValueChange={setSelectedPreset}>
-                <div className="flex flex-col gap-2">
-                  {presets.map((preset) => (
-                    <label
-                      key={preset.id}
-                      className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                        selectedPreset === preset.id
-                          ? "border-primary bg-primary/5"
-                          : "hover:bg-muted/50"
-                      }`}
-                    >
-                      <RadioGroupItem value={preset.id} className="mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{preset.name}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {preset.whisper_model.toUpperCase()} / {preset.llm_model} / {preset.output_format.toUpperCase()}
-                        </p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm font-bold text-foreground-secondary">{t("dashboard.newJob.preset", "Preset")}</Label>
+              <RadioGroup value={selectedPreset} onValueChange={setSelectedPreset} className="gap-2">
+                {presets.map((preset) => (
+                  <label
+                    key={preset.id}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3.5 rounded-[14px] px-[18px] py-3.5 transition-[background-color,box-shadow] duration-150 ease-out",
+                      selectedPreset === preset.id
+                        ? "bg-primary-soft shadow-[inset_0_0_0_2px_hsl(var(--primary))]"
+                        : "bg-muted hover:bg-muted-hover",
+                    )}
+                  >
+                    <RadioGroupItem value={preset.id} />
+                    <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                      <span className="truncate text-[15px] font-bold">{preset.name}</span>
+                      <span className="truncate text-[12.5px] text-muted-foreground">
+                        {preset.whisper_model.toUpperCase()} / {preset.llm_model} / {preset.output_format.toUpperCase()}
+                      </span>
+                    </div>
+                  </label>
+                ))}
               </RadioGroup>
               {linkedVocab && (
-                <p className="text-xs text-muted-foreground">
-                  {t("dashboard.newJob.linkedVocab")} <span className="font-medium text-foreground">{linkedVocab.name}</span> ({t("presets.dialog.entriesCount", { count: linkedVocab.entries.length })})
+                <p className="text-[13px] text-muted-foreground">
+                  {t("dashboard.newJob.linkedVocab")} <span className="font-bold text-foreground">{linkedVocab.name}</span> ({t("presets.dialog.entriesCount", { count: linkedVocab.entries.length })})
                 </p>
               )}
             </div>
@@ -443,10 +480,10 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
               {/* Skip translation toggle */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className={`flex items-center justify-between rounded-lg border p-3 ${allSubtitles ? "opacity-60" : ""}`}>
-                    <div className="flex-1 min-w-0">
-                      <Label className="text-sm font-medium">{t("dashboard.newJob.skipTranslation", "STT Only")}</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                  <div className={cn("flex items-center gap-3 rounded-[14px] bg-muted px-[18px] py-3.5", allSubtitles && "opacity-60")}>
+                    <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                      <Label className="text-[15px] font-bold">{t("dashboard.newJob.skipTranslation", "STT Only")}</Label>
+                      <p className="text-[12.5px] text-muted-foreground">
                         {t("dashboard.newJob.skipTranslationDesc", "Transcribe only — skip the translation step")}
                       </p>
                     </div>
@@ -459,7 +496,7 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
                 </TooltipTrigger>
                 {allSubtitles && (
                   <TooltipContent side="top" className="max-w-xs">
-                    <p className="text-xs">{t("dashboard.newJob.subtitleMode.unavailable")}</p>
+                    <p>{t("dashboard.newJob.subtitleMode.unavailable")}</p>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -468,10 +505,10 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
               {SHOW_DIARIZATION && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className={`flex items-center justify-between rounded-lg border p-3 ${allSubtitles ? "opacity-60" : ""}`}>
-                    <div className="flex-1 min-w-0">
-                      <Label className="text-sm font-medium">{t("dashboard.newJob.enableDiarization", "Speaker Diarization")}</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                  <div className={cn("flex items-center gap-3 rounded-[14px] bg-muted px-[18px] py-3.5", allSubtitles && "opacity-60")}>
+                    <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                      <Label className="text-[15px] font-bold">{t("dashboard.newJob.enableDiarization", "Speaker Diarization")}</Label>
+                      <p className="text-[12.5px] text-muted-foreground">
                         {t("dashboard.newJob.enableDiarizationDesc", "Detect and label different speakers in the audio")}
                       </p>
                     </div>
@@ -484,7 +521,7 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
                 </TooltipTrigger>
                 {allSubtitles && (
                   <TooltipContent side="top" className="max-w-xs">
-                    <p className="text-xs">{t("dashboard.newJob.subtitleMode.unavailable")}</p>
+                    <p>{t("dashboard.newJob.subtitleMode.unavailable")}</p>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -493,32 +530,32 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
           </TooltipProvider>
 
           {presets.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-2">
+            <p className="py-2 text-center text-sm text-muted-foreground">
               {t("dashboard.newJob.noPresets", "No presets available. Create one in the Presets page.")}
             </p>
           )}
 
           {/* Preview panel */}
           {showPreview && (
-            <div className="rounded-lg border bg-muted/20 p-4 flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">{t("dashboard.newJob.preview.title")}</span>
+            <div className="flex flex-col gap-3.5 rounded-[20px] bg-muted p-5">
+              <div className="flex items-center gap-2 text-[15px] font-extrabold">
+                <Eye className="h-[17px] w-[17px] text-primary-text" />
+                {t("dashboard.newJob.preview.title")}
               </div>
 
               {/* The ffmpeg banner lives at the top of the dialog now. */}
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground shrink-0">{t("dashboard.newJob.preview.startLabel")}</span>
+                <span className="shrink-0 text-[13.5px] font-bold text-foreground-secondary">{t("dashboard.newJob.preview.startLabel")}</span>
                 <Input
                   value={previewStart}
                   onChange={(e) => setPreviewStart(e.target.value)}
                   placeholder="MM:SS"
-                  className="w-24 h-8 text-sm text-center"
+                  className="h-10 w-[92px] rounded-[11px] bg-card px-2 text-center text-[14.5px] font-semibold tabular-nums"
                 />
-                <span className="text-xs text-muted-foreground shrink-0">{t("dashboard.newJob.preview.duration")}</span>
+                <span className="ml-1.5 shrink-0 text-[13.5px] font-bold text-foreground-secondary">{t("dashboard.newJob.preview.duration")}</span>
                 <Select value={previewDuration} onValueChange={setPreviewDuration}>
-                  <SelectTrigger className="h-8 w-[84px] text-sm">
+                  <SelectTrigger className="h-10 w-[88px] rounded-[11px] bg-card px-3 text-[14.5px] font-semibold [&>svg]:h-3.5 [&>svg]:w-3.5">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -530,85 +567,86 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
                   </SelectContent>
                 </Select>
                 <div className="flex-1" />
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={handleStartPreview}
-                  disabled={files.length === 0 || !selectedPreset || preview.phase === "stt" || preview.phase === "translating"}
-                >
-                  <Play className="mr-1 h-3.5 w-3.5" />
-                  {preview.hasCachedStt ? t("dashboard.newJob.preview.runSttAndTranslate") : t("dashboard.newJob.preview.run")}
-                </Button>
                 {preview.hasCachedStt && (
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
+                    className="h-10 rounded-[11px] bg-card hover:bg-card/70 [&_svg]:size-3.5"
                     onClick={handleRetryPreviewTranslation}
                     disabled={preview.phase === "stt" || preview.phase === "translating"}
                   >
-                    <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                    <RefreshCw strokeWidth={2.4} />
                     {t("dashboard.newJob.preview.retryTranslation")}
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  className="h-10 rounded-[11px] [&_svg]:size-[13px]"
+                  onClick={handleStartPreview}
+                  disabled={files.length === 0 || !selectedPreset || preview.phase === "stt" || preview.phase === "translating"}
+                >
+                  <Play fill="currentColor" />
+                  {preview.hasCachedStt ? t("dashboard.newJob.preview.runSttAndTranslate") : t("dashboard.newJob.preview.run")}
+                </Button>
               </div>
 
               {/* Progress */}
               {(preview.phase === "stt" || preview.phase === "translating") && (
-                <div className="flex flex-col gap-1.5">
-                  <Progress value={preview.progress} className="h-2" />
-                  <p className="text-xs text-muted-foreground">{preview.message}</p>
+                <div className="flex flex-col gap-2">
+                  <Progress value={preview.progress} className="h-1.5 bg-card" />
+                  <p className="text-[12.5px] text-muted-foreground">{preview.message}</p>
                 </div>
               )}
 
               {/* Error */}
               {preview.phase === "error" && preview.error && (
-                <p className="text-xs text-destructive">{preview.error}</p>
+                <p className="text-[13px] font-semibold text-status-error">{preview.error}</p>
               )}
 
-              {/* Results table — max-h scales with viewport so long previews scroll nicely instead of getting clipped to ~5 rows */}
+              {/* Results table — max-h scales with viewport so long previews scroll inside the panel */}
               {preview.results.length > 0 && (
-                <ScrollArea className="max-h-[50vh] min-h-48 flex-1">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-xs text-muted-foreground">
-                        <th className="text-left py-1.5 pr-2 w-16">{t("dashboard.newJob.preview.time")}</th>
-                        <th className="text-left py-1.5 pr-2">{t("dashboard.newJob.preview.original")}</th>
-                        <th className="text-left py-1.5">{t("dashboard.newJob.preview.translated")}</th>
+                <div className="max-h-[50vh] overflow-y-auto rounded-[14px] bg-card px-3.5 pb-1.5">
+                  <table className="w-full table-fixed border-separate border-spacing-0">
+                    <thead className="sticky top-0 bg-card">
+                      <tr className="text-left text-[12.5px] font-bold text-muted-foreground [&>th]:border-b [&>th]:border-border [&>th]:pb-2 [&>th]:pt-3.5">
+                        <th className="w-[74px] pr-3.5">{t("dashboard.newJob.preview.time")}</th>
+                        <th className="pr-3.5">{t("dashboard.newJob.preview.original")}</th>
+                        <th>{t("dashboard.newJob.preview.translated")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {preview.results.map((r) => (
-                        <tr key={r.index} className="border-b border-muted/50">
-                          <td className="py-1.5 pr-2 text-xs text-muted-foreground whitespace-nowrap">
+                        <tr key={r.index} className="align-top text-sm leading-[1.45] [&>td]:border-b [&>td]:border-border [&>td]:py-2.5">
+                          <td className="whitespace-nowrap pr-3.5 text-[12.5px] tabular-nums text-muted-foreground">
                             {formatTimestamp(r.start)}
                           </td>
-                          <td className="py-1.5 pr-2 text-xs">{r.original}</td>
-                          <td className="py-1.5 text-xs font-medium">
+                          <td className="pr-3.5 text-foreground-secondary">{r.original}</td>
+                          <td className="font-semibold">
                             {r.translated || <span className="text-muted-foreground">...</span>}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </ScrollArea>
+                </div>
               )}
 
               {preview.hasCachedStt && preview.phase !== "stt" && preview.phase !== "translating" && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[12.5px] leading-normal text-muted-foreground">
                   {t("dashboard.newJob.preview.sttCached")}
                 </p>
               )}
 
               {/* Vocab quick edit */}
               {linkedVocab && onUpdateVocabulary ? (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3.5">
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
-                    className="w-fit h-7 text-xs"
+                    className="h-9 w-fit rounded-[10px] bg-card px-3 text-[13.5px] hover:bg-card/70 [&_svg]:size-3.5"
                     onClick={() => setVocabEditOpen(!vocabEditOpen)}
                   >
-                    <BookOpen className="mr-1 h-3 w-3" />
+                    <BookOpen />
                     {vocabEditOpen ? t("dashboard.newJob.preview.closeVocab") : `${t("dashboard.newJob.preview.editVocab")} (${linkedVocab.entries.length})`}
                   </Button>
                   {vocabEditOpen && (
@@ -621,14 +659,14 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <BookOpen className="h-3 w-3 shrink-0" />
+                <div className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+                  <BookOpen className="h-3.5 w-3.5 shrink-0" />
                   <span>{t("dashboard.newJob.preview.noVocab")}</span>
                   {onAddVocabulary && onUpdatePreset && selectedPresetData && (
                     <Button
                       variant="link"
                       size="sm"
-                      className="h-5 text-xs px-0"
+                      className="h-auto px-0 text-[12.5px] text-primary-text"
                       onClick={async () => {
                         const now = new Date().toISOString()
                         const baseName = t("dashboard.newJob.preview.tempVocabName")
@@ -661,44 +699,7 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
               )}
             </div>
           )}
-        </div>
-        </div>
-
-        <DialogFooter className="shrink-0">
-          <div className="flex items-center gap-2 w-full">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  {/* span wrapper: disabled buttons swallow hover, so the tooltip needs an enabled target */}
-                  <span className="mr-auto">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowPreview(!showPreview)}
-                      disabled={files.length === 0 || !selectedPreset || previewUnavailable}
-                    >
-                      <Eye className="mr-1.5 h-4 w-4" />
-                      {showPreview ? t("dashboard.newJob.preview.close") : t("dashboard.newJob.preview.open")}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {previewUnavailable && (
-                  <TooltipContent side="top" className="max-w-xs">
-                    <p className="text-xs">{t("dashboard.newJob.subtitleMode.unavailable")}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {t("shared.cancel", "Cancel")}
-            </Button>
-            <Button onClick={handleSubmit} disabled={files.length === 0 || !selectedPreset}>
-              {files.length > 1
-                ? t("dashboard.newJob.startMultiple", { count: files.length, defaultValue: `Start ${files.length} jobs` })
-                : t("dashboard.newJob.start", "Start job")}
-            </Button>
-          </div>
-        </DialogFooter>
+        </DialogScrollLayout>
       </DialogContent>
     </Dialog>
   )

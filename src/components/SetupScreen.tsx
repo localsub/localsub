@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown } from "lucide-react";
+import { AlertCircle, ChevronDown } from "lucide-react";
 import type { SetupStatus, SetupProgress, SetupErrorKind } from "../types";
 import { Progress } from "./Progress";
+import { LocalSubLogo } from "./localsub-logo";
+import { Button } from "./ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { VcRedistCard } from "@/components/shared/VcRedistCard"
+import { cn } from "@/lib/utils";
 import { FFMPEG_BUILDS, FFMPEG_SOURCE, LOG_DIR_HINT } from "../lib/links";
 
 interface SetupScreenProps {
@@ -40,17 +43,17 @@ function SetupLogPanel({ logLines }: { logLines: string[] }) {
   if (logLines.length === 0) return null;
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="mx-auto flex cursor-pointer items-center gap-1 text-xs text-slate-500 transition-colors hover:text-slate-300">
+    <Collapsible open={open} onOpenChange={setOpen} className="w-full">
+      <CollapsibleTrigger className="mx-auto flex cursor-pointer items-center gap-1 rounded-sm text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <ChevronDown
-          className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`}
         />
         {t("setup.logsToggle")}
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div
           ref={scrollRef}
-          className="mt-2 max-h-64 overflow-y-auto rounded-md bg-surface-inset p-2.5 text-left font-mono text-xs leading-relaxed text-slate-400"
+          className="mt-2 max-h-64 overflow-y-auto rounded-md bg-muted px-3.5 py-3 text-left font-mono text-[11.5px] leading-[1.7] tracking-normal text-foreground-secondary"
         >
           {logLines.map((line, i) => (
             <div key={i} className="whitespace-pre-wrap break-all">
@@ -79,38 +82,61 @@ export function SetupScreen({
   const knownErrorKey =
     errorKind && errorKind !== "unknown" ? ERROR_KIND_KEYS[errorKind] : null;
 
+  const isError = status === "ERROR";
+
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-[500px] rounded-2xl bg-surface p-10 text-center">
-        <h1 className="mb-4 text-[1.75rem] font-bold text-slate-50">{t("app.title")}</h1>
-        <p className="mb-6 whitespace-pre-line text-[0.9rem] leading-relaxed text-slate-400">
-          {t("setup.description")}
-        </p>
+      <div
+        className={cn(
+          "flex w-full flex-col items-center gap-3.5 rounded-3xl bg-card text-center shadow-card",
+          isError ? "max-w-[680px] px-10 pb-8 pt-10" : "max-w-[648px] px-11 pb-9 pt-11",
+        )}
+      >
+        {isError ? (
+          <div className="mb-1.5 flex size-14 items-center justify-center rounded-[18px] bg-status-error-soft text-status-error">
+            <AlertCircle className="size-[26px]" />
+          </div>
+        ) : (
+          <LocalSubLogo className="mb-2 h-14 w-14 scale-150" />
+        )}
+        <h1
+          className={cn(
+            "font-extrabold tracking-[-0.03em]",
+            isError ? "text-2xl" : "text-[28px]",
+          )}
+        >
+          {t("app.title")}
+        </h1>
+        {!isError && (
+          <p className="whitespace-pre-line text-[15px] leading-[1.6] text-foreground-secondary">
+            {t("setup.description")}
+          </p>
+        )}
 
         {status === "CHECKING" && (
-          <div className="flex items-center justify-center gap-2.5 p-4 text-slate-400">
+          <div className="mt-1.5 flex items-center justify-center gap-2.5 p-4 text-sm font-semibold text-muted-foreground">
             <span className="spinner" />
             <span>{t("setup.checking")}</span>
           </div>
         )}
 
         {status === "NEEDED" && (
-          <div className="flex flex-col items-center gap-4">
-            <p className="text-sm text-slate-500">
+          <>
+            <p className="mt-1.5 w-full rounded-lg bg-muted p-3.5 text-[14.5px] font-semibold">
               {t("setup.needed")}
             </p>
             {/* FFmpeg is GPLv3 and is fetched from a third party, not bundled.
                 Say so before the download happens, not in a file nobody reads. */}
-            <p className="text-center text-xs leading-relaxed text-slate-500">
+            <p className="text-[12.5px] leading-[1.6] text-muted-foreground">
               {t("setup.ffmpegNotice")}
             </p>
-            <p className="text-center text-xs leading-relaxed text-slate-500">
+            <p className="text-[12.5px] leading-[1.6] text-muted-foreground">
               {t("setup.ffmpegDownloadLabel")}:{" "}
               <a
                 href={FFMPEG_BUILDS}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary hover:underline"
+                className="font-semibold text-primary-text hover:underline"
               >
                 gyan.dev/ffmpeg/builds
               </a>
@@ -120,7 +146,7 @@ export function SetupScreen({
                 href={FFMPEG_SOURCE}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary hover:underline"
+                className="font-semibold text-primary-text hover:underline"
               >
                 github.com/FFmpeg/FFmpeg
               </a>
@@ -131,22 +157,22 @@ export function SetupScreen({
                 install is never started automatically — the Windows elevation
                 prompt has to be the direct result of a click, or it reads as
                 something the app did behind the user's back. */}
-            <div className="w-full max-w-lg">
+            <div className="w-full text-left empty:hidden">
               <VcRedistCard />
             </div>
-            <button
-              className="cursor-pointer rounded-md bg-primary px-8 py-3 text-base font-medium text-white transition-opacity hover:opacity-85"
+            <Button
+              className="mt-3.5 h-14 w-full rounded-[16px] text-[17px]"
               onClick={onStart}
             >
               {t("setup.startButton")}
-            </button>
-          </div>
+            </Button>
+          </>
         )}
 
         {status === "IN_PROGRESS" && (
-          <div className="flex flex-col gap-3">
+          <div className="mt-1.5 flex w-full flex-col gap-3">
             <Progress value={(progress?.progress ?? 0) * 100} />
-            <p className="text-sm text-slate-400">
+            <p className="text-sm font-semibold text-foreground-secondary">
               {progress?.message ?? t("setup.startingFallback")}
             </p>
             {logLines.length > 0 && (
@@ -158,52 +184,48 @@ export function SetupScreen({
           </div>
         )}
 
-        {status === "ERROR" && (
-          <div className="flex flex-col items-stretch gap-4">
+        {isError && (
+          <>
             {knownErrorKey ? (
-              <p className="rounded-md bg-surface-inset p-2.5 text-sm text-danger">
+              <p className="w-full rounded-lg bg-status-error-soft px-4 py-3.5 text-left text-[14.5px] font-semibold leading-[1.55] text-status-error">
                 {t(knownErrorKey)}
               </p>
             ) : (
               <>
-                <p className="max-h-[120px] overflow-y-auto break-words rounded-md bg-surface-inset p-2.5 text-left text-xs text-danger">
+                <p className="max-h-[120px] w-full overflow-y-auto break-words rounded-lg bg-status-error-soft px-4 py-3.5 text-left font-mono text-xs leading-[1.6] tracking-normal text-status-error">
                   {error ?? t("setup.unknownError")}
                 </p>
                 {logLines.length > 0 && (
-                  <p className="text-xs text-slate-500">{t("setup.error.unknown")}</p>
+                  <p className="text-[13px] text-muted-foreground">{t("setup.error.unknown")}</p>
                 )}
               </>
             )}
             <SetupLogPanel logLines={logLines} />
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex items-center gap-2">
-                <button
-                  className="cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85"
-                  onClick={onRetry}
-                >
-                  {t("setup.retryButton")}
-                </button>
-                {/* 로그는 설치 폴더가 아니라 %APPDATA%에 있다. 그걸 모르면
-                    사용자는 보고할 것을 못 찾는다 — 여기가 유일한 안내다. */}
-                <button
-                  className="cursor-pointer rounded-md border border-white/10 bg-surface-inset px-4 py-2 text-sm text-slate-300 transition-colors hover:text-slate-100"
-                  onClick={onOpenLogs}
-                >
-                  {t("setup.openLogsButton")}
-                </button>
-              </div>
-              {/* 파일 관리자가 안 열리는 경우를 위해 경로 자체도 노출한다. */}
-              <code className="font-mono text-[0.7rem] text-slate-500">{LOG_DIR_HINT}</code>
-              {/* 부분 설치가 손상돼 retry가 반복 실패할 때의 탈출구:
-                  python-env를 통째로 비우고 처음부터 다시 설치. */}
-              <button
-                className="cursor-pointer text-xs text-slate-500 underline-offset-2 transition-colors hover:text-slate-300 hover:underline"
-                onClick={onReset}
+            <div className="mt-1.5 flex items-center gap-2">
+              <Button className="h-[50px] px-[22px] text-[15.5px]" onClick={onRetry}>
+                {t("setup.retryButton")}
+              </Button>
+              {/* 로그는 설치 폴더가 아니라 %APPDATA%에 있다. 그걸 모르면
+                  사용자는 보고할 것을 못 찾는다 — 여기가 유일한 안내다. */}
+              <Button
+                variant="secondary"
+                className="h-[50px] px-[22px] text-[15.5px]"
+                onClick={onOpenLogs}
               >
-                {t("setup.resetButton")}
-              </button>
+                {t("setup.openLogsButton")}
+              </Button>
             </div>
-          </div>
+            {/* 파일 관리자가 안 열리는 경우를 위해 경로 자체도 노출한다. */}
+            <code className="font-mono text-xs tracking-normal text-muted-foreground">{LOG_DIR_HINT}</code>
+            {/* 부분 설치가 손상돼 retry가 반복 실패할 때의 탈출구:
+                python-env를 통째로 비우고 처음부터 다시 설치. */}
+            <button
+              className="cursor-pointer rounded-sm text-[13px] font-semibold text-muted-foreground underline underline-offset-[3px] transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={onReset}
+            >
+              {t("setup.resetButton")}
+            </button>
+          </>
         )}
       </div>
     </div>

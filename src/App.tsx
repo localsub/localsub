@@ -17,7 +17,7 @@ import { VcRedistCard } from "./components/shared/VcRedistCard";
 import { WizardScreen } from "./components/wizard/WizardScreen";
 import { ThemeProvider } from "./components/theme-provider";
 import { AppSidebar } from "./components/app-sidebar";
-import { PageHeader } from "./components/page-header";
+import { PageHeader, PageHeaderProvider } from "./components/page-header";
 import { SidebarProvider, SidebarInset } from "./components/ui/sidebar";
 import { DashboardPage } from "./components/dashboard/DashboardPage";
 import { EditorPage } from "./components/editor/EditorPage";
@@ -26,6 +26,7 @@ import { SettingsPage } from "./components/settings/SettingsPage";
 import { Toaster } from "./components/ui/sonner";
 import { Button } from "./components/ui/button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { LocalSubLogo } from "./components/localsub-logo";
 import type { AppScreen, MainPage, DashboardJob, SubtitleLine, JobSourceType, SttSegment } from "./types";
 import { loadDashboardJobs, saveDashboardJobs, loadJobSubtitles, openLogDir } from "./lib/tauriApi";
 import { getSourceType } from "./lib/sourceType";
@@ -439,18 +440,16 @@ function App() {
   if (configError && !configLoading && !config) {
     return (
       <ThemeProvider defaultTheme="dark">
-        <div className="flex h-full items-center justify-center">
-          <div className="flex flex-col items-center gap-4 text-center max-w-sm">
-            <div className="rounded-2xl bg-destructive/10 p-4 ring-1 ring-destructive/30">
-              <AlertCircle className="h-8 w-8 text-destructive" />
+        <div className="flex h-full items-center justify-center bg-background p-6">
+          <div className="flex w-full max-w-[520px] flex-col items-center gap-3 rounded-3xl bg-card p-10 text-center shadow-card">
+            <div className="mb-1.5 flex size-14 items-center justify-center rounded-[18px] bg-status-error-soft text-status-error">
+              <AlertCircle className="size-[26px]" />
             </div>
-            <div>
-              <p className="font-semibold text-lg">{t("configError.title")}</p>
-              <p className="text-sm text-muted-foreground mt-1">{t("configError.description")}</p>
-              <p className="text-xs text-destructive mt-2 font-mono break-all">{configError}</p>
-            </div>
-            <Button onClick={reloadConfig} variant="outline" size="sm">
-              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+            <p className="text-[22px] font-extrabold">{t("configError.title")}</p>
+            <p className="text-[14.5px] text-foreground-secondary">{t("configError.description")}</p>
+            <code className="w-full break-all rounded-sm bg-muted px-3 py-2.5 font-mono text-xs tracking-normal text-status-error">{configError}</code>
+            <Button onClick={reloadConfig} variant="secondary" className="mt-2 px-[22px]">
+              <RefreshCw />
               {t("configError.retry")}
             </Button>
           </div>
@@ -464,10 +463,13 @@ function App() {
   if (screen === "BOOT") {
     return (
       <ThemeProvider defaultTheme="dark">
-        <div className="flex h-full items-center justify-center">
-          <div className="flex items-center gap-2.5 text-muted-foreground">
-            <span className="spinner" />
-            <span>{t("app.loading")}</span>
+        <div className="flex h-full items-center justify-center bg-background p-6">
+          <div className="flex h-[330px] w-full max-w-[440px] flex-col items-center justify-center gap-[18px] rounded-3xl bg-card shadow-card">
+            <LocalSubLogo className="h-14 w-14 scale-150" />
+            <div className="h-1 w-[120px] overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("app.loading")}>
+              <div className="boot-bar h-full w-[45%] rounded-full bg-primary" />
+            </div>
+            <span className="text-sm font-semibold text-muted-foreground">{t("app.loading")}</span>
           </div>
         </div>
       </ThemeProvider>
@@ -517,81 +519,93 @@ function App() {
           <AppSidebar
             activePage={activePage}
             onNavigate={setActivePage}
+            processingCount={dashboardJobs.filter((j) => j.status === "processing").length}
             hardwareInfo={hardware}
             serverStatus={serverHook.status}
             onRestartServer={serverHook.start}
           />
           <SidebarInset>
-            <PageHeader
-              title={t(pageInfo.titleKey)}
-              description={pageInfo.descKey ? t(pageInfo.descKey) : undefined}
-            />
-            <div className="flex flex-1 flex-col overflow-auto p-4">
-              {/* Renders nothing when the runtime is present, so the common
-                  case is untouched. */}
-              <VcRedistCard />
-
-              {activePage === "dashboard" && (
-                <DashboardPage
-                  jobs={dashboardJobs}
-                  presets={presetsHook.presets}
-                  vocabularies={vocabulariesHook.vocabularies}
-                  onNewJob={handleNewJob}
-                  onRemoveJob={handleRemoveJob}
-                  onRetryJob={handleRetryJob}
-                  onResumeJob={handleResumeJob}
-                  onUpdateVocabulary={vocabulariesHook.update}
-                  onAddVocabulary={vocabulariesHook.add}
-                  onUpdatePreset={presetsHook.update}
-                  onOpenEditor={(jobId, filePath) => {
-                    setEditorJobId(jobId);
-                    setEditorFilePath(filePath);
-                    setActivePage("editor");
-                  }}
+            <PageHeaderProvider>
+              <div
+                className={
+                  activePage === "editor"
+                    ? "flex flex-1 flex-col gap-4 overflow-auto px-8 py-7"
+                    : "flex flex-1 flex-col gap-6 overflow-auto px-10 py-9"
+                }
+              >
+                {/* The editor writes its own file line into the header (PageMeta). */}
+                <PageHeader
+                  title={t(pageInfo.titleKey)}
+                  description={activePage !== "editor" && pageInfo.descKey ? t(pageInfo.descKey) : undefined}
+                  compact={activePage === "editor"}
                 />
-              )}
 
-              {activePage === "editor" && config && (
-                <EditorPage
-                  jobId={editorJobId}
-                  filePath={editorFilePath}
-                  outputDir={config.output_dir}
-                  subtitleFormat={config.subtitle_format}
-                  presetId={dashboardJobs.find((j) => j.id === editorJobId)?.preset_id}
-                  vocabularies={vocabulariesHook.vocabularies}
-                  onUpdateVocabulary={vocabulariesHook.update}
-                  liveLines={editorJobId ? liveLines.get(editorJobId) : undefined}
-                />
-              )}
+                {/* Renders nothing when the runtime is present, so the common
+                    case is untouched. */}
+                <VcRedistCard />
 
-              {activePage === "presets" && (
-                <PresetsPage
-                  presets={presetsHook.presets}
-                  vocabularies={vocabulariesHook.vocabularies}
-                  manifest={models.manifest}
-                  onAddPreset={presetsHook.add}
-                  onUpdatePreset={presetsHook.update}
-                  onRemovePreset={presetsHook.remove}
-                  onAddVocabulary={vocabulariesHook.add}
-                  onUpdateVocabulary={vocabulariesHook.update}
-                  onRemoveVocabulary={vocabulariesHook.remove}
-                />
-              )}
+                {activePage === "dashboard" && (
+                  <DashboardPage
+                    jobs={dashboardJobs}
+                    presets={presetsHook.presets}
+                    vocabularies={vocabulariesHook.vocabularies}
+                    onNewJob={handleNewJob}
+                    onRemoveJob={handleRemoveJob}
+                    onRetryJob={handleRetryJob}
+                    onResumeJob={handleResumeJob}
+                    onUpdateVocabulary={vocabulariesHook.update}
+                    onAddVocabulary={vocabulariesHook.add}
+                    onUpdatePreset={presetsHook.update}
+                    onOpenEditor={(jobId, filePath) => {
+                      setEditorJobId(jobId);
+                      setEditorFilePath(filePath);
+                      setActivePage("editor");
+                    }}
+                  />
+                )}
 
-              {activePage === "settings" && config && (
-                <SettingsPage
-                  config={config}
-                  manifest={models.manifest}
-                  catalog={models.catalog}
-                  hardware={hardware}
-                  downloads={models.downloads}
-                  onUpdateConfig={(patch) => updateConfig(patch)}
-                  onDeleteModel={models.deleteModel}
-                  onDownloadModel={models.startDownload}
-                  onCancelDownload={models.cancelDownload}
-                />
-              )}
-            </div>
+                {activePage === "editor" && config && (
+                  <EditorPage
+                    jobId={editorJobId}
+                    filePath={editorFilePath}
+                    outputDir={config.output_dir}
+                    subtitleFormat={config.subtitle_format}
+                    presetId={dashboardJobs.find((j) => j.id === editorJobId)?.preset_id}
+                    vocabularies={vocabulariesHook.vocabularies}
+                    onUpdateVocabulary={vocabulariesHook.update}
+                    liveLines={editorJobId ? liveLines.get(editorJobId) : undefined}
+                  />
+                )}
+
+                {activePage === "presets" && (
+                  <PresetsPage
+                    presets={presetsHook.presets}
+                    vocabularies={vocabulariesHook.vocabularies}
+                    manifest={models.manifest}
+                    onAddPreset={presetsHook.add}
+                    onUpdatePreset={presetsHook.update}
+                    onRemovePreset={presetsHook.remove}
+                    onAddVocabulary={vocabulariesHook.add}
+                    onUpdateVocabulary={vocabulariesHook.update}
+                    onRemoveVocabulary={vocabulariesHook.remove}
+                  />
+                )}
+
+                {activePage === "settings" && config && (
+                  <SettingsPage
+                    config={config}
+                    manifest={models.manifest}
+                    catalog={models.catalog}
+                    hardware={hardware}
+                    downloads={models.downloads}
+                    onUpdateConfig={(patch) => updateConfig(patch)}
+                    onDeleteModel={models.deleteModel}
+                    onDownloadModel={models.startDownload}
+                    onCancelDownload={models.cancelDownload}
+                  />
+                )}
+              </div>
+            </PageHeaderProvider>
           </SidebarInset>
         </SidebarProvider>
       </ErrorBoundary>

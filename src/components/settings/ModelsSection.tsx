@@ -1,8 +1,7 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { Download, Trash2, CheckCircle2, Cpu, Monitor, Globe, X, Loader2 } from "lucide-react"
+import { Trash2, Cpu, Monitor, Globe, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import {
@@ -13,10 +12,12 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogIcon,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
+import { SectionHeader } from "./SettingsCard"
 import type {
   ModelManifestEntry,
   ModelCatalog,
@@ -78,15 +79,6 @@ function formatEta(secs: number): string {
   return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`
 }
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  ready: "default",
-  downloading: "secondary",
-  verifying: "secondary",
-  missing: "outline",
-  corrupt: "destructive",
-  not_installed: "outline",
-}
-
 function getLlmVramFit(sizeBytes: number, hardware: HardwareInfo | null): VramFit {
   if (!hardware?.gpu) return "cpu_only"
   const vramBytes = hardware.gpu.vram_mb * 1024 * 1024
@@ -139,45 +131,30 @@ export function ModelsSection({
     }
   }
 
-  function renderVramBadge(fit: VramFit) {
+  function renderVramTag(fit: VramFit) {
     if (fit === "recommended") {
-      return (
-        <Badge variant="default" className="text-[10px] h-4 bg-green-600 hover:bg-green-600">
-          {t("settings.models.recommended")}
-        </Badge>
-      )
+      return <Tag tone="ok">{t("settings.models.recommended")}</Tag>
     }
     if (fit === "cpu_only") {
-      return (
-        <Badge variant="secondary" className="text-[10px] h-4 bg-yellow-600/20 text-yellow-600">
-          {t("settings.models.cpuOnly")}
-        </Badge>
-      )
+      return <Tag tone="neutral" strong>{t("settings.models.cpuOnly")}</Tag>
     }
-    return (
-      <Badge variant="destructive" className="text-[10px] h-4">
-        {t("settings.models.tooLarge")}
-      </Badge>
-    )
+    return <Tag tone="warn">{t("settings.models.tooLarge")}</Tag>
   }
 
-  function renderStatusBadge(status: InstallStatus) {
-    const labelKey = status === "not_installed"
-      ? "settings.models.notInstalled"
-      : `settings.models.status.${status}`
-    return (
-      <Badge variant={STATUS_VARIANT[status] ?? "outline"} className="text-[10px] h-4">
-        {t(labelKey as never)}
-      </Badge>
-    )
+  // "Ready" and "not installed" are already said by the radio and the
+  // delete/install action, so only the in-between states get a chip.
+  function renderStatusTag(status: InstallStatus) {
+    if (status === "ready" || status === "not_installed") return null
+    const tone = status === "missing" || status === "corrupt" ? "error" : "primary"
+    return <Tag tone={tone}>{t(`settings.models.status.${status}` as never)}</Tag>
   }
 
   function renderDownloadProgress(id: string) {
     const progress = downloads.get(id)
     if (!progress || progress.total === 0) {
       return (
-        <div className="flex items-center gap-2 mt-2">
-          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+        <div className="flex items-center gap-2 pl-9">
+          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
           <span className="text-xs text-muted-foreground">{t("settings.models.status.verifying")}</span>
         </div>
       )
@@ -187,11 +164,11 @@ export function ModelsSection({
       ? `(${progress.file_index + 1}/${progress.total_files}) ${progress.file_name}`
       : progress.file_name
     return (
-      <div className="flex flex-col gap-1.5 mt-2 w-full">
-        <Progress value={pct} className="h-2" />
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>{fileLabel} — {pct.toFixed(1)}%</span>
-          <span>
+      <div className="flex w-full flex-col gap-1.5 pl-9">
+        <Progress value={pct} className="h-1.5" />
+        <div className="flex items-center justify-between gap-3 text-xs tabular-nums text-muted-foreground">
+          <span className="truncate">{fileLabel} — {pct.toFixed(1)}%</span>
+          <span className="shrink-0">
             {formatSpeed(progress.speed_bps)}
             {progress.eta_secs > 0 && ` · ${formatEta(progress.eta_secs)}`}
           </span>
@@ -203,32 +180,24 @@ export function ModelsSection({
   function renderActions(id: string, status: InstallStatus) {
     if (status === "ready") {
       return (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive hover:text-destructive"
-          onClick={() => setDeleteTarget(id)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <button className={textActionClass} onClick={() => setDeleteTarget(id)}>
+          {t("settings.models.delete")}
+        </button>
       )
     }
     if (status === "downloading") {
       return (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-          onClick={() => onCancelDownload(id)}
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
+        <button className={textActionClass} onClick={() => onCancelDownload(id)}>
+          {t("shared.cancel")}
+        </button>
       )
     }
     if (status === "not_installed" || status === "missing" || status === "corrupt") {
       return (
-        <Button variant="outline" size="sm" onClick={() => onDownload(id)}>
-          <Download className="mr-1.5 h-3.5 w-3.5" />
+        <Button
+          className="h-[38px] rounded-[11px] bg-primary-soft px-4 text-sm text-primary-text hover:bg-primary-soft/70"
+          onClick={() => onDownload(id)}
+        >
           {t("settings.models.install")}
         </Button>
       )
@@ -236,191 +205,155 @@ export function ModelsSection({
     return null
   }
 
+  function renderModelRow({
+    id,
+    name,
+    nameExtra,
+    size,
+    license,
+    licenseUrl,
+    tags,
+    isActive,
+  }: {
+    id: string
+    name: string
+    nameExtra?: ReactNode
+    size: number
+    license: string
+    licenseUrl: string
+    tags: ReactNode
+    isActive: boolean
+  }) {
+    const status = getStatus(id)
+    const canActivate = status === "ready"
+    return (
+      <div key={id} className="flex flex-col gap-3 rounded-lg px-4 py-3.5">
+        <div className="flex items-center gap-3.5">
+          {canActivate ? (
+            <RadioGroupItem value={id} id={`model-${id}`} />
+          ) : (
+            // Placeholder ring keeps names aligned; only installed models can be chosen.
+            <span aria-hidden className="size-[22px] shrink-0 rounded-full shadow-[inset_0_0_0_2px_hsl(var(--border))]" />
+          )}
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Label htmlFor={`model-${id}`} className={cn("text-[15px] font-bold", canActivate && "cursor-pointer")}>
+                {name}
+              </Label>
+              {nameExtra}
+              {isActive && <Tag tone="primary">{t("settings.models.active")}</Tag>}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
+              <span className="tabular-nums">{formatSize(size)}</span>
+              <a
+                href={licenseUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mr-0.5 underline decoration-dotted underline-offset-2 hover:text-foreground"
+              >
+                {license}
+              </a>
+              {renderStatusTag(status)}
+              {tags}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center">
+            {renderActions(id, status)}
+          </div>
+        </div>
+        {status === "downloading" && renderDownloadProgress(id)}
+      </div>
+    )
+  }
+
   function renderWhisperModels(models: WhisperModelEntry[]) {
     if (models.length === 0) return null
     return (
-      <div className="flex flex-col gap-3">
-        <h4 className="text-sm font-medium">{t("settings.models.whisperSection")}</h4>
+      <ModelGroup title={t("settings.models.whisperSection")}>
         <RadioGroup
           value={activeWhisperModel ?? ""}
           onValueChange={(id) => handleSelectActive("whisper", id)}
-          className="flex flex-col gap-2"
+          className="gap-0"
         >
-          {models.map((entry) => {
-            const status = getStatus(entry.id)
-            const canActivate = status === "ready"
-            const isDownloading = status === "downloading"
-            const fit = getWhisperFit(entry, profile)
-            return (
-              <div
-                key={entry.id}
-                className={cn(
-                  "flex flex-col rounded-lg border p-3 transition-colors",
-                  status === "ready"
-                    ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                    : "hover:bg-muted/30",
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  {canActivate && (
-                    <RadioGroupItem value={entry.id} id={`model-${entry.id}`} />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`model-${entry.id}`} className="text-sm font-medium cursor-pointer">
-                        {entry.name}
-                      </Label>
-                      {entry.id === activeWhisperModel && (
-                        <Badge variant="default" className="text-[10px] h-5 gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          {t("settings.models.active")}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-                      <span>{formatSize(entry.total_size_bytes)}</span>
-                      <a
-                        href={entry.license_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline decoration-dotted underline-offset-2 hover:text-foreground"
-                      >
-                        {entry.license}
-                      </a>
-                      {renderStatusBadge(status)}
-                      {renderVramBadge(fit)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {renderActions(entry.id, status)}
-                  </div>
-                </div>
-                {isDownloading && renderDownloadProgress(entry.id)}
-              </div>
-            )
-          })}
+          {models.map((entry) =>
+            renderModelRow({
+              id: entry.id,
+              name: entry.name,
+              size: entry.total_size_bytes,
+              license: entry.license,
+              licenseUrl: entry.license_url,
+              tags: renderVramTag(getWhisperFit(entry, profile)),
+              isActive: entry.id === activeWhisperModel,
+            }),
+          )}
         </RadioGroup>
-      </div>
+      </ModelGroup>
     )
   }
 
   function renderLlmModels(models: LlmModelEntry[]) {
     if (models.length === 0) return null
     return (
-      <div className="flex flex-col gap-3">
-        <h4 className="text-sm font-medium">{t("settings.models.llmSection")}</h4>
+      <ModelGroup title={t("settings.models.llmSection")}>
         <RadioGroup
           value={activeLlmModel ?? ""}
           onValueChange={(id) => handleSelectActive("llm", id)}
-          className="flex flex-col gap-2"
+          className="gap-0"
         >
           {models.map((entry) => {
-            const status = getStatus(entry.id)
-            const canActivate = status === "ready"
-            const isDownloading = status === "downloading"
-            const fit = getLlmVramFit(entry.size_bytes, hardware)
             const showLangBadge = (sourceLanguage || targetLanguage) && isLangRecommended(entry.name)
-            return (
-              <div
-                key={entry.id}
-                className={cn(
-                  "flex flex-col rounded-lg border p-3 transition-colors",
-                  status === "ready"
-                    ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                    : "hover:bg-muted/30",
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  {canActivate && (
-                    <RadioGroupItem value={entry.id} id={`model-${entry.id}`} />
+            return renderModelRow({
+              id: entry.id,
+              name: entry.name,
+              nameExtra: <span className="font-mono text-xs tracking-normal text-muted-foreground">{entry.quant}</span>,
+              size: entry.size_bytes,
+              license: entry.license,
+              licenseUrl: entry.license_url,
+              tags: (
+                <>
+                  {renderVramTag(getLlmVramFit(entry.size_bytes, hardware))}
+                  {entry.model_category === "instruct" && <Tag tone="neutral">{t("settings.models.categoryInstruct")}</Tag>}
+                  {entry.model_category === "general" && <Tag tone="neutral">{t("settings.models.categoryGeneral")}</Tag>}
+                  {showLangBadge && (
+                    <Tag tone="neutral">
+                      <Globe className="size-3" />
+                      {t("settings.models.langRecommended")}
+                    </Tag>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`model-${entry.id}`} className="text-sm font-medium cursor-pointer">
-                        {entry.name}
-                      </Label>
-                      <span className="text-[10px] text-muted-foreground font-mono">{entry.quant}</span>
-                      {entry.model_category === "instruct" && (
-                        <Badge variant="secondary" className="text-[10px] h-4">
-                          {t("settings.models.categoryInstruct")}
-                        </Badge>
-                      )}
-                      {entry.model_category === "general" && (
-                        <Badge variant="outline" className="text-[10px] h-4">
-                          {t("settings.models.categoryGeneral")}
-                        </Badge>
-                      )}
-                      {showLangBadge && (
-                        <Badge variant="secondary" className="text-[10px] h-4 gap-0.5 bg-blue-600/20 text-blue-500">
-                          <Globe className="h-2.5 w-2.5" />
-                          {t("settings.models.langRecommended")}
-                        </Badge>
-                      )}
-                      {entry.id === activeLlmModel && (
-                        <Badge variant="default" className="text-[10px] h-5 gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          {t("settings.models.active")}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-                      <span>{formatSize(entry.size_bytes)}</span>
-                      <a
-                        href={entry.license_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline decoration-dotted underline-offset-2 hover:text-foreground"
-                      >
-                        {entry.license}
-                      </a>
-                      {renderStatusBadge(status)}
-                      {renderVramBadge(fit)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {renderActions(entry.id, status)}
-                  </div>
-                </div>
-                {isDownloading && renderDownloadProgress(entry.id)}
-              </div>
-            )
+                </>
+              ),
+              isActive: entry.id === activeLlmModel,
+            })
           })}
         </RadioGroup>
-      </div>
+      </ModelGroup>
     )
   }
 
-  // GPU info summary card
+  // GPU info summary banner
   function renderGpuCard() {
     if (hardware?.gpu) {
       return (
-        <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
-          <Monitor className="h-5 w-5 text-green-500 shrink-0" />
-          <div className="text-sm">
-            <span className="font-medium">{hardware.gpu.name}</span>
-            <span className="text-muted-foreground ml-2">
-              {formatVram(hardware.gpu.vram_mb)} VRAM
-            </span>
-          </div>
+        <div className="flex items-center gap-3.5 rounded-[16px] bg-status-success-soft px-5 py-[18px]">
+          <Monitor className="size-5 shrink-0 text-status-success" />
+          <span className="min-w-0 truncate text-[15px] font-bold">{hardware.gpu.name}</span>
+          <span className="shrink-0 text-sm text-foreground-secondary">
+            {formatVram(hardware.gpu.vram_mb)} VRAM
+          </span>
         </div>
       )
     }
     return (
-      <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
-        <Cpu className="h-5 w-5 text-yellow-500 shrink-0" />
-        <span className="text-sm text-muted-foreground">
-          {t("settings.models.noGpu")}
-        </span>
+      <div className="flex items-center gap-3.5 rounded-[16px] bg-status-warning-soft px-5 py-[18px]">
+        <Cpu className="size-5 shrink-0 text-status-warning" />
+        <span className="text-[15px] font-bold">{t("settings.models.noGpu")}</span>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h3 className="text-base font-semibold">{t("settings.models.title")}</h3>
-        <p className="text-sm text-muted-foreground mt-1">{t("settings.models.description")}</p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <SectionHeader title={t("settings.models.title")} description={t("settings.models.description")} />
 
       {renderGpuCard()}
 
@@ -436,6 +369,7 @@ export function ModelsSection({
       <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => { if (!o) setDeleteTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
+            <AlertDialogIcon tone="destructive"><Trash2 /></AlertDialogIcon>
             <AlertDialogTitle>{t("settings.models.confirmDelete")}</AlertDialogTitle>
             <AlertDialogDescription>{t("settings.models.confirmDeleteMsg")}</AlertDialogDescription>
           </AlertDialogHeader>
@@ -450,6 +384,35 @@ export function ModelsSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  )
+}
+
+const textActionClass =
+  "cursor-pointer rounded-sm px-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-status-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+
+const TAG_TONES = {
+  ok: "bg-status-success-soft text-status-success font-bold",
+  warn: "bg-status-warning-soft text-status-warning font-bold",
+  error: "bg-status-error-soft text-status-error font-bold",
+  primary: "bg-primary-soft text-primary-text font-bold",
+  neutral: "bg-muted text-foreground-secondary font-semibold",
+} as const
+
+/** 22px chip used for model fit, status and category. */
+function Tag({ tone, strong, children }: { tone: keyof typeof TAG_TONES; strong?: boolean; children: ReactNode }) {
+  return (
+    <span className={cn("inline-flex h-[22px] items-center gap-1 rounded-[6px] px-[7px] text-xs", TAG_TONES[tone], strong && "font-bold")}>
+      {children}
+    </span>
+  )
+}
+
+function ModelGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      <h4 className="text-sm font-bold text-foreground-secondary">{title}</h4>
+      <div className="rounded-xl bg-card p-1.5 shadow-card">{children}</div>
     </div>
   )
 }

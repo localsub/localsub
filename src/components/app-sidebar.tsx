@@ -19,7 +19,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
@@ -28,7 +27,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
 import type { MainPage, HardwareInfo, ServerStatus } from "@/types"
 
 const NAV_ITEMS = [
@@ -62,30 +60,29 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
-      <SidebarHeader className="p-2">
-        <div className="flex items-center gap-2">
+      <SidebarHeader className="px-3.5 pb-5 pt-5">
+        <div className="flex h-10 items-center gap-2.5 px-2 group-data-[collapsible=icon]:px-[9px]">
           <button
             onClick={() => collapsed ? toggleSidebar() : onNavigate("dashboard")}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-sidebar-accent transition-colors"
+            className="flex h-7 w-7 shrink-0 items-center justify-center"
             title={collapsed ? "Expand sidebar" : "LocalSub"}
           >
-            <LocalSubLogo size="sm" />
+            {/* logo.png carries transparent padding; scale it to its visual size */}
+            <LocalSubLogo className="h-7 w-7 scale-150" />
           </button>
-          <span className="text-lg font-semibold tracking-tight whitespace-nowrap transition-opacity duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0">
+          <span className="whitespace-nowrap text-[19px] font-extrabold tracking-[-0.03em] text-foreground transition-opacity duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0">
             LocalSub
           </span>
           <button
             onClick={toggleSidebar}
-            className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-opacity duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none"
+            className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-[opacity,background-color,color] duration-300 ease-in-out hover:bg-muted hover:text-foreground group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:opacity-0"
           >
             <ChevronsLeft className="h-4 w-4" />
           </button>
         </div>
       </SidebarHeader>
 
-      <SidebarSeparator />
-
-      <SidebarContent className="p-2">
+      <SidebarContent className="px-3.5">
         <SidebarMenu>
           {NAV_ITEMS.map((item) => (
             <SidebarMenuItem key={item.page}>
@@ -94,15 +91,12 @@ export function AppSidebar({
                 tooltip={t(item.i18nKey)}
                 onClick={() => onNavigate(item.page)}
               >
-                <item.icon className="h-4 w-4" />
+                <item.icon />
                 <span>{t(item.i18nKey)}</span>
                 {item.page === "dashboard" && processingCount > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className="ml-auto bg-status-info text-status-info-foreground h-5 min-w-5 justify-center text-xs"
-                  >
+                  <span className="ml-auto flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
                     {processingCount}
-                  </Badge>
+                  </span>
                 )}
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -110,48 +104,43 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="p-2">
-        <SidebarSeparator />
-
+      <SidebarFooter className="gap-2 px-3.5 pb-5 pt-2">
         {/* System status */}
-        <div className="flex flex-col gap-1 px-2 py-1.5 transition-opacity duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0">
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div
+          className={`flex flex-col gap-2 rounded-lg bg-muted px-4 py-3.5 transition-[opacity,background-color] duration-300 ease-in-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:opacity-0 ${
+            (serverStatus === "ERROR" || serverStatus === "STOPPED") && onRestartServer
+              ? "cursor-pointer hover:bg-muted-hover"
+              : ""
+          }`}
+          onClick={() => {
+            if ((serverStatus === "ERROR" || serverStatus === "STOPPED") && onRestartServer) {
+              onRestartServer();
+            }
+          }}
+        >
+          <div className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+            <span className={`h-[7px] w-[7px] rounded-full shrink-0 ${
+              serverStatus === "RUNNING" ? "bg-status-success" :
+              serverStatus === "STARTING" ? "bg-status-warning animate-pulse" :
+              serverStatus === "ERROR" ? "bg-status-error animate-pulse" :
+              "bg-muted-foreground/40"
+            }`} />
+            <span className="leading-snug">
+              {serverStatus === "RUNNING" ? t("server.running", "Server running") :
+               serverStatus === "STARTING" ? t("server.starting", "Starting...") :
+               serverStatus === "ERROR" ? t("server.errorClick", "Server error — click to restart") :
+               t("server.stopped", "Server stopped")}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 whitespace-nowrap text-[12.5px] text-muted-foreground">
             {hardwareInfo?.gpu ? (
-              <>
-                <span className="h-1.5 w-1.5 rounded-full bg-status-success shrink-0" />
-                <span>CUDA {hardwareInfo.gpu.cuda_version ?? "N/A"} · {(hardwareInfo.gpu.vram_mb / 1024).toFixed(0)}GB VRAM</span>
-              </>
+              <span>CUDA {hardwareInfo.gpu.cuda_version ?? "N/A"} · {(hardwareInfo.gpu.vram_mb / 1024).toFixed(0)}GB VRAM</span>
             ) : (
               <>
                 <span className="h-1.5 w-1.5 rounded-full bg-status-warning shrink-0" />
                 <span>{t("hw.cpuOnly")}</span>
               </>
             )}
-          </div>
-          <div
-            className={`flex items-center gap-1.5 text-[11px] text-muted-foreground ${
-              (serverStatus === "ERROR" || serverStatus === "STOPPED") && onRestartServer
-                ? "cursor-pointer hover:text-foreground transition-colors"
-                : ""
-            }`}
-            onClick={() => {
-              if ((serverStatus === "ERROR" || serverStatus === "STOPPED") && onRestartServer) {
-                onRestartServer();
-              }
-            }}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-              serverStatus === "RUNNING" ? "bg-status-success" :
-              serverStatus === "STARTING" ? "bg-status-warning animate-pulse" :
-              serverStatus === "ERROR" ? "bg-status-error animate-pulse" :
-              "bg-muted-foreground/40"
-            }`} />
-            <span>
-              {serverStatus === "RUNNING" ? t("server.running", "Server running") :
-               serverStatus === "STARTING" ? t("server.starting", "Starting...") :
-               serverStatus === "ERROR" ? t("server.errorClick", "Server error — click to restart") :
-               t("server.stopped", "Server stopped")}
-            </span>
           </div>
         </div>
 
@@ -160,13 +149,13 @@ export function AppSidebar({
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton tooltip={t("nav.theme" as const)}>
+                <SidebarMenuButton size="sm" tooltip={t("nav.theme" as const)}>
                   {theme === "dark" ? (
-                    <Moon className="h-4 w-4" />
+                    <Moon />
                   ) : theme === "light" ? (
-                    <Sun className="h-4 w-4" />
+                    <Sun />
                   ) : (
-                    <Monitor className="h-4 w-4" />
+                    <Monitor />
                   )}
                   <span>
                     {theme === "dark" ? t("theme.dark") : theme === "light" ? t("theme.light") : t("theme.system")}
@@ -175,15 +164,15 @@ export function AppSidebar({
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start">
                 <DropdownMenuItem onClick={() => setTheme("light")}>
-                  <Sun className="mr-2 h-4 w-4" />
+                  <Sun />
                   {t("theme.light")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("dark")}>
-                  <Moon className="mr-2 h-4 w-4" />
+                  <Moon />
                   {t("theme.dark")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("system")}>
-                  <Monitor className="mr-2 h-4 w-4" />
+                  <Monitor />
                   {t("theme.system")}
                 </DropdownMenuItem>
               </DropdownMenuContent>

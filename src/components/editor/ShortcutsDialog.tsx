@@ -4,6 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { useTranslation } from "react-i18next"
 
 interface ShortcutsDialogProps {
@@ -34,39 +35,32 @@ export function ShortcutsDialog({ open, onOpenChange }: ShortcutsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-[520px] gap-[18px] p-[30px] sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{t("shortcuts.title", "Keyboard Shortcuts")}</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-4 py-2">
-          {SHORTCUTS.map((group) => (
-            <div key={group.category}>
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                {t(group.category)}
-              </h4>
-              <div className="flex flex-col gap-1">
-                {group.items.map((shortcut) => (
-                  <div
-                    key={shortcut.keys}
-                    className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50"
-                  >
-                    <span className="text-sm">{t(shortcut.action)}</span>
-                    <div className="flex items-center gap-1">
-                      {shortcut.keys.split("+").map((key) => (
-                        <kbd
-                          key={key}
-                          className="inline-flex h-5 min-w-5 items-center justify-center rounded border bg-muted px-1.5 text-[11px] font-medium text-muted-foreground"
-                        >
-                          {key}
-                        </kbd>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {SHORTCUTS.map((group) => (
+          <section key={group.category} className="flex flex-col gap-1.5">
+            <h4 className="text-[13px] font-bold text-muted-foreground">{t(group.category)}</h4>
+            <div className="rounded-[14px] bg-muted px-3.5 py-1">
+              {group.items.map((shortcut) => (
+                <div key={shortcut.keys} className="flex h-[42px] items-center justify-between gap-4">
+                  <span className="text-[14.5px] font-semibold">{t(shortcut.action)}</span>
+                  <KbdGroup>
+                    {shortcut.keys.split("+").map((key) => (
+                      <Kbd
+                        key={key}
+                        className="h-[26px] min-w-[26px] rounded-[7px] bg-card px-[7px] text-xs shadow-[0_1px_0_hsl(var(--border)),0_0_0_1px_hsl(var(--border))]"
+                      >
+                        {key}
+                      </Kbd>
+                    ))}
+                  </KbdGroup>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </section>
+        ))}
       </DialogContent>
     </Dialog>
   )

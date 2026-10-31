@@ -12,7 +12,7 @@ export function VideoPreview({ videoElement, currentSubtitle }: VideoPreviewProp
     const container = containerRef.current
     if (!container || !videoElement) return
 
-    videoElement.className = "w-full h-full object-contain bg-black rounded-md"
+    videoElement.className = "h-full w-full object-contain"
     container.appendChild(videoElement)
 
     return () => {
@@ -25,10 +25,10 @@ export function VideoPreview({ videoElement, currentSubtitle }: VideoPreviewProp
   return (
     <div
       ref={containerRef}
-      className="relative h-[160px] shrink-0 border-b bg-black/5 dark:bg-black/20"
+      className="relative h-[160px] shrink-0 overflow-hidden rounded-md bg-black"
     >
       {currentSubtitle && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 max-w-[90%] px-3 py-1.5 rounded bg-black/75 text-white text-sm text-center leading-snug pointer-events-none">
+        <div className="pointer-events-none absolute bottom-3.5 left-1/2 max-w-[90%] -translate-x-1/2 text-center text-[17px] font-bold leading-snug text-white [text-shadow:0_0_3px_#000,0_1px_3px_#000]">
           {currentSubtitle}
         </div>
       )}

@@ -1,19 +1,16 @@
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
-import {
-  Cpu, MemoryStick, Monitor, Microchip, RefreshCw,
-  ExternalLink, CheckCircle2, AlertCircle, Download,
-} from "lucide-react"
+import { RefreshCw, ExternalLink, CheckCircle2, AlertCircle, Download } from "lucide-react"
 import { getVersion } from "@tauri-apps/api/app"
 import { LocalSubLogo } from "@/components/localsub-logo"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { useHardware } from "@/hooks/useHardware"
 import { useUpdater } from "@/hooks/useUpdater"
-import type { LucideIcon } from "lucide-react"
 import { VcRedistCard } from "@/components/shared/VcRedistCard"
 import { GITHUB_REPO } from "@/lib/links"
+
+/** Small control on a white card: muted fill, 38px tall. */
+const cardActionClass = "h-[38px] rounded-[11px] px-3.5 text-sm [&_svg]:size-4"
 
 export function InfoSection() {
   const { t } = useTranslation()
@@ -26,138 +23,148 @@ export function InfoSection() {
   }, [])
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* App info */}
-      <div className="flex items-center gap-4 rounded-lg border p-4">
-        <LocalSubLogo size="md" />
-        <div>
-          <h4 className="text-sm font-semibold">LocalSub</h4>
-          <p className="text-xs text-muted-foreground mt-0.5">{t("settings.about.version")} {version}</p>
-          <p className="text-xs text-muted-foreground">{t("settings.about.tagline")}</p>
+    <div className="flex flex-col gap-3.5">
+      {/* App info + update status */}
+      <div className="flex flex-wrap items-center gap-4 rounded-xl bg-card px-6 py-5 shadow-card">
+        <LocalSubLogo className="h-11 w-11 scale-150" />
+        <div className="flex min-w-0 flex-col gap-[3px]">
+          <h4 className="text-[17px] font-extrabold">LocalSub</h4>
+          <p className="text-[13.5px] text-muted-foreground">
+            {t("settings.about.version")} {version} · {t("settings.about.tagline")}
+          </p>
         </div>
-      </div>
-
-      {/* Update check */}
-      <div className="rounded-lg border p-4">
-        <h4 className="text-sm font-semibold mb-3">{t("settings.about.updates.title")}</h4>
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2">
           {!checking && !updateAvailable && !upToDate && !error && (
-            <Button variant="outline" size="sm" onClick={checkForUpdates}>
-              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+            <Button variant="secondary" className={cardActionClass} onClick={checkForUpdates}>
+              <RefreshCw />
               {t("settings.about.updates.check")}
             </Button>
           )}
           {checking && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <RefreshCw className="h-4 w-4 animate-spin" />
+            <span className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
+              <RefreshCw className="size-4 animate-spin" />
               {t("settings.about.updates.checking")}
-            </div>
+            </span>
           )}
           {updateAvailable && (
-            <div className="flex items-center gap-3">
-              <Badge variant="secondary">{updateAvailable.version}</Badge>
-              <span className="text-sm">{t("settings.about.updates.available")}</span>
-              <Button size="sm" onClick={installUpdate} disabled={installing}>
-                <Download className="mr-1.5 h-3.5 w-3.5" />
+            <>
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-sm bg-primary-soft px-3 text-[13px] font-bold text-primary-text">
+                {t("settings.about.updates.available")} · {updateAvailable.version}
+              </span>
+              <Button className={cardActionClass} onClick={installUpdate} disabled={installing}>
+                <Download />
                 {installing ? t("settings.about.updates.installing") : t("settings.about.updates.install")}
               </Button>
-            </div>
+            </>
           )}
           {upToDate && (
-            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-              <CheckCircle2 className="h-4 w-4" />
-              {t("settings.about.updates.upToDate")}
-              <Button variant="ghost" size="sm" className="ml-2 h-7" onClick={checkForUpdates}>
-                <RefreshCw className="h-3.5 w-3.5" />
+            <>
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-sm bg-status-success-soft px-3 text-[13px] font-bold text-status-success">
+                <CheckCircle2 className="size-4" />
+                {t("settings.about.updates.upToDate")}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 rounded-sm [&_svg]:size-4"
+                aria-label={t("settings.about.updates.check")}
+                title={t("settings.about.updates.check")}
+                onClick={checkForUpdates}
+              >
+                <RefreshCw />
               </Button>
-            </div>
+            </>
           )}
           {error && (
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-              <span className="text-sm text-destructive">{t("settings.about.updates.error")}</span>
-              <Button variant="outline" size="sm" className="ml-2" onClick={checkForUpdates}>
-                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+            <>
+              <span className="flex items-center gap-1.5 text-[13px] font-semibold text-status-error">
+                <AlertCircle className="size-4 shrink-0" />
+                {t("settings.about.updates.error")}
+              </span>
+              <Button variant="secondary" className={cardActionClass} onClick={checkForUpdates}>
+                <RefreshCw />
                 {t("settings.about.updates.check")}
               </Button>
-            </div>
+            </>
           )}
         </div>
       </div>
-
-      <Separator />
 
       {/* Visual C++ runtime — a fixed address for the install, so declining
           the elevation prompt is never a dead end. */}
       <VcRedistCard variant="section" />
 
       {/* Hardware info */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold">{t("settings.system.title")}</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">{t("settings.system.description")}</p>
+      <div className="mt-2 flex items-center gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <h3 className="text-base font-extrabold">{t("settings.system.title")}</h3>
+          <p className="text-[13px] text-muted-foreground">{t("settings.system.description")}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={detect} disabled={loading}>
-          <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+        <Button
+          variant="ghost"
+          className={`${cardActionClass} bg-card shadow-card hover:bg-card hover:text-foreground`}
+          onClick={detect}
+          disabled={loading}
+        >
+          <RefreshCw className={loading ? "animate-spin" : ""} />
           {t("settings.system.refresh")}
         </Button>
       </div>
 
       {loading && !hardware ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {t("settings.profile.detecting")}
-        </div>
+        <p className="text-sm text-muted-foreground">{t("settings.profile.detecting")}</p>
       ) : hardware ? (
-        <div className="grid grid-cols-2 gap-3">
-          <HwCard icon={Cpu} label={t("wizard.environment.cpuCard")} value={hardware.cpu_name} sub={`${hardware.cpu_cores} cores`} />
-          <HwCard icon={MemoryStick} label={t("wizard.environment.ramCard")} value={`${hardware.total_ram_gb.toFixed(1)} GB`} sub={`${hardware.available_ram_gb.toFixed(1)} GB free`} />
-          <HwCard icon={Monitor} label={t("wizard.environment.gpuCard")} value={hardware.gpu?.name ?? t("wizard.environment.noGpu")} sub={hardware.gpu ? `${hardware.gpu.vram_mb} MB VRAM${hardware.gpu.cuda_version ? ` • CUDA ${hardware.gpu.cuda_version}` : ""}` : undefined} />
-          <HwCard icon={Microchip} label={t("wizard.environment.diskCard")} value={hardware.avx2_support ? "AVX2" : hardware.avx_support ? "AVX" : "SSE"} sub={t("wizard.environment.instructionSet")} />
+        <div className="grid grid-cols-2 gap-2">
+          <HwCard label={t("wizard.environment.cpuCard")} value={hardware.cpu_name} sub={`${hardware.cpu_cores} cores`} />
+          <HwCard label={t("wizard.environment.ramCard")} value={`${hardware.total_ram_gb.toFixed(1)} GB`} sub={`${hardware.available_ram_gb.toFixed(1)} GB free`} />
+          <HwCard label={t("wizard.environment.gpuCard")} value={hardware.gpu?.name ?? t("wizard.environment.noGpu")} sub={hardware.gpu ? `${hardware.gpu.vram_mb} MB VRAM${hardware.gpu.cuda_version ? ` • CUDA ${hardware.gpu.cuda_version}` : ""}` : undefined} />
+          <HwCard label={t("wizard.environment.diskCard")} value={hardware.avx2_support ? "AVX2" : hardware.avx_support ? "AVX" : "SSE"} sub={t("wizard.environment.instructionSet")} />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">{t("settings.system.noData")}</p>
       )}
 
-      <Separator />
-
-      {/* Tech info + links */}
-      <div className="flex flex-col gap-2 text-sm">
+      {/* Tech info */}
+      <div className="rounded-xl bg-card px-5 py-1.5 shadow-card">
         <InfoRow label={t("settings.about.runtime")} value="Tauri 2.x + React" />
         <InfoRow label={t("settings.about.sttEngine")} value="faster-whisper (CTranslate2)" />
         <InfoRow label={t("settings.about.llmEngine")} value="llama-cpp-python (GGUF)" />
         <InfoRow label={t("settings.about.license")} value="PolyForm Noncommercial 1.0.0" />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-          <ExternalLink className="h-3.5 w-3.5" /> {t("settings.about.github")}
+      {/* Links */}
+      <div className="flex flex-wrap gap-2">
+        <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer" className={`${linkClass} bg-primary-soft text-primary-text hover:bg-primary-soft/70`}>
+          <ExternalLink className="size-4" />
+          {t("settings.about.github")}
         </a>
-        <a href={`${GITHUB_REPO}/issues`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-          <ExternalLink className="h-3.5 w-3.5" /> {t("settings.about.reportIssue")}
+        <a href={`${GITHUB_REPO}/issues`} target="_blank" rel="noopener noreferrer" className={`${linkClass} bg-card text-foreground-secondary shadow-card hover:text-foreground`}>
+          <ExternalLink className="size-4" />
+          {t("settings.about.reportIssue")}
         </a>
       </div>
     </div>
   )
 }
 
-function HwCard({ icon: Icon, label, value, sub }: { icon: LucideIcon; label: string; value: string; sub?: string }) {
+const linkClass =
+  "inline-flex h-[42px] items-center gap-2 rounded-md px-4 text-sm font-bold transition-[background-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+
+function HwCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border bg-muted/30 p-3">
-      <div className="mb-1.5 flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      </div>
-      <p className="truncate text-sm font-medium">{value}</p>
-      {sub && <p className="truncate text-xs text-muted-foreground mt-0.5">{sub}</p>}
+    <div className="flex min-w-0 flex-col gap-[3px] rounded-[16px] bg-card px-[18px] py-3.5 shadow-card">
+      <p className="truncate text-xs font-semibold text-muted-foreground">{label}</p>
+      <p className="truncate text-[15px] font-bold">{value}</p>
+      {sub && <p className="truncate text-[12.5px] text-muted-foreground">{sub}</p>}
     </div>
   )
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-md px-3 py-2 odd:bg-muted/30">
+    <div className="flex h-[46px] items-center justify-between gap-4 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
+      <span className="truncate font-semibold">{value}</span>
     </div>
   )
 }
