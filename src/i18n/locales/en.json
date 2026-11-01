@@ -83,7 +83,7 @@
       "noPresets": "No presets available. Create one in the Presets page.",
       "start": "Start job",
       "startMultiple": "Start {{count}} jobs",
-      "supportedFormats": "MP4, MKV, AVI, MOV, MP3, WAV, SRT, VTT",
+      "supportedFormats": "MP4, MKV, AVI, MOV, WebM, MP3, WAV, M4A, FLAC, OGG, AAC, SRT, VTT",
       "linkedVocab": "Linked vocabulary:",
       "subtitleMode": {
         "badge": "Subtitle translation mode",
@@ -433,7 +433,8 @@
       "browse": "Browse",
       "formatLabel": "Subtitle Format",
       "sourceLanguage": "Source Language",
-      "targetLanguage": "Target Language"
+      "targetLanguage": "Target Language",
+      "autoDetect": "Auto Detect"
     },
     "models": {
       "title": "Model Selection",

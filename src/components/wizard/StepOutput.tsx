@@ -15,6 +15,9 @@ const FORMATS = ["srt", "vtt", "ass", "txt"];
 const LANGUAGES = [
   "en", "ko", "ja", "zh", "es", "fr", "de", "pt", "ru", "ar",
 ];
+// "auto" is the config default (Whisper detects the language); without it in
+// the list the select shows blank and a picked language can't be undone
+const SOURCE_LANGUAGES = ["auto", ...LANGUAGES];
 
 interface StepOutputProps {
   outputDir: string;
@@ -110,9 +113,9 @@ export function StepOutput({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {LANGUAGES.map((l) => (
+              {SOURCE_LANGUAGES.map((l) => (
                 <SelectItem key={l} value={l}>
-                  {l.toUpperCase()}
+                  {l === "auto" ? t("wizard.output.autoDetect") : l.toUpperCase()}
                 </SelectItem>
               ))}
             </SelectContent>
