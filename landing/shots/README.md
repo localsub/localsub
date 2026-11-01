@@ -24,10 +24,13 @@
 ## 3. 실행 가이드라인
 
 ```bash
-# 1. 샘플 미디어 생성 (최초 1회 또는 sample.mp4 누락 시)
+# 1. Chromium 설치 (최초 1회, package.json에 고정한 playwright 버전에 맞는 빌드)
+npx playwright install chromium
+
+# 2. 샘플 미디어 생성 (최초 1회 또는 sample.mp4 누락 시)
 node landing/shots/gen-sample.mjs
 
-# 2. 전체 UI 화면 자동 캡처 및 이미지 최적화 수행
+# 3. 전체 UI 화면 자동 캡처 및 이미지 최적화 수행
 node landing/shots/capture.mjs
 ```
 
