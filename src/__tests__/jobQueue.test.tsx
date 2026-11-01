@@ -11,7 +11,8 @@ import { render, screen, fireEvent, within, act, configure } from "@testing-libr
  *
  * Drives the real <App/> against a scripted IPC backend. B, C and E are failed
  * jobs that already hold STT output, so Retry takes the translation-only path;
- * F has none, so its Retry goes through STT.
+ * F has none, so its Retry goes through STT. C's record carries the language
+ * STT reported for it; G is an interrupted translation waiting for Resume.
  */
 
 const ipc = vi.hoisted(() => {
@@ -22,9 +23,9 @@ const ipc = vi.hoisted(() => {
   const held = new Set<string>();
   const waiting = new Map<string, () => void>();
   const iso = new Date().toISOString();
-  const job = (id: string, name: string, status: string) => ({
+  const job = (id: string, name: string, status: string, extra: Record<string, unknown> = {}) => ({
     id, file_name: name, file_path: `D:/${name}`, file_size: 1, duration: 60,
-    preset_id: "preset-1", status, stage: "error", progress: 50, created_at: iso,
+    preset_id: "preset-1", status, stage: "error", progress: 50, created_at: iso, ...extra,
   });
   const state = {
     calls,
@@ -79,8 +80,10 @@ const ipc = vi.hoisted(() => {
         case "get_vcredist_state": return { status: { missing: [], core_blocked: false }, last_attempt: null };
         case "load_dashboard_jobs":
           return [
-            job("job-B", "B_episode.mkv", "failed"), job("job-C", "C_episode.mkv", "failed"),
+            job("job-B", "B_episode.mkv", "failed"),
+            job("job-C", "C_episode.mkv", "failed", { detected_language: "en" }),
             job("job-E", "E_episode.mkv", "failed"), job("job-F", "F_episode.mkv", "failed"),
+            job("job-G", "G_episode.mkv", "interrupted", { detected_language: "ko", translated_count: 1 }),
           ];
         case "load_job_subtitles":
           if (args.jobId === "job-F") return [];
@@ -134,6 +137,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 import i18n from "@/i18n";
 import App from "@/App";
+import type { DashboardJob } from "@/types";
 
 // Ceilings, not timing: every wait here is condition-based (findBy*, settle),
 // so a busy machine only makes it slower. Rendering the whole <App/> on a
@@ -366,5 +370,50 @@ describe("Removing a running job", () => {
     await settle();
     expect(ipc.argsOf("cancel_stt")).toEqual([{ jobId: "stt-1" }]);
     expect(ipc.count("start_translate")).toBe(1);
+  });
+});
+
+describe("Translation source language", () => {
+  // The preset here is fixed to "ja". Translation must take the language STT
+  // reported instead, or an English video goes to the model labelled Japanese.
+  const sourceLangs = () => ipc.argsOf("start_translate").map((a) => a.sourceLang);
+
+  it("passes the language STT reported to the translation and keeps it on the job", async () => {
+    render(<App />);
+    await screen.findByText("F_episode.mkv");
+    await retry("F_episode.mkv"); // no saved subtitles: runs STT as stt-1
+
+    await act(async () => {
+      ipc.emit("stt-segment", { job_id: "stt-1", index: 1, start: 0, end: 2, text: "hello there" });
+      ipc.emit("job-updated", { id: "stt-1", state: "DONE", progress: 100, message: "", language: "en" });
+    });
+    await settle();
+
+    expect(sourceLangs()).toEqual(["en"]);
+    const saved = ipc.argsOf("save_dashboard_jobs").at(-1)!.jobs as DashboardJob[];
+    expect(saved.find((j) => j.id === "job-F")?.detected_language).toBe("en");
+  });
+
+  it("uses the saved language when a retry re-translates without STT", async () => {
+    render(<App />);
+    await screen.findByText("C_episode.mkv");
+    await retry("C_episode.mkv");
+    expect(sourceLangs()).toEqual(["en"]);
+  });
+
+  it("uses the saved language when an interrupted translation resumes", async () => {
+    render(<App />);
+    await screen.findByText("G_episode.mkv");
+    openActions("G_episode.mkv");
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Resume Translation" }));
+    await settle();
+    expect(sourceLangs()).toEqual(["ko"]);
+  });
+
+  it("leaves the choice to the preset for a job saved without one", async () => {
+    render(<App />);
+    await screen.findByText("B_episode.mkv");
+    await retry("B_episode.mkv");
+    expect(sourceLangs()).toEqual([undefined]);
   });
 });

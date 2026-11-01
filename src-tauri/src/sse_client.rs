@@ -34,6 +34,17 @@ fn update_job_done(app: &AppHandle, job_id: &str, result: &str, message: &str) {
     }
 }
 
+fn set_job_language(app: &AppHandle, job_id: &str, language: Option<&str>) {
+    let state = app.state::<SharedState>();
+    let mut guard = match state.lock() {
+        Ok(g) => g,
+        Err(_) => return,
+    };
+    if let Some(job) = guard.jobs.get_mut(job_id) {
+        job.language = language.map(str::to_string);
+    }
+}
+
 fn update_job_error(app: &AppHandle, job_id: &str, error: &str) {
     let state = app.state::<SharedState>();
     let mut guard = match state.lock() {
@@ -153,6 +164,9 @@ fn handle_stt_event(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
+            // Set before the DONE update so the frontend gets both in one event
+            let language = value.get("language").and_then(|v| v.as_str());
+            set_job_language(app, job_id, language);
             update_job_done(app, job_id, &result, "Transcription complete");
             true
         }

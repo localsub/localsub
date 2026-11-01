@@ -72,6 +72,8 @@ export interface Job {
   message: string | null;
   result: string | null;
   error: string | null;
+  /** STT only: the transcript's language (forced, or Whisper's detection). */
+  language?: string;
 }
 
 // ── Hardware types ──
@@ -306,6 +308,11 @@ export interface DashboardJob {
    * has partial translations on disk and can be resumed.
    */
   translated_count?: number;
+  /**
+   * Language STT reported for this job's transcript. Translation uses it as
+   * the source language, including retries and resumes that skip STT.
+   */
+  detected_language?: string;
 }
 
 // ── Screen navigation ──

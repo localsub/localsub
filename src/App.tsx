@@ -60,6 +60,8 @@ interface QueueEntry {
   sourceType: JobSourceType;
   /** Retry that re-runs translation only, over this job's saved STT segments. */
   retranslate?: SttSegment[];
+  /** With `retranslate`: the language STT reported for those segments. */
+  detectedLanguage?: string;
 }
 
 function App() {
@@ -179,7 +181,10 @@ function App() {
       const entry = queueRef.current.shift()!;
       activeJobsRef.current.add(entry.jobId);
       if (entry.retranslate) {
-        retryTranslation(entry.jobId, entry.retranslate, entry.presetId, { filePath: entry.filePath });
+        retryTranslation(entry.jobId, entry.retranslate, entry.presetId, {
+          filePath: entry.filePath,
+          sourceLang: entry.detectedLanguage,
+        });
       } else {
         processJob(entry.jobId, entry.filePath, entry.sourceLanguage, entry.enableDiarization, entry.skipTranslation, entry.presetId, entry.sourceType);
       }
@@ -348,6 +353,7 @@ function App() {
             end: l.end_time,
             text: l.original_text,
           }));
+          entry.detectedLanguage = job.detected_language;
         }
       } catch {
         // No existing subtitles — full retry
@@ -429,6 +435,7 @@ function App() {
       retryTranslation(jobId, segments, job.preset_id, {
         resumeBaseLines: baseLines,
         filePath: job.file_path,
+        sourceLang: job.detected_language,
       });
       // 파이프라인에 인계 완료 — 잡 상태가 processing이 되어 재진입은 status 가드가 막는다.
       resumeInFlightRef.current.delete(jobId);

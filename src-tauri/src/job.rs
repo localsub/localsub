@@ -18,6 +18,11 @@ pub struct Job {
     pub message: Option<String>,
     pub result: Option<String>,
     pub error: Option<String>,
+    /// STT only: the transcript's language, as the server reported it (the
+    /// forced one, or Whisper's detection). Translation takes its source
+    /// language from this.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
 }
 
 impl Job {
@@ -30,6 +35,7 @@ impl Job {
             message: None,
             result: None,
             error: None,
+            language: None,
         }
     }
 }

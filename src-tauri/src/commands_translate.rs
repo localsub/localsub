@@ -29,12 +29,24 @@ fn resolve_opt_str(preset_val: Option<&str>, config_val: Option<&str>) -> Option
     }
 }
 
+/// The language STT reported for the transcript wins over the preset: a
+/// preset fixed to Japanese would otherwise label an English video's lines as
+/// Japanese. Without one (imported subtitles, jobs from older versions, no
+/// speech) the preset and then the config decide as before.
+fn resolve_source_lang(transcript_lang: Option<&str>, preset_val: Option<&str>, config_val: &str) -> String {
+    match transcript_lang {
+        Some(s) if !s.trim().is_empty() && s != "auto" => s.to_string(),
+        _ => resolve_str(preset_val, config_val).to_string(),
+    }
+}
+
 #[tauri::command]
 pub async fn start_translate(
     app: AppHandle,
     state: State<'_, SharedState>,
     segments: Vec<SubtitleSegment>,
     preset_id: Option<String>,
+    source_lang: Option<String>,
 ) -> Result<Job, AppError> {
     let (port, config) = {
         let s = state.lock().map_err(|e| {
@@ -213,7 +225,7 @@ pub async fn start_translate(
     let p_target_lang = preset.as_ref().map(|p| p.target_lang.as_str());
     let p_style = preset.as_ref().map(|p| p.translation_style.as_str());
 
-    let resolved_source_lang = resolve_str(p_source_lang, &config.source_language).to_string();
+    let resolved_source_lang = resolve_source_lang(source_lang.as_deref(), p_source_lang, &config.source_language);
     let resolved_target_lang = resolve_str(p_target_lang, &config.target_language).to_string();
     let resolved_style = resolve_str(p_style, &config.style_preset).to_string();
 
@@ -425,4 +437,28 @@ pub async fn cancel_translate(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transcript_language_beats_the_preset() {
+        assert_eq!(resolve_source_lang(Some("en"), Some("ja"), "auto"), "en");
+    }
+
+    #[test]
+    fn without_a_transcript_language_the_preset_decides() {
+        assert_eq!(resolve_source_lang(None, Some("ja"), "auto"), "ja");
+        assert_eq!(resolve_source_lang(Some(""), Some("ja"), "auto"), "ja");
+        // "auto" is a request to detect, not a detected language
+        assert_eq!(resolve_source_lang(Some("auto"), Some("ja"), "ko"), "ja");
+    }
+
+    #[test]
+    fn without_either_the_config_decides() {
+        assert_eq!(resolve_source_lang(None, None, "ko"), "ko");
+        assert_eq!(resolve_source_lang(None, Some(" "), "ko"), "ko");
+    }
 }
