@@ -8,7 +8,7 @@
 | 파일 경로 | 대응 미디어 슬롯 | 콘텐츠 내용 |
 |---|---|---|
 | `landing/assets/editor.png` | `heroPoster`, `MEDIA.editor` | 파형 시각화, 이중 언어 자막 목록, 화자 식별 라벨이 포함된 메인 에디터 화면 |
-| `landing/assets/speaker.png` | `MEDIA.features.speaker` | 화자 분리(Speaker Diarization) 결과가 반영된 자막 목록 뷰 |
+| `landing/assets/speaker.png` | `MEDIA.features.quality` | 화자 분리(Speaker Diarization) 결과가 반영된 자막 목록 뷰 |
 | `landing/assets/batch.png` | `MEDIA.features.batch` | 복수 파일 일괄 처리 작업 큐(Job Queue) 화면 |
 | `landing/assets/models.png` | `MEDIA.features.models` | 모델 다운로드 진행률 및 하드웨어 프로파일 진단 패널 |
 | `landing/og-image.png` | 소셜 미리보기 메타데이터 | 1200×630 규격으로 크롭된 에디터 대표 이미지 |
