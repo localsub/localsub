@@ -620,6 +620,7 @@ async def _transcribe_range(
             "type": "_range_complete",
             "yielded": yielded_segments,
             "count": local_index,
+            "language": getattr(info, "language", None),
         }
     finally:
         if temp_audio_path and os.path.exists(temp_audio_path):
@@ -648,6 +649,8 @@ async def _run_whisper(job_id: str, job: dict) -> AsyncGenerator[dict[str, Any],
     user_end = job.get("end_time")
 
     all_segments: list[dict[str, Any]] = []
+    # (detected language, segments) per range, for the reported language
+    ranges: list[tuple[str | None, list[dict[str, Any]]]] = []
 
     # Preview mode — user asked for a specific window. Single pass.
     if user_start is not None and user_end is not None:
@@ -661,6 +664,7 @@ async def _run_whisper(job_id: str, job: dict) -> AsyncGenerator[dict[str, Any],
         ):
             if ev.get("type") == "_range_complete":
                 all_segments = ev["yielded"]
+                ranges.append((ev["language"], ev["yielded"]))
                 continue
             if ev.get("type") == "cancelled":
                 yield ev
@@ -698,6 +702,7 @@ async def _run_whisper(job_id: str, job: dict) -> AsyncGenerator[dict[str, Any],
             ):
                 if ev.get("type") == "_range_complete":
                     all_segments.extend(ev["yielded"])
+                    ranges.append((ev["language"], ev["yielded"]))
                     index_base += ev["count"]
                     continue
                 if ev.get("type") == "cancelled":
@@ -714,10 +719,27 @@ async def _run_whisper(job_id: str, job: dict) -> AsyncGenerator[dict[str, Any],
         max(_durations) if _durations else 0,
     )
 
+    # Translation reads its source language from this
+    transcript_language = lang_arg or _dominant_language(ranges)
+    log.info("[STT] Transcript language: %s (%s)", transcript_language, "forced" if lang_arg else "detected")
+
     job["state"] = SttJobState.DONE
     log.info("[STT] Transcription complete, model kept loaded (Rust will unload before LLM)")
     yield {
         "type": "done",
         "job_id": job_id,
         "result": json.dumps(all_segments),
+        "language": transcript_language,
     }
+
+
+def _dominant_language(ranges: list[tuple[str | None, list[dict[str, Any]]]]) -> str | None:
+    """The detected language with the most transcribed speech. Each chunk of a
+    long file runs its own detection, so chunks can disagree. None when no
+    speech was transcribed: a guess made on silence means nothing."""
+    speech: dict[str, float] = {}
+    for lang, segments in ranges:
+        if lang:
+            speech[lang] = speech.get(lang, 0.0) + sum(s["end"] - s["start"] for s in segments)
+    lang, seconds = max(speech.items(), key=lambda kv: kv[1], default=(None, 0.0))
+    return lang if seconds > 0 else None

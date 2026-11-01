@@ -300,3 +300,29 @@ def test_build_system_prompt_defaults_to_no_no_think():
     # An unknown model (e.g. installed but delisted from the catalog) must not
     # opt into `/no_think` by accident — it is a Qwen3-only directive.
     assert "/no_think" not in build_system_prompt("natural", "ja", "ko")
+
+
+# ── language names ────────────────────────────────────────────────
+
+# faster-whisper 1.2.1 `tokenizer._LANGUAGE_CODES`: every language STT can
+# report. Translation now takes its source language from STT, so each needs a
+# name — a bare code ("Translate vi movie subtitles") reads as a word.
+WHISPER_CODES = (
+    "af am ar as az ba be bg bn bo br bs ca cs cy da de el en es et eu fa fi fo "
+    "fr gl gu ha haw he hi hr ht hu hy id is it ja jw ka kk km kn ko la lb ln lo "
+    "lt lv mg mi mk ml mn mr ms mt my ne nl nn no oc pa pl ps pt ro ru sa sd si sk "
+    "sl sn so sq sr su sv sw ta te tg th tk tl tr tt uk ur uz vi yi yo zh yue"
+).split()
+
+
+def test_every_whisper_language_has_a_name():
+    from prompt_builder import LANG_NAMES
+
+    assert len(WHISPER_CODES) == 100
+    missing = [c for c in WHISPER_CODES if not LANG_NAMES.get(c)]
+    assert not missing
+
+
+def test_detected_language_is_named_in_the_prompt():
+    prompt = build_system_prompt("natural", "vi", "ko")
+    assert "Translate Vietnamese" in prompt

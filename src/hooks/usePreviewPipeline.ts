@@ -39,6 +39,8 @@ interface JobUpdatedEvent {
   state: string;
   progress?: number;
   message?: string;
+  /** STT only: the transcript's language. */
+  language?: string;
 }
 
 export function usePreviewPipeline() {
@@ -51,6 +53,8 @@ export function usePreviewPipeline() {
   const cachedSegmentsRef = useRef<SttSegment[]>([]);
   const cachedFileRef = useRef<string | null>(null);
   const cachedRangeRef = useRef<{ start: number; end: number } | null>(null);
+  // Language STT reported for the cached segments; the translation's source
+  const cachedLanguageRef = useRef<string | undefined>(undefined);
   const sttJobIdRef = useRef<string | null>(null);
   const translateJobIdRef = useRef<string | null>(null);
   const unlistenersRef = useRef<UnlistenFn[]>([]);
@@ -100,6 +104,7 @@ export function usePreviewPipeline() {
       setResults([]);
       setError(null);
       cachedSegmentsRef.current = [];
+      cachedLanguageRef.current = undefined;
 
       try {
         const segments: SttSegment[] = [];
@@ -130,6 +135,7 @@ export function usePreviewPipeline() {
                 if (event.payload.state === "RUNNING" && typeof event.payload.progress === "number") {
                   setProgress(Math.round(event.payload.progress));
                 } else if (event.payload.state === "DONE") {
+                  cachedLanguageRef.current = event.payload.language;
                   resolve();
                 } else if (event.payload.state === "FAILED") {
                   reject(new Error(event.payload.message || "STT failed"));
@@ -205,7 +211,7 @@ export function usePreviewPipeline() {
         unlistenersRef.current.push(unlistenSeg);
 
         // Start translation
-        const translateJob = await startTranslate(segments, presetId);
+        const translateJob = await startTranslate(segments, presetId, cachedLanguageRef.current);
         translateJobIdRef.current = translateJob.id;
 
         // Wait for completion

@@ -28,6 +28,10 @@ pub struct DashboardJob {
     /// restart so an interrupted translation can be resumed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub translated_count: Option<u32>,
+    /// Language STT reported for this job's transcript. Kept so a retry or
+    /// resume that re-translates without re-running STT uses it too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detected_language: Option<String>,
 }
 
 fn jobs_path() -> Result<std::path::PathBuf, AppError> {
@@ -72,6 +76,7 @@ mod tests {
             completed_at: Some("2026-01-01T00:05:00Z".to_string()),
             source_type: None,
             translated_count: None,
+            detected_language: None,
         };
         let json = serde_json::to_string(&job).unwrap();
         let restored: DashboardJob = serde_json::from_str(&json).unwrap();
@@ -82,6 +87,16 @@ mod tests {
         // Absent in legacy jobs.json → defaults to None
         assert!(restored.source_type.is_none());
         assert!(restored.translated_count.is_none());
+        assert!(restored.detected_language.is_none());
+    }
+
+    #[test]
+    fn test_dashboard_job_detected_language_roundtrip() {
+        let json = r#"{"id":"j3","file_name":"c.mkv","file_path":"/tmp/c.mkv","file_size":10.0,"duration":60.0,"preset_id":"p","status":"failed","stage":"error","progress":0.0,"created_at":"2026-01-01T00:00:00Z","detected_language":"en"}"#;
+        let job: DashboardJob = serde_json::from_str(json).unwrap();
+        assert_eq!(job.detected_language.as_deref(), Some("en"));
+        let saved = serde_json::to_string(&job).unwrap();
+        assert!(saved.contains("\"detected_language\":\"en\""));
     }
 
     #[test]
