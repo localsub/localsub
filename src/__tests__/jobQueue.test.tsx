@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
-import { render, screen, fireEvent, within, act } from "@testing-library/react";
+import { render, screen, fireEvent, within, act, configure } from "@testing-library/react";
 
 /**
  * The GPU runs one job at a time: every translation start calls
@@ -135,6 +135,12 @@ vi.mock("@tauri-apps/api/event", () => ({
 import i18n from "@/i18n";
 import App from "@/App";
 
+// Ceilings, not timing: every wait here is condition-based (findBy*, settle),
+// so a busy machine only makes it slower. Rendering the whole <App/> on a
+// loaded CPU outran the 1 s findBy and 5 s per-test defaults.
+configure({ asyncUtilTimeout: 10_000 });
+vi.setConfig({ testTimeout: 30_000 });
+
 beforeAll(async () => {
   await i18n.changeLanguage("en");
   window.matchMedia = ((q: string) => ({
@@ -161,11 +167,25 @@ beforeAll(async () => {
 
 beforeEach(() => ipc.reset());
 
-/** Let the pipeline's async IPC chain run to a resting point. */
+/**
+ * Let the pipeline's async IPC chain run to a resting point. Counts
+ * event-loop turns, not milliseconds: each turn yields one macrotask inside
+ * act (so React flushes renders and effects), and it stops once no IPC call
+ * has been made for QUIET_TURNS turns in a row. A fixed sleep can end before
+ * a slow machine's chain does, and the "still only one restart" checks below
+ * would then pass without having waited for anything.
+ */
+const QUIET_TURNS = 5;
 async function settle() {
-  await act(async () => {
-    await new Promise((r) => setTimeout(r, 50));
-  });
+  let seen = -1;
+  for (let turn = 0, quiet = 0; quiet < QUIET_TURNS; turn++) {
+    if (turn === 1000) throw new Error("settle: the IPC chain never went quiet");
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    quiet = ipc.calls.length === seen ? quiet + 1 : 0;
+    seen = ipc.calls.length;
+  }
 }
 
 function openActions(fileName: string) {
