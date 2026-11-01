@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { pickDirectory } from "../../lib/tauriApi";
+import { LANGUAGES, SOURCE_LANGUAGES } from "@/lib/languages";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -12,12 +13,6 @@ import {
 } from "@/components/ui/select";
 
 const FORMATS = ["srt", "vtt", "ass", "txt"];
-const LANGUAGES = [
-  "en", "ko", "ja", "zh", "es", "fr", "de", "pt", "ru", "ar",
-];
-// "auto" is the config default (Whisper detects the language); without it in
-// the list the select shows blank and a picked language can't be undone
-const SOURCE_LANGUAGES = ["auto", ...LANGUAGES];
 
 interface StepOutputProps {
   outputDir: string;

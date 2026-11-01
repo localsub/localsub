@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { pickDirectory } from "@/lib/tauriApi"
+import { SOURCE_LANGUAGES } from "@/lib/languages"
 import { SectionHeader, SettingsCard, SettingsRow } from "./SettingsCard"
 import type { AppConfig, PartialConfig } from "@/types"
 
@@ -72,6 +73,29 @@ export function GeneralSection({ config, onUpdate }: GeneralSectionProps) {
               </RadioGroupPrimitive.Item>
             ))}
           </RadioGroupPrimitive.Root>
+        </SettingsRow>
+
+        {/* Source Language — the wizard can't be re-run, so this is the only way to change it later */}
+        <SettingsRow className="flex-row items-center">
+          <div className="flex flex-1 flex-col gap-1">
+            <span id="settings-source-language" className="text-[15px] font-bold">{t("settings.general.sourceLanguage")}</span>
+            <p id="settings-source-language-desc" className="text-[13px] text-muted-foreground">{t("settings.general.sourceLanguageDesc")}</p>
+          </div>
+          <Select value={config.source_language} onValueChange={(v) => onUpdate({ source_language: v })}>
+            <SelectTrigger
+              aria-labelledby="settings-source-language"
+              aria-describedby="settings-source-language-desc"
+              // Grows past 180px for long names ("Detección automática") instead of clipping them
+              className="h-11 w-auto min-w-[180px] shrink-0 px-3.5 font-bold"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SOURCE_LANGUAGES.map((l) => (
+                <SelectItem key={l} value={l}>{t(`settings.general.sourceLangs.${l}`)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </SettingsRow>
 
         {/* Output Format */}
