@@ -106,6 +106,17 @@ async function main() {
   // Select a line so the edit panel (original + translation fields) fills.
   await pickLine.click();
   await page.waitForTimeout(500);
+  // Selecting scrolls the line into view ("nearest"), which can leave a
+  // half-cut row at the top of the list. Snap a whole row to the top edge.
+  await page.evaluate((text) => {
+    const viewport = [...document.querySelectorAll("[data-radix-scroll-area-viewport]")]
+      .find((v) => v.textContent.includes(text));
+    // Rows are the outermost .grid elements, so the first match is the row itself
+    const row = viewport && [...viewport.querySelectorAll(".grid")].find((r) => r.textContent.includes(text));
+    if (!row) return;
+    viewport.scrollTop += row.getBoundingClientRect().top - viewport.getBoundingClientRect().top - 8;
+  }, "あなたはいつもそう言うね。");
+  await page.waitForTimeout(300);
   await shot(page, "editor.png");
 
   // Speaker-focused crop: the subtitle list panel (the scroll viewport
@@ -174,9 +185,11 @@ async function main() {
 
   if (!EN_ONLY_README_SHOTS) {
     // ── OG image: 1200×630 from the editor still (ffmpeg cover-crop) ──
+    // Anchored to the top so the logo and page title stay whole; the cut
+    // falls on the bottom of the subtitle list instead.
     await execFileP("ffmpeg", [
       "-y", "-i", resolve(assetsDir, "editor.png"),
-      "-vf", "scale=1200:630:force_original_aspect_ratio=increase,crop=1200:630",
+      "-vf", "scale=1200:630:force_original_aspect_ratio=increase,crop=1200:630:0:0",
       resolve(landingDir, "og-image.png"),
     ]);
     log("wrote og-image.png (1200×630)");
