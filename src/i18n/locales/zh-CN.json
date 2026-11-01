@@ -83,7 +83,7 @@
       "noPresets": "暂无可用预设。请在预设页面创建。",
       "start": "开始任务",
       "startMultiple": "开始 {{count}} 个任务",
-      "supportedFormats": "MP4、MKV、AVI、MOV、MP3、WAV、SRT、VTT",
+      "supportedFormats": "MP4、MKV、AVI、MOV、WebM、MP3、WAV、M4A、FLAC、OGG、AAC、SRT、VTT",
       "linkedVocab": "关联词汇表：",
       "subtitleMode": {
         "badge": "字幕翻译模式",
@@ -433,7 +433,8 @@
       "browse": "浏览",
       "formatLabel": "字幕格式",
       "sourceLanguage": "源语言",
-      "targetLanguage": "目标语言"
+      "targetLanguage": "目标语言",
+      "autoDetect": "自动检测"
     },
     "models": {
       "title": "模型选择",

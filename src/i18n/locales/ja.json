@@ -83,7 +83,7 @@
       "noPresets": "プリセットがありません。プリセットページで作成してください。",
       "start": "ジョブを開始",
       "startMultiple": "{{count}}件のジョブを開始",
-      "supportedFormats": "MP4, MKV, AVI, MOV, MP3, WAV, SRT, VTT",
+      "supportedFormats": "MP4, MKV, AVI, MOV, WebM, MP3, WAV, M4A, FLAC, OGG, AAC, SRT, VTT",
       "linkedVocab": "関連付けられた用語集:",
       "subtitleMode": {
         "badge": "字幕翻訳モード",
@@ -433,7 +433,8 @@
       "browse": "参照",
       "formatLabel": "字幕フォーマット",
       "sourceLanguage": "ソース言語",
-      "targetLanguage": "ターゲット言語"
+      "targetLanguage": "ターゲット言語",
+      "autoDetect": "自動検出"
     },
     "models": {
       "title": "モデル選択",

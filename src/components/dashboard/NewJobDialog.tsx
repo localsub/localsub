@@ -32,7 +32,7 @@ import {
 import { pickFile, checkFfmpeg, downloadFfmpeg } from "@/lib/tauriApi"
 import { usePreviewPipeline } from "@/hooks/usePreviewPipeline"
 import { cn } from "@/lib/utils"
-import { isAcceptedFile, isSubtitleFile } from "@/lib/sourceType"
+import { MEDIA_EXTENSIONS, SUBTITLE_EXTENSIONS, isAcceptedFile, isSubtitleFile } from "@/lib/sourceType"
 import type { Preset, Vocabulary, VocabularyEntry } from "@/types"
 
 interface NewJobDialogProps {
@@ -240,8 +240,9 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
 
   const handleFileSelect = useCallback(async () => {
     const path = await pickFile([
-      { name: "Media", extensions: ["mp4", "mkv", "avi", "mov", "mp3", "wav", "m4a", "flac"] },
-      { name: "Subtitles", extensions: ["srt", "vtt"] },
+      // Same lists as drag & drop, so the picker can't drift from them
+      { name: "Media", extensions: [...MEDIA_EXTENSIONS] },
+      { name: "Subtitles", extensions: [...SUBTITLE_EXTENSIONS] },
     ])
     if (path) {
       const name = path.split(/[/\\]/).pop() ?? path

@@ -83,7 +83,7 @@
       "noPresets": "No hay predefinidos disponibles. Crea uno en la página de Predefinidos.",
       "start": "Iniciar trabajo",
       "startMultiple": "Iniciar {{count}} trabajos",
-      "supportedFormats": "MP4, MKV, AVI, MOV, MP3, WAV, SRT, VTT",
+      "supportedFormats": "MP4, MKV, AVI, MOV, WebM, MP3, WAV, M4A, FLAC, OGG, AAC, SRT, VTT",
       "linkedVocab": "Vocabulario vinculado:",
       "subtitleMode": {
         "badge": "Modo de traducción de subtítulos",
@@ -433,7 +433,8 @@
       "browse": "Explorar",
       "formatLabel": "Formato de subtítulos",
       "sourceLanguage": "Idioma de origen",
-      "targetLanguage": "Idioma de destino"
+      "targetLanguage": "Idioma de destino",
+      "autoDetect": "Detección automática"
     },
     "models": {
       "title": "Selección de modelo",
