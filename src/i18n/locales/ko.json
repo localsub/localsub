@@ -83,7 +83,7 @@
       "noPresets": "사용 가능한 프리셋이 없습니다. 프리셋 페이지에서 만들어주세요.",
       "start": "작업 시작",
       "startMultiple": "{{count}}개 작업 시작",
-      "supportedFormats": "MP4, MKV, AVI, MOV, MP3, WAV, SRT, VTT",
+      "supportedFormats": "MP4, MKV, AVI, MOV, WebM, MP3, WAV, M4A, FLAC, OGG, AAC, SRT, VTT",
       "linkedVocab": "연결된 용어사전:",
       "subtitleMode": {
         "badge": "자막 번역 모드",
@@ -433,7 +433,8 @@
       "browse": "찾아보기",
       "formatLabel": "자막 형식",
       "sourceLanguage": "원본 언어",
-      "targetLanguage": "번역 언어"
+      "targetLanguage": "번역 언어",
+      "autoDetect": "자동 감지"
     },
     "models": {
       "title": "모델 선택",

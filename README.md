@@ -23,7 +23,7 @@
   <img src="landing/assets/en/editor.png" alt="LocalSub subtitle editor — waveform navigation, dual-language subtitle list, and per-line editing" width="900" />
 </p>
 
-LocalSub is a standalone desktop application that processes media files through an end-to-end speech recognition and neural machine translation pipeline. It performs speech transcription using faster-whisper (CTranslate2), executes neural machine translation via quantized local Large Language Models (llama-cpp-python), and provides precision post-editing through an integrated subtitle editor. All processing is executed locally on user hardware. Media content, audio streams, and generated subtitles remain strictly confidential on the local machine; network communication is restricted exclusively to model downloads, cryptographic verification, and update checks.
+LocalSub is a standalone desktop application that processes media files through an end-to-end speech recognition and neural machine translation pipeline. It performs speech transcription using faster-whisper (CTranslate2), executes neural machine translation via quantized local Large Language Models (llama-cpp-python), and provides precision post-editing through an integrated subtitle editor. All processing is executed locally on user hardware. Media content, audio streams, and generated subtitles never leave the local machine. Network communication is restricted exclusively to the first-launch AI engine installation (SHA-256 pinned Python packages and prebuilt llama-cpp-python wheel), SHA-256 verified AI model downloads (Whisper and LLM), first-run FFmpeg retrieval, the translation quality gate's SHA-256 pinned embedding model (~250 MB from Hugging Face), and manual update checks initiated from the settings screen.
 
 ## Download & Releases
 
@@ -31,17 +31,17 @@ Packaging for the official Windows release is currently underway. In the interim
 
 ## Engineering Capabilities
 
-### Speech Recognition & Speaker Diarization
+### Speech Recognition
 
-Local speech transcription is powered by faster-whisper (CTranslate2) with support for CUDA GPU acceleration and CPU execution. The engine features automatic language identification across 7 languages and Silero VAD voice activity detection. An optional speaker diarization pipeline combines ONNX Runtime acoustic embedding extraction with scikit-learn agglomerative clustering to generate speaker-attributed subtitle segments.
+Local speech transcription is powered by faster-whisper (CTranslate2) with support for CUDA GPU acceleration and CPU execution. Spoken language is detected automatically by default, though the setup wizard can pin it to one of 10 languages: English, Korean, Japanese, Chinese, Spanish, French, German, Portuguese, Russian, or Arabic. Voice-activity detection is handled by Silero VAD. Although an inference-server speaker diarization pipeline combining ONNX Runtime acoustic embeddings and scikit-learn agglomerative clustering is implemented in the `/diarization` router, it is not yet exposed in the application UI.
 
 <p align="center">
-  <img src="landing/assets/en/speaker.png" alt="Subtitle list featuring speaker labels and dual-language lines" width="700" />
+  <img src="landing/assets/en/speaker.png" alt="Subtitle list showing original lines with translations underneath and translation status badges" width="700" />
 </p>
 
 ### Translation Presets & Domain Vocabulary
 
-Language pairs (source/target), translation styles (literal, natural, conversational, formal), and domain vocabulary constraints can be persisted as reusable presets. Vocabulary constraints enforce exact terminology mapping for proper nouns, technical terms, and named entities across translation iterations.
+Language pairs (source/target), translation styles (natural, formal, casual), and domain vocabulary constraints can be persisted as reusable presets. Vocabulary constraints enforce exact terminology mapping for proper nouns, technical terms, and named entities across translation iterations.
 
 <p align="center">
   <img src="landing/assets/en/presets.png" alt="Translation presets management interface" width="900" />
@@ -97,7 +97,7 @@ The system operates fully in CPU mode when no discrete GPU is present; CUDA-capa
 
 | Video | Audio |
 |---|---|
-| MP4 · MKV · AVI · MOV · WebM | MP3 · WAV · M4A · FLAC |
+| MP4 · MKV · AVI · MOV · WebM | MP3 · WAV · M4A · FLAC · OGG · AAC |
 
 ### Output Subtitle Formats
 
@@ -112,11 +112,11 @@ Dual-language export (source and target aligned together) is supported across al
 
 ### Speech Recognition Languages
 
-Automatic detection, English, Korean, Japanese, Chinese, Spanish, French, German.
+Spoken language is detected automatically by default. The setup wizard can pin recognition to one of 10 languages: English, Korean, Japanese, Chinese, Spanish, French, German, Portuguese, Russian, or Arabic.
 
 ### Translation Capabilities
 
-Bidirectional translation across all supported languages in four distinct styles: literal, natural, conversational, and formal. The application UI supports English, Korean, Japanese, Simplified Chinese, and Spanish.
+Bidirectional translation pairs any two of four languages: Korean, English, Japanese, and Chinese, across three styles: natural, formal, and casual. Formal and casual styles adjust speech levels only when the target language is Korean or Japanese, behaving like the natural style for other targets. The application UI supports five languages: English, Korean, Japanese, Simplified Chinese, and Spanish.
 
 </details>
 
