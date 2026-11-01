@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next"
-import { AlertTriangle, CheckCircle2, Download, Info, ShieldAlert } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Download, Info, LoaderCircle, ShieldAlert } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useVcRedist } from "@/hooks/useVcRedist"
 import { toastError, toastSuccess, toastWarning } from "@/lib/toast"
+import { cn } from "@/lib/utils"
 import type { VcRedistAttempt, VcRedistStage } from "@/types"
 
 /**
@@ -49,64 +50,72 @@ export function VcRedistCard({ variant = "banner" }: { variant?: "banner" | "sec
 
   if (healthy) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <CheckCircle2 className="h-4 w-4 text-status-success shrink-0" />
+      <div className="flex items-center gap-2 text-[14.5px] font-semibold text-foreground-secondary">
+        <CheckCircle2 className="size-[17px] shrink-0 text-status-success" />
         <span>{t("vcredist.installed")}</span>
       </div>
     )
   }
 
-  const tone = coreBlocked
-    ? "border-status-error/40 bg-status-error/5"
-    : "border-status-warning/40 bg-status-warning/5"
+  const lastAttempt = !installing ? state.last_attempt : null
 
   return (
-    <div className={`flex flex-col gap-3 rounded-lg border p-4 ${tone}`}>
-      <div className="flex items-start gap-2.5">
-        {coreBlocked ? (
-          <ShieldAlert className="mt-0.5 h-4.5 w-4.5 shrink-0 text-status-error" />
-        ) : (
-          <AlertTriangle className="mt-0.5 h-4.5 w-4.5 shrink-0 text-status-warning" />
-        )}
-        <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold">
+    <div
+      className={cn(
+        "flex flex-col gap-4 rounded-xl px-6 py-[22px]",
+        coreBlocked ? "bg-status-error-soft" : "bg-status-warning-soft",
+      )}
+    >
+      <div className="flex gap-4">
+        <div
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-md",
+            coreBlocked
+              ? "bg-status-error text-status-error-foreground"
+              : "bg-status-warning text-status-warning-foreground",
+          )}
+        >
+          {coreBlocked ? <ShieldAlert className="size-5" /> : <AlertTriangle className="size-5" />}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <p className="text-base font-extrabold">
             {coreBlocked ? t("vcredist.title") : t("vcredist.titleMinor")}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm leading-[1.55] text-foreground-secondary">
             {coreBlocked ? t("vcredist.bodyCore") : t("vcredist.bodyMinor")}
           </p>
-          <p className="text-xs text-muted-foreground/80">
+          <p className="text-[12.5px] text-muted-foreground">
             {t("vcredist.missingList", { list: missing.join(", ") })}
           </p>
+          {/* Said before the click, not after: the prompt names Microsoft, not
+              LocalSub, and an unexplained elevation dialog reads as malware. */}
+          {!installing && (
+            <p className="mt-0.5 flex items-start gap-1.5 text-[12.5px] text-muted-foreground">
+              <Info className="mt-0.5 size-3.5 shrink-0" />
+              {t("vcredist.uacNotice")}
+            </p>
+          )}
         </div>
+        {/* With a previous attempt on record the retry sits next to it instead. */}
+        {!installing && !lastAttempt && (
+          <Button
+            className="h-11 shrink-0 self-center rounded-md bg-card px-[18px] text-[14.5px] text-foreground hover:bg-card/80"
+            onClick={handleInstall}
+          >
+            {t("vcredist.install")}
+          </Button>
+        )}
       </div>
 
-      {state.last_attempt && !installing && (
-        <LastAttempt attempt={state.last_attempt} />
-      )}
+      {lastAttempt && <LastAttempt attempt={lastAttempt} onRetry={handleInstall} />}
 
-      {installing ? (
+      {installing && (
         <InstallProgress
           stage={progress?.stage ?? "download"}
           done={progress?.bytes_downloaded ?? 0}
           total={progress?.bytes_total ?? 0}
           onCancel={cancel}
         />
-      ) : (
-        <div className="flex flex-col gap-2">
-          {/* Said before the click, not after: the prompt names Microsoft, not
-              LocalSub, and an unexplained elevation dialog reads as malware. */}
-          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            {t("vcredist.uacNotice")}
-          </p>
-          <div>
-            <Button size="sm" onClick={handleInstall}>
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              {state.last_attempt ? t("vcredist.retry") : t("vcredist.install")}
-            </Button>
-          </div>
-        </div>
       )}
     </div>
   )
@@ -128,30 +137,40 @@ function InstallProgress({
   const { t } = useTranslation()
   const pct = total > 0 ? Math.min(100, (done / total) * 100) : 0
 
+  if (stage !== "download") {
+    return (
+      <div className="flex items-center gap-3.5 rounded-lg bg-card px-[18px] py-4">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary-text">
+          <LoaderCircle className="size-[18px] animate-spin" strokeWidth={2.4} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="text-[14.5px] font-bold">{t(`vcredist.stage.${stage}`)}</p>
+          <p className="text-[13.5px] text-foreground-secondary">{t(`vcredist.stageHint.${stage}`)}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-medium">{t(`vcredist.stage.${stage}`)}</span>
-        {stage === "download" && total > 0 && (
-          <span className="text-muted-foreground tabular-nums">
+    <div className="flex flex-col gap-2.5 rounded-lg bg-card px-[18px] py-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[14.5px] font-bold">{t(`vcredist.stage.${stage}`)}</span>
+        {total > 0 && (
+          <span className="text-[13px] font-semibold tabular-nums text-muted-foreground">
             {(done / MB).toFixed(1)} / {(total / MB).toFixed(1)} MB
           </span>
         )}
       </div>
-      {stage === "download" ? (
-        <Progress value={pct} className="h-1.5" />
-      ) : (
-        <p className="text-xs text-muted-foreground">{t(`vcredist.stageHint.${stage}`)}</p>
-      )}
+      <Progress value={pct} />
       {/* Only the download can be interrupted; once Microsoft's installer owns
           the screen the choice is the user's, in their dialog. */}
-      {stage === "download" && (
-        <div>
-          <Button size="sm" variant="ghost" onClick={onCancel}>
-            {t("vcredist.cancel")}
-          </Button>
-        </div>
-      )}
+      <Button
+        variant="secondary"
+        className="mt-0.5 h-9 self-start rounded-sm px-3.5 text-sm text-foreground-secondary"
+        onClick={onCancel}
+      >
+        {t("vcredist.cancel")}
+      </Button>
     </div>
   )
 }
@@ -164,7 +183,7 @@ function InstallProgress({
  * was closed or killed mid-run. Without that distinction an interrupted attempt
  * and a declined one would both show as "it just did not work".
  */
-function LastAttempt({ attempt }: { attempt: VcRedistAttempt }) {
+function LastAttempt({ attempt, onRetry }: { attempt: VcRedistAttempt; onRetry: () => void }) {
   const { t } = useTranslation()
 
   const when = new Date(attempt.at_epoch_secs * 1000).toLocaleString()
@@ -196,17 +215,23 @@ function LastAttempt({ attempt }: { attempt: VcRedistAttempt }) {
   }
 
   return (
-    <div className="flex flex-col gap-1 rounded-md bg-background/60 px-3 py-2">
-      <p className="text-xs font-medium">{summary}</p>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {attempt.detail && (
-        <p className="text-xs text-muted-foreground/70 break-all">{attempt.detail}</p>
-      )}
-      {attempt.exit_code !== null && attempt.outcome === "failed" && (
-        <p className="text-xs text-muted-foreground/70 tabular-nums">
-          {t("vcredist.exitCode", { code: attempt.exit_code })}
-        </p>
-      )}
+    <div className="flex items-center gap-4 rounded-lg bg-card px-5 py-[18px]">
+      <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
+        <p className="text-[14.5px] font-bold">{summary}</p>
+        {hint && <p className="text-[13.5px] text-foreground-secondary">{hint}</p>}
+        {attempt.detail && (
+          <p className="break-all font-mono text-xs tracking-normal text-muted-foreground">{attempt.detail}</p>
+        )}
+        {attempt.exit_code !== null && attempt.outcome === "failed" && (
+          <p className="font-mono text-xs tracking-normal tabular-nums text-muted-foreground">
+            {t("vcredist.exitCode", { code: attempt.exit_code })}
+          </p>
+        )}
+      </div>
+      <Button variant="secondary" className="h-10 shrink-0 rounded-md px-4 text-sm [&_svg]:size-[15px]" onClick={onRetry}>
+        <Download strokeWidth={2.4} />
+        {t("vcredist.retry")}
+      </Button>
     </div>
   )
 }

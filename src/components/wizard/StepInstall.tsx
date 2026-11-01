@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, AlertCircle, Download } from "lucide-react";
+import { Check, AlertCircle } from "lucide-react";
 import type { DownloadProgress, ModelManifestEntry } from "../../types";
-import { Progress } from "../Progress";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 type InstallPhase = "downloading" | "installing" | "verifying" | "complete" | "error";
 
@@ -94,62 +95,61 @@ export function StepInstall({
 
   if (phase === "error") {
     return (
-      <div className="text-center">
-        <AlertCircle className="mx-auto mb-4 h-10 w-10 text-danger" />
-        <h2 className="mb-4 text-lg font-semibold text-slate-50">
+      <div className="flex flex-col items-center gap-3.5 text-center">
+        <div className="mb-1.5 flex size-14 items-center justify-center rounded-[18px] bg-status-error-soft text-status-error">
+          <AlertCircle className="size-[26px]" />
+        </div>
+        <h2 className="text-[22px] font-extrabold tracking-[-0.02em]">
           {t("wizard.install.error")}
         </h2>
-        <p className="mb-6 max-h-[100px] overflow-y-auto break-words rounded-md bg-surface-inset p-3 text-left text-xs text-danger">
+        <p className="max-h-[100px] w-full overflow-y-auto break-words rounded-md bg-muted px-3.5 py-3 text-left font-mono text-xs leading-relaxed text-status-error">
           {error}
         </p>
-        <button
-          className="cursor-pointer rounded-md bg-primary px-6 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85"
-          onClick={onRetry}
-        >
+        <Button className="mt-2 h-12 px-[22px]" onClick={onRetry}>
           {t("wizard.install.retry")}
-        </button>
+        </Button>
       </div>
     );
   }
 
   if (phase === "complete") {
     return (
-      <div className="text-center">
-        <CheckCircle className="mx-auto mb-4 h-10 w-10 text-success" />
-        <h2 className="mb-2 text-lg font-semibold text-slate-50">
+      <div className="flex flex-col items-center gap-3.5 text-center">
+        <div className="mb-1.5 flex size-14 items-center justify-center rounded-[18px] bg-status-success-soft text-status-success">
+          <Check className="size-[26px]" strokeWidth={2.6} />
+        </div>
+        <h2 className="text-2xl font-extrabold tracking-[-0.03em]">
           {t("wizard.install.complete")}
         </h2>
-        <button
-          className="mt-6 cursor-pointer rounded-md bg-primary px-8 py-3 text-base font-medium text-white transition-opacity hover:opacity-85"
-          onClick={onComplete}
-        >
+        <Button className="mt-4 h-14 w-full rounded-[16px] text-[17px]" onClick={onComplete}>
           {t("wizard.install.startUsing")}
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-6 flex items-center gap-2">
-        <Download className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold text-slate-50">
-          {t("wizard.install.title")}
-        </h2>
-      </div>
+    <div className="flex flex-col gap-[22px]">
+      <h2 className="text-2xl font-extrabold tracking-[-0.03em]">
+        {t("wizard.install.title")}
+      </h2>
 
       {/* Overall progress */}
-      <div className="mb-4">
-        <div className="mb-1 flex justify-between text-xs text-slate-400">
-          <span>{t(`wizard.install.${phase}`)}</span>
-          <span>{Math.round(overallProgress)}%</span>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between gap-4">
+          <span className="text-[15px] font-semibold text-foreground-secondary">
+            {t(`wizard.install.${phase}`)}
+          </span>
+          <span className="text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-primary-text">
+            {Math.round(overallProgress)}%
+          </span>
         </div>
-        <Progress value={overallProgress} />
+        <Progress value={overallProgress} className="h-2.5" />
       </div>
 
       {/* Per-file progress */}
       {downloads.size > 0 && (
-        <div className="mb-4 flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           {Array.from(downloads.entries()).map(([id, dp]) => {
             const pct = dp.total > 0 ? (dp.downloaded / dp.total) * 100 : 0;
             const fileLabel =
@@ -157,14 +157,14 @@ export function StepInstall({
                 ? `${dp.file_name} (${dp.file_index + 1}/${dp.total_files})`
                 : dp.file_name || id;
             return (
-              <div key={id} className="rounded-md bg-surface-inset p-2">
-                <div className="mb-1 flex justify-between text-xs">
-                  <span className="truncate text-slate-300">{fileLabel}</span>
-                  <span className="text-slate-500">{Math.round(pct)}%</span>
+              <div key={id} className="flex flex-col gap-2 rounded-lg bg-muted px-4 py-3.5">
+                <div className="flex justify-between gap-3 text-[13.5px]">
+                  <span className="truncate font-semibold">{fileLabel}</span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">{Math.round(pct)}%</span>
                 </div>
-                <div className="h-1 overflow-hidden rounded-full bg-slate-700">
+                <div className="h-1 overflow-hidden rounded-full bg-border">
                   <div
-                    className="h-full rounded-full bg-primary transition-all"
+                    className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -176,7 +176,7 @@ export function StepInstall({
 
       {/* Speed + ETA */}
       {currentDownload && (
-        <div className="flex justify-center gap-4 text-xs text-slate-500">
+        <div className="flex justify-center gap-4 text-[13px] tabular-nums text-muted-foreground">
           <span>{formatSpeed(currentDownload.speed_bps)}</span>
           <span>ETA {formatEta(currentDownload.eta_secs)}</span>
         </div>

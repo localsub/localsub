@@ -3,7 +3,7 @@ import type { AppConfig, PartialConfig } from "../../types";
 import { useWizard } from "../../hooks/useWizard";
 import { useHardware } from "../../hooks/useHardware";
 import { useModels } from "../../hooks/useModels";
-import { WizardLayout } from "./WizardLayout";
+import { StepIndicator, WizardLayout } from "./WizardLayout";
 import { StepWelcome } from "./StepWelcome";
 import { StepEnvironment } from "./StepEnvironment";
 import { StepOutput } from "./StepOutput";
@@ -49,8 +49,11 @@ export function WizardScreen({
   if (state.step === 1) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="w-full max-w-[600px] rounded-2xl bg-surface p-8">
-          <StepWelcome onNext={next} onSkip={handleSkip} />
+        <div className="flex w-full max-w-[560px] flex-col gap-7">
+          <StepIndicator step={1} />
+          <div className="rounded-3xl bg-card px-12 pb-10 pt-14 shadow-card">
+            <StepWelcome onNext={next} onSkip={handleSkip} />
+          </div>
         </div>
       </div>
     );

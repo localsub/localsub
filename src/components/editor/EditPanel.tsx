@@ -1,15 +1,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { useTranslation } from "react-i18next"
-import { Clock, Type, ArrowRight, Scissors, Merge, Trash2, BookPlus, RefreshCw } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { AddToVocabForm } from "./AddToVocabDialog"
+import { cn } from "@/lib/utils"
 import type { SubtitleLine, Vocabulary } from "@/types"
 
 interface EditPanelProps {
@@ -70,19 +68,22 @@ function TimestampInput({
     }
   }, [text, value, onChange])
 
+  // The whole box is the field: label left, value right, focus ring on the box
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] text-muted-foreground">{label}</span>
-      <Input
+    <label className="flex h-11 min-w-0 flex-1 cursor-text items-center gap-2 rounded-md bg-muted px-3.5 transition-[background-color,box-shadow] duration-150 focus-within:bg-card focus-within:shadow-[inset_0_0_0_2px_hsl(var(--primary))]">
+      <span className="shrink-0 text-[13px] text-muted-foreground">{label}</span>
+      <input
         value={text}
         onChange={(e) => { setEditing(true); setText(e.target.value) }}
         onBlur={handleBlur}
         onKeyDown={(e) => { if (e.key === "Enter") handleBlur() }}
-        className="h-7 w-24 text-xs tabular-nums font-mono"
+        className="min-w-0 flex-1 bg-transparent text-right text-[15px] font-semibold tabular-nums outline-none"
       />
-    </div>
+    </label>
   )
 }
+
+const actionClass = "h-[42px] min-w-0 rounded-md px-2 text-sm [&_svg]:size-4"
 
 export function EditPanel({ line, onUpdateLine, onSplit, onMergeWithNext, onDelete, onRetranslate, canSplitLine, canMergeLine, retranslating, vocabularies, onUpdateVocabulary }: EditPanelProps) {
   const { t } = useTranslation()
@@ -90,8 +91,8 @@ export function EditPanel({ line, onUpdateLine, onSplit, onMergeWithNext, onDele
 
   if (!line) {
     return (
-      <div className="flex flex-1 items-center justify-center p-8 text-center">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex h-full flex-1 items-center justify-center p-8 text-center">
+        <p className="text-[15px] text-muted-foreground">
           {t("editor.selectToEdit")}
         </p>
       </div>
@@ -103,73 +104,130 @@ export function EditPanel({ line, onUpdateLine, onSplit, onMergeWithNext, onDele
   const cps = duration > 0 ? Math.round(charCount / duration) : 0
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      {/* Header: index + time range */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="tabular-nums">#{line.index}</Badge>
-          <TimestampInput
-            value={line.start_time}
-            onChange={(v) => onUpdateLine(line.id, { start_time: v })}
-            label={t("editor.startTime")}
-          />
-          <ArrowRight className="h-3 w-3 text-muted-foreground mt-4" />
-          <TimestampInput
-            value={line.end_time}
-            onChange={(v) => onUpdateLine(line.id, { end_time: v })}
-            label={t("editor.endTime")}
-          />
-        </div>
-        <Badge variant="secondary" className="text-[10px]">
+    <div className="flex h-full flex-col gap-3.5 overflow-y-auto p-5">
+      {/* Header: index + duration */}
+      <div className="flex items-center gap-2.5">
+        <span className="text-lg font-extrabold tabular-nums">#{line.index}</span>
+        <span className="inline-flex h-6 items-center rounded-[7px] bg-muted px-2 text-xs font-bold tabular-nums text-foreground-secondary">
           {duration.toFixed(1)}s
-        </Badge>
+        </span>
+        <div className="flex-1" />
+        {onDelete && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="-mr-2 h-8 px-2 text-sm font-semibold text-status-error hover:bg-status-error-soft hover:text-status-error"
+                  onClick={() => onDelete(line.id)}
+                >
+                  {t("editor.delete")}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t("editor.deleteTooltip")} <kbd className="ml-1 opacity-60">Del</kbd></p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+
+      {/* Start / end */}
+      <div className="flex items-center gap-2">
+        <TimestampInput
+          value={line.start_time}
+          onChange={(v) => onUpdateLine(line.id, { start_time: v })}
+          label={t("editor.startTime")}
+        />
+        <TimestampInput
+          value={line.end_time}
+          onChange={(v) => onUpdateLine(line.id, { end_time: v })}
+          label={t("editor.endTime")}
+        />
+      </div>
+
+      {/* Original text */}
+      <div className="flex flex-col gap-2">
+        <Label className="text-[13px] font-semibold text-muted-foreground">{t("editor.originalText")}</Label>
+        <Textarea
+          value={line.original_text}
+          onChange={(e) => onUpdateLine(line.id, { original_text: e.target.value, status: "editing" })}
+          rows={2}
+          className="min-h-[52px] resize-none px-3.5 py-[13px] text-[15px]"
+        />
+      </div>
+
+      {/* Translated text */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Label className="text-[13px] font-semibold text-muted-foreground">{t("editor.translatedText")}</Label>
+          <div className="flex-1" />
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {t("editor.stats.chars")} {charCount} · {t("editor.stats.cps")} {cps}
+          </span>
+        </div>
+        <Textarea
+          value={line.translated_text}
+          onChange={(e) => onUpdateLine(line.id, { translated_text: e.target.value, status: "editing" })}
+          rows={2}
+          className="min-h-[52px] resize-none px-3.5 py-[13px] text-[15px] font-semibold"
+          placeholder={t("editor.translationPlaceholder")}
+        />
       </div>
 
       {/* Actions */}
       <TooltipProvider>
-        <div className="flex items-center gap-2">
+        <div className="mt-auto grid grid-cols-4 gap-2 pt-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!canSplitLine}
-                onClick={() => onSplit(line.id)}
-              >
-                <Scissors className="mr-1.5 h-3.5 w-3.5" />
+              <Button variant="secondary" className={actionClass} disabled={!canSplitLine} onClick={() => onSplit(line.id)}>
                 {t("editor.actions.split")}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{t("editor.actions.splitTooltip")} <kbd className="ml-1 text-[10px] opacity-60">Ctrl+Shift+S</kbd></p>
+              <p>{t("editor.actions.splitTooltip")} <kbd className="ml-1 opacity-60">Ctrl+Shift+S</kbd></p>
             </TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!canMergeLine}
-                onClick={() => onMergeWithNext(line.id)}
-              >
-                <Merge className="mr-1.5 h-3.5 w-3.5" />
+              <Button variant="secondary" className={actionClass} disabled={!canMergeLine} onClick={() => onMergeWithNext(line.id)}>
                 {t("editor.actions.mergeNext")}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{t("editor.actions.mergeNextTooltip")} <kbd className="ml-1 text-[10px] opacity-60">Ctrl+Shift+M</kbd></p>
+              <p>{t("editor.actions.mergeNextTooltip")} <kbd className="ml-1 opacity-60">Ctrl+Shift+M</kbd></p>
             </TooltipContent>
           </Tooltip>
+          {vocabularies && onUpdateVocabulary && (
+            <Popover open={vocabOpen} onOpenChange={setVocabOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="secondary" className={actionClass}>
+                  {t("editor.vocab.addToVocab")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[340px] rounded-[20px] p-5" align="end" collisionPadding={16}>
+                <div className="flex flex-col gap-4">
+                  <p className="text-base font-extrabold">{t("editor.vocab.addToVocab")}</p>
+                  <AddToVocabForm
+                    vocabularies={vocabularies}
+                    onUpdateVocabulary={onUpdateVocabulary}
+                    onDone={() => setVocabOpen(false)}
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           {onRetranslate && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="secondary"
+                  className={cn(actionClass, "bg-primary-soft text-primary-text hover:bg-primary-soft/70")}
                   disabled={retranslating}
                   onClick={() => onRetranslate(line.id)}
                 >
-                  <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${retranslating ? "animate-spin" : ""}`} />
+                  {retranslating && <RefreshCw className="animate-spin" />}
                   {t("editor.actions.retranslate", "Retranslate")}
                 </Button>
               </TooltipTrigger>
@@ -178,94 +236,8 @@ export function EditPanel({ line, onUpdateLine, onSplit, onMergeWithNext, onDele
               </TooltipContent>
             </Tooltip>
           )}
-          {onDelete && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-destructive hover:text-destructive ml-auto"
-                  onClick={() => onDelete(line.id)}
-                >
-                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                  {t("editor.delete")}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t("editor.deleteTooltip")} <kbd className="ml-1 text-[10px] opacity-60">Del</kbd></p>
-              </TooltipContent>
-            </Tooltip>
-          )}
         </div>
       </TooltipProvider>
-
-      <Separator />
-
-      {/* Original text */}
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">{t("editor.originalText")}</Label>
-        <Textarea
-          value={line.original_text}
-          onChange={(e) => onUpdateLine(line.id, { original_text: e.target.value, status: "editing" })}
-          rows={3}
-          className="resize-none text-sm"
-        />
-      </div>
-
-      {/* Add to Vocabulary */}
-      {vocabularies && onUpdateVocabulary && (
-        <Popover open={vocabOpen} onOpenChange={setVocabOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              <BookPlus className="mr-1.5 h-3.5 w-3.5" />
-              {t("editor.vocab.addToVocab")}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80" align="start">
-            <div className="flex flex-col gap-3">
-              <p className="text-sm font-medium">{t("editor.vocab.addToVocab")}</p>
-              <AddToVocabForm
-                vocabularies={vocabularies}
-                onUpdateVocabulary={onUpdateVocabulary}
-                onDone={() => setVocabOpen(false)}
-              />
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
-
-      {/* Translated text */}
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">{t("editor.translatedText")}</Label>
-        <Textarea
-          value={line.translated_text}
-          onChange={(e) => onUpdateLine(line.id, { translated_text: e.target.value, status: "editing" })}
-          rows={3}
-          className="resize-none text-sm"
-          placeholder={t("editor.translationPlaceholder")}
-        />
-      </div>
-
-      <Separator />
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard icon={<Type className="h-3 w-3" />} label={t("editor.stats.chars")} value={String(charCount)} />
-        <StatCard icon={<Clock className="h-3 w-3" />} label={t("editor.stats.duration")} value={`${duration.toFixed(1)}s`} />
-        <StatCard icon={<Type className="h-3 w-3" />} label={t("editor.stats.cps")} value={String(cps)} />
-      </div>
-    </div>
-  )
-}
-
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="rounded-md border p-2 text-center">
-      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-        {icon}
-        <span className="text-[10px]">{label}</span>
-      </div>
-      <span className="text-sm font-semibold tabular-nums">{value}</span>
     </div>
   )
 }

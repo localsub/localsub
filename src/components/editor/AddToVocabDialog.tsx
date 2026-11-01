@@ -49,7 +49,7 @@ export function AddToVocabForm({ vocabularies, onUpdateVocabulary, initialSource
   }, [])
 
   if (vocabularies.length === 0) {
-    return <p className="text-xs text-muted-foreground">{t("editor.vocab.noVocabs")}</p>
+    return <p className="text-sm leading-[1.5] text-muted-foreground">{t("editor.vocab.noVocabs")}</p>
   }
 
   const canSave = !saving && source.trim().length > 0 && target.trim().length > 0 && vocabId !== ""
@@ -84,35 +84,35 @@ export function AddToVocabForm({ vocabularies, onUpdateVocabulary, initialSource
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="vocab-add-source" className="text-xs">{t("editor.vocab.source")}</Label>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-[7px]">
+        <Label htmlFor="vocab-add-source" className="text-[13.5px] font-bold text-foreground-secondary">{t("editor.vocab.source")}</Label>
         <Input
           id="vocab-add-source"
           ref={sourceRef}
           value={source}
           onChange={(e) => setSource(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="h-8 text-sm"
+          className="font-semibold"
           placeholder={t("editor.vocab.source")}
         />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="vocab-add-target" className="text-xs">{t("editor.vocab.target")}</Label>
+      <div className="flex flex-col gap-[7px]">
+        <Label htmlFor="vocab-add-target" className="text-[13.5px] font-bold text-foreground-secondary">{t("editor.vocab.target")}</Label>
         <Input
           id="vocab-add-target"
           ref={targetRef}
           value={target}
           onChange={(e) => setTarget(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="h-8 text-sm"
+          className="font-semibold"
           placeholder={t("editor.vocab.target")}
         />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">{t("editor.vocab.selectVocab")}</Label>
+      <div className="flex flex-col gap-[7px]">
+        <Label className="text-[13.5px] font-bold text-foreground-secondary">{t("editor.vocab.selectVocab")}</Label>
         <Select value={vocabId} onValueChange={setVocabId}>
-          <SelectTrigger className="h-8 text-sm">
+          <SelectTrigger aria-label={t("editor.vocab.selectVocab")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -122,11 +122,11 @@ export function AddToVocabForm({ vocabularies, onUpdateVocabulary, initialSource
           </SelectContent>
         </Select>
       </div>
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onDone}>
+      <div className="mt-1.5 grid grid-cols-[1fr_1.6fr] gap-2">
+        <Button variant="secondary" size="lg" className="px-3" onClick={onDone}>
           {t("shared.cancel")}
         </Button>
-        <Button size="sm" disabled={!canSave} onClick={handleSave}>
+        <Button size="lg" className="px-3" disabled={!canSave} onClick={handleSave}>
           {t("editor.vocab.addToVocab")}
         </Button>
       </div>
@@ -153,10 +153,10 @@ export function AddToVocabDialog({ open, onOpenChange, vocabularies, onUpdateVoc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-[480px] gap-4 p-[30px] sm:max-w-[480px]" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{t("editor.vocab.addToVocab")}</DialogTitle>
-          <DialogDescription>{t("editor.vocab.dialogDesc")}</DialogDescription>
+          <DialogDescription className="leading-[1.5]">{t("editor.vocab.dialogDesc")}</DialogDescription>
         </DialogHeader>
         <AddToVocabForm
           vocabularies={vocabularies}

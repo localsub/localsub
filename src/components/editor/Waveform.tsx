@@ -74,6 +74,7 @@ export function Waveform({
     const s = getComputedStyle(document.documentElement)
     const v = (name: string) => s.getPropertyValue(name).trim()
     const isDark = document.documentElement.classList.contains("dark")
+    const uiFont = getComputedStyle(document.body).fontFamily || "sans-serif"
 
     // Background
     ctx.fillStyle = `hsl(${v("--waveform-bg")})`
@@ -93,53 +94,55 @@ export function Waveform({
                 ? 1
                 : 0.5
 
-    ctx.strokeStyle = `hsl(${v("--waveform-grid")} / 0.5)`
-    ctx.lineWidth = 0.5
-
+    // Time labels along the bottom edge (no grid lines in the clean skin)
     const gridStart = Math.floor(viewStart / gridInterval) * gridInterval
     for (let t = gridStart; t <= viewStart + visibleDuration; t += gridInterval) {
       const x = timeToX(t, w)
       if (x < -1 || x > w + 1) continue
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x, h)
-      ctx.stroke()
-
-      // Time label
       ctx.fillStyle = `hsl(${v("--waveform-label")})`
-      ctx.font = "10px Inter, sans-serif"
+      ctx.font = `500 10.5px ${uiFont}`
       const min = Math.floor(t / 60)
       const sec = Math.floor(t % 60)
       const label =
         gridInterval < 1
           ? `${min}:${String(sec).padStart(2, "0")}.${Math.round((t % 1) * 10)}`
           : `${min}:${String(sec).padStart(2, "0")}`
-      ctx.fillText(label, x + 2, h - 4)
+      ctx.fillText(label, x + 4, h - 5)
     }
+
+    // Bars and blocks share a centre line above the time labels
+    const centerY = (h - 16) / 2
 
     // Waveform peaks — only visible range
     if (peaks && peaks.length > 0) {
-      const centerY = h / 2
-      const maxBarH = h * 0.4
+      const maxBarH = Math.min(22, centerY - 4)
       const dur = Math.max(duration, 1)
       const peakStartIdx = Math.max(0, Math.floor((viewStart / dur) * peaks.length) - 1)
       const peakEndIdx = Math.min(peaks.length, Math.ceil(((viewStart + visibleDuration) / dur) * peaks.length) + 1)
       const barW = Math.max((w / ((peakEndIdx - peakStartIdx) || 1)), 1)
 
-      ctx.fillStyle = `hsl(${v("--waveform")} / ${isDark ? 0.35 : 0.25})`
+      // Wide bars get a gap and round ends; dense ones stay a solid fill
+      const gap = barW >= 4 ? 2 : 0
+      ctx.fillStyle = `hsl(${v("--waveform")})`
       for (let i = peakStartIdx; i < peakEndIdx; i++) {
         const peakTime = (i / peaks.length) * dur
         const x = timeToX(peakTime, w)
         if (x < -barW || x > w + barW) continue
         const barH = peaks[i] * maxBarH
         if (barH < 0.5) continue
-        ctx.fillRect(x, centerY - barH, barW, barH * 2)
+        if (gap) {
+          ctx.beginPath()
+          ctx.roundRect(x + gap / 2, centerY - barH, barW - gap, barH * 2, 2)
+          ctx.fill()
+        } else {
+          ctx.fillRect(x, centerY - barH, barW, barH * 2)
+        }
       }
     }
 
     // Subtitle blocks — only visible range
     const trackH = 24
-    const trackY = (h - trackH) / 2 - 6
+    const trackY = centerY - trackH / 2
 
     for (const line of lines) {
       // Skip if completely outside visible range
@@ -153,15 +156,15 @@ export function Waveform({
       const hasTranslation = line.translated_text.length > 0
 
       if (isSelected) {
-        ctx.fillStyle = `hsl(${v("--subtitle-highlight")} / ${isDark ? 0.6 : 0.4})`
+        ctx.fillStyle = `hsl(${v("--subtitle-highlight")} / ${isDark ? 0.4 : 0.3})`
       } else if (hasTranslation) {
-        ctx.fillStyle = `hsl(${v("--waveform-block-active")} / ${isDark ? 0.35 : 0.25})`
+        ctx.fillStyle = `hsl(${v("--waveform-block-active")} / ${isDark ? 0.22 : 0.14})`
       } else {
-        ctx.fillStyle = `hsl(${v("--waveform-block")} / ${isDark ? 0.3 : 0.25})`
+        ctx.fillStyle = `hsl(${v("--waveform-block")} / ${isDark ? 0.14 : 0.08})`
       }
 
       ctx.beginPath()
-      ctx.roundRect(x1, trackY, bw, trackH, 3)
+      ctx.roundRect(x1, trackY, bw, trackH, 6)
       ctx.fill()
 
       // Border for selected
@@ -174,12 +177,12 @@ export function Waveform({
       // Text label (if wide enough)
       if (bw > 30) {
         ctx.fillStyle = `hsl(${v("--waveform-text")})`
-        ctx.font = "10px Inter, sans-serif"
+        ctx.font = `600 11.5px ${uiFont}`
         ctx.save()
         ctx.beginPath()
-        ctx.rect(x1 + 3, trackY, bw - 6, trackH)
+        ctx.rect(x1 + 6, trackY, bw - 12, trackH)
         ctx.clip()
-        ctx.fillText(line.original_text, x1 + 4, trackY + 15)
+        ctx.fillText(line.original_text, x1 + (bw > 60 ? 10 : 6), trackY + 16)
         ctx.restore()
       }
     }
@@ -187,20 +190,9 @@ export function Waveform({
     // Playhead
     const phX = timeToX(currentTime, w)
     if (phX >= -2 && phX <= w + 2) {
-      ctx.strokeStyle = `hsl(${v("--playhead")})`
-      ctx.lineWidth = 1.5
-      ctx.beginPath()
-      ctx.moveTo(phX, 0)
-      ctx.lineTo(phX, h)
-      ctx.stroke()
-
-      // Playhead triangle
       ctx.fillStyle = `hsl(${v("--playhead")})`
       ctx.beginPath()
-      ctx.moveTo(phX - 5, 0)
-      ctx.lineTo(phX + 5, 0)
-      ctx.lineTo(phX, 6)
-      ctx.closePath()
+      ctx.roundRect(phX - 1, 0, 2, h, 1)
       ctx.fill()
     }
   }, [lines, currentTime, selectedId, duration, peaks, viewStart, visibleDuration, timeToX])
@@ -260,7 +252,8 @@ export function Waveform({
       const x = clientX - rect.left
       const y = clientY - rect.top
       const h = rect.height
-      const trackY = (h - trackH) / 2 - 6
+      // Same geometry as the draw pass: track centred above the 16px time-label strip
+      const trackY = (h - 16) / 2 - trackH / 2
 
       // Only detect edges within the track Y range
       if (y < trackY || y > trackY + trackH) return null
@@ -386,7 +379,7 @@ export function Waveform({
   }, [visibleDuration, duration, onViewStartChange, lines, onSelect, onSeek, xToTime, onUpdateLineTiming])
 
   return (
-    <div ref={containerRef} className="relative w-full h-full min-h-[80px]">
+    <div ref={containerRef} className="relative h-full min-h-[76px] w-full">
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair"

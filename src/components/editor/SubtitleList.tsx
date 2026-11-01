@@ -1,9 +1,7 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { AlertTriangle, Scissors, Merge, Trash2, BookPlus } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -13,6 +11,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import type { RefusalReason } from "@/lib/refusalDetect"
+import { cn } from "@/lib/utils"
 import { buildVocabPrefill, type VocabPrefill } from "@/lib/vocabPrefill"
 import { AddToVocabDialog } from "./AddToVocabDialog"
 import type { SubtitleLine, Vocabulary } from "@/types"
@@ -70,7 +69,7 @@ function HighlightedText({
     parts.push(
       <mark
         key={`${match.startIdx}-${match.length}`}
-        className={isCurrent ? "bg-orange-400/70 text-foreground rounded-sm px-0.5" : "bg-yellow-300/50 text-foreground rounded-sm px-0.5"}
+        className={isCurrent ? "rounded-[4px] bg-status-warning px-0.5 text-white" : "rounded-[4px] bg-status-warning-soft px-0.5 text-foreground"}
       >
         {text.slice(match.startIdx, match.startIdx + match.length)}
       </mark>,
@@ -135,11 +134,11 @@ function VocabHighlightedText({
   return <>{parts}</>
 }
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  translated: "default",
-  untranslated: "outline",
-  spell_error: "destructive",
-  editing: "secondary",
+const STATUS_CHIP: Record<string, string> = {
+  translated: "bg-status-success-soft text-status-success",
+  untranslated: "bg-muted text-foreground-secondary",
+  spell_error: "bg-status-error-soft text-status-error",
+  editing: "bg-primary-soft text-primary-text",
 }
 
 export function SubtitleList({ lines, selectedId, currentTime, onSelect, onSeek, onSplit, onMergeWithNext, onDelete, highlightMatches, currentMatchIndex, vocabularies, onUpdateVocabulary, readOnly, refusals }: SubtitleListProps) {
@@ -218,8 +217,8 @@ export function SubtitleList({ lines, selectedId, currentTime, onSelect, onSeek,
 
   if (lines.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center p-8 text-center">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex h-full flex-1 items-center justify-center p-8 text-center">
+        <p className="text-[15px] text-muted-foreground">
           {t("editor.noSubtitles")}
         </p>
       </div>
@@ -228,7 +227,7 @@ export function SubtitleList({ lines, selectedId, currentTime, onSelect, onSeek,
 
   return (
     <ScrollArea className="h-full">
-      <div className="flex flex-col gap-0.5 p-2">
+      <div className="flex flex-col gap-1 p-2">
         {lines.map((line, lineIndex) => {
           const isSelected = line.id === selectedId
           const isActive = !isSelected && currentTime >= line.start_time && currentTime <= line.end_time
@@ -243,39 +242,35 @@ export function SubtitleList({ lines, selectedId, currentTime, onSelect, onSeek,
               <ContextMenuTrigger asChild>
                 <div
                   ref={isSelected ? selectedRef : isLast && readOnly ? lastLineRef : undefined}
-                  className={`flex gap-3 rounded-md px-3 py-2 cursor-pointer transition-colors select-none border-l-2 ${
-                    refusalReason ? "border-amber-500/70 " : "border-transparent "
-                  }${
+                  className={cn(
+                    "grid cursor-pointer select-none grid-cols-[56px_minmax(0,1fr)_auto] gap-3.5 rounded-[14px] px-3.5 py-3 transition-colors duration-150",
                     isSelected
-                      ? "bg-primary/10 ring-1 ring-primary/30"
-                      : isActive
-                        ? "bg-muted/60"
-                        : refusalReason
-                          ? "bg-amber-500/5 hover:bg-amber-500/10"
-                          : "hover:bg-muted/30"
-                  }`}
+                      ? "bg-primary-soft"
+                      : refusalReason
+                        ? "bg-status-warning-soft"
+                        : isActive
+                          ? "bg-muted"
+                          : "hover:bg-muted",
+                    isActive && refusalReason && !isSelected && "shadow-[inset_0_0_0_2px_hsl(var(--status-warning)/0.45)]",
+                    "data-[state=open]:shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.35)]",
+                  )}
                   onClick={() => onSelect(line.id)}
                   onDoubleClick={() => onSeek?.(line.start_time + 0.01)}
                   onContextMenu={handleRowContextMenu}
                 >
                   {/* Index + time */}
-                  <div className="flex flex-col items-end gap-0.5 w-16 shrink-0">
-                    <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                      #{line.index}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-bold tabular-nums">
+                      {line.index}
                     </span>
-                    <span className="text-[10px] tabular-nums text-muted-foreground">
+                    <span className="text-xs tabular-nums text-muted-foreground">
                       {formatTimestamp(line.start_time)}
                     </span>
                   </div>
 
                   {/* Text content */}
-                  <div className="flex-1 min-w-0">
-                    {line.speaker && (
-                      <span className="text-[10px] font-medium text-primary/70 mb-0.5 block">
-                        [{line.speaker}]
-                      </span>
-                    )}
-                    <p className="text-sm leading-snug select-text" data-vocab-side="original">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p className="select-text text-[15px] font-semibold leading-snug" data-vocab-side="original">
                       {highlightMatches ? (
                         <HighlightedText
                           text={line.original_text}
@@ -292,7 +287,7 @@ export function SubtitleList({ lines, selectedId, currentTime, onSelect, onSeek,
                       )}
                     </p>
                     {line.translated_text && (
-                      <p className="text-sm leading-snug text-primary/80 mt-0.5 select-text" data-vocab-side="translated">
+                      <p className="select-text text-[15px] font-medium leading-snug text-primary-text" data-vocab-side="translated">
                         {highlightMatches ? (
                           <HighlightedText
                             text={line.translated_text}
@@ -305,37 +300,36 @@ export function SubtitleList({ lines, selectedId, currentTime, onSelect, onSeek,
                         )}
                       </p>
                     )}
+                    {line.speaker && (
+                      <span className="text-xs text-muted-foreground">[{line.speaker}]</span>
+                    )}
+                    {refusalReason && (
+                      <span className="flex items-center gap-1.5 text-[12.5px] font-bold text-status-warning">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        {t(`editor.refusal.reason.${refusalReason}`)}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Refusal flag + status badge */}
-                  <div className="flex items-center gap-1.5 shrink-0 self-start mt-0.5">
-                    {refusalReason && (
-                      <TooltipProvider delayDuration={200}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{t(`editor.refusal.reason.${refusalReason}`)}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                  {/* Status chip — on a flagged row it sits on the card so it reads against the amber */}
+                  <span
+                    className={cn(
+                      "inline-flex h-6 items-center self-start whitespace-nowrap rounded-[7px] px-2 text-xs font-bold",
+                      refusalReason && !isSelected
+                        ? "bg-card text-status-warning"
+                        : STATUS_CHIP[line.status] ?? STATUS_CHIP.untranslated,
                     )}
-                    <Badge
-                      variant={STATUS_VARIANT[line.status] ?? "outline"}
-                      className="text-[10px] h-4"
-                    >
-                      {t(`editor.status.${line.status}` as never)}
-                    </Badge>
-                  </div>
+                  >
+                    {t(`editor.status.${line.status}` as never)}
+                  </span>
                 </div>
               </ContextMenuTrigger>
-              <ContextMenuContent>
+              <ContextMenuContent className="w-[260px]">
                 <ContextMenuItem
                   disabled={splitDisabled}
                   onClick={() => onSplit(line.id)}
                 >
-                  <Scissors className="mr-2 h-4 w-4" />
+                  <Scissors />
                   {t("editor.actions.split")}
                   <ContextMenuShortcut>Ctrl+Shift+S</ContextMenuShortcut>
                 </ContextMenuItem>
@@ -343,7 +337,7 @@ export function SubtitleList({ lines, selectedId, currentTime, onSelect, onSeek,
                   disabled={mergeDisabled}
                   onClick={() => onMergeWithNext(line.id)}
                 >
-                  <Merge className="mr-2 h-4 w-4" />
+                  <Merge />
                   {t("editor.actions.mergeNext")}
                   <ContextMenuShortcut>Ctrl+Shift+M</ContextMenuShortcut>
                 </ContextMenuItem>
@@ -356,7 +350,7 @@ export function SubtitleList({ lines, selectedId, currentTime, onSelect, onSeek,
                         if (selectionPrefill) setVocabDialogPrefill(selectionPrefill)
                       }}
                     >
-                      <BookPlus className="mr-2 h-4 w-4" />
+                      <BookPlus />
                       {t("editor.vocab.addToVocab")}
                     </ContextMenuItem>
                   </>
@@ -366,9 +360,9 @@ export function SubtitleList({ lines, selectedId, currentTime, onSelect, onSeek,
                     <ContextMenuSeparator />
                     <ContextMenuItem
                       onClick={() => onDelete(line.id)}
-                      className="text-destructive focus:text-destructive"
+                      className="text-status-error focus:text-status-error"
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 />
                       {t("editor.delete")}
                       <ContextMenuShortcut>Del</ContextMenuShortcut>
                     </ContextMenuItem>

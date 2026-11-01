@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { FolderOpen } from "lucide-react"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
 import {
   Select,
   SelectContent,
@@ -9,10 +8,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { pickDirectory } from "@/lib/tauriApi"
+import { SectionHeader, SettingsCard, SettingsRow } from "./SettingsCard"
 import type { AppConfig, PartialConfig } from "@/types"
 
 interface GeneralSectionProps {
@@ -50,54 +49,59 @@ export function GeneralSection({ config, onUpdate }: GeneralSectionProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h3 className="text-base font-semibold">{t("settings.general.title")}</h3>
-        <p className="text-sm text-muted-foreground mt-1">{t("settings.general.description")}</p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <SectionHeader title={t("settings.general.title")} description={t("settings.general.description")} />
 
-      {/* UI Language */}
-      <div className="flex flex-col gap-2">
-        <Label>{t("settings.language.title")}</Label>
-        <RadioGroup
-          value={config.ui_language ?? "en"}
-          onValueChange={handleLanguageChange}
-          className="flex gap-4"
-        >
-          {LANGUAGES.map((lang) => (
-            <div key={lang.value} className="flex items-center gap-2">
-              <RadioGroupItem value={lang.value} id={`lang-${lang.value}`} />
-              <Label htmlFor={`lang-${lang.value}`} className="font-normal cursor-pointer">{lang.label}</Label>
-            </div>
-          ))}
-        </RadioGroup>
-      </div>
+      <SettingsCard>
+        {/* UI Language */}
+        <SettingsRow>
+          <span id="settings-ui-language" className="text-[15px] font-bold">{t("settings.language.title")}</span>
+          <RadioGroupPrimitive.Root
+            value={config.ui_language ?? "en"}
+            onValueChange={handleLanguageChange}
+            aria-labelledby="settings-ui-language"
+            className="flex flex-wrap gap-2"
+          >
+            {LANGUAGES.map((lang) => (
+              <RadioGroupPrimitive.Item
+                key={lang.value}
+                value={lang.value}
+                className="h-10 cursor-pointer rounded-md bg-muted px-4 text-sm font-semibold text-foreground-secondary transition-[background-color,color,box-shadow] duration-150 ease-out hover:bg-muted-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=checked]:bg-primary-soft data-[state=checked]:shadow-[inset_0_0_0_2px_hsl(var(--primary))]"
+              >
+                {lang.label}
+              </RadioGroupPrimitive.Item>
+            ))}
+          </RadioGroupPrimitive.Root>
+        </SettingsRow>
 
-      <Separator />
+        {/* Output Format */}
+        <SettingsRow className="flex-row items-center">
+          <span id="settings-output-format" className="flex-1 text-[15px] font-bold">{t("settings.general.outputFormat")}</span>
+          <Select value={config.subtitle_format} onValueChange={(v) => onUpdate({ subtitle_format: v })}>
+            <SelectTrigger aria-labelledby="settings-output-format" className="h-11 w-[180px] px-3.5 font-bold"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {FORMATS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </SettingsRow>
 
-      {/* Output Format */}
-      <div className="flex flex-col gap-2">
-        <Label>{t("settings.general.outputFormat")}</Label>
-        <Select value={config.subtitle_format} onValueChange={(v) => onUpdate({ subtitle_format: v })}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {FORMATS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Output Directory */}
-      <div className="flex flex-col gap-2">
-        <Label>{t("settings.paths.outputDir")}</Label>
-        <div className="flex gap-2">
-          <Input value={config.output_dir} readOnly className="flex-1" />
-          <Button variant="outline" size="icon" onClick={browseOutputDir}>
-            <FolderOpen className="h-4 w-4" />
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">{t("settings.paths.outputDirDesc")}</p>
-      </div>
-
+        {/* Output Directory */}
+        <SettingsRow className="gap-2.5">
+          <span id="settings-output-dir" className="text-[15px] font-bold">{t("settings.paths.outputDir")}</span>
+          <div className="flex gap-2">
+            <Input value={config.output_dir} readOnly title={config.output_dir} aria-labelledby="settings-output-dir" className="min-w-0 flex-1" />
+            <Button
+              size="icon"
+              className="size-12 bg-primary-soft text-primary-text hover:bg-primary-soft/70"
+              aria-label={t("settings.paths.outputDir")}
+              onClick={browseOutputDir}
+            >
+              <FolderOpen />
+            </Button>
+          </div>
+          <p className="text-[13px] text-muted-foreground">{t("settings.paths.outputDirDesc")}</p>
+        </SettingsRow>
+      </SettingsCard>
     </div>
   )
 }

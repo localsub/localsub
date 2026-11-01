@@ -1,138 +1,183 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/inter/wght.css";
-@import "@fontsource/pretendard/400.css";
-@import "@fontsource/pretendard/500.css";
-@import "@fontsource/pretendard/600.css";
-@import "@fontsource/pretendard/700.css";
+/* Wanted Sans (OFL-1.1). One variable file covers every weight the UI uses
+   (400–800) and the whole Hangul set, so there is no subset to miss offline. */
+@import "wanted-sans/fonts/webfonts/variable/complete/WantedSansVariable.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-600.css";
 
 @custom-variant dark (&:is(.dark *));
 
+/* Color tokens are "H S% L%" (optionally "/ a") so hsl(var(--x)) works
+   everywhere. The hex in each comment is the design source of truth. */
 :root {
   /* Make native controls (the <select> dropdown popups, scrollbars) match the
      theme. Without this the browser renders a native select's option list on a
      default light background, and our light text on it is unreadable. */
   color-scheme: light;
-  --background: 240 3% 97%;
-  --foreground: 240 8% 8%;
+  --background: 225 20% 96%;  /* #F3F4F7 */
+  --foreground: 224 17% 13%;  /* #1B1E26 */
+  --foreground-secondary: 217 13% 35%;  /* #4F5866 — labels, idle menu items */
   --card: 0 0% 100%;
-  --card-foreground: 240 8% 8%;
+  --card-foreground: 224 17% 13%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 8% 8%;
-  --primary: 252 56% 57%;
+  --popover-foreground: 224 17% 13%;
+  --primary: 252 56% 57%;  /* #6C54CF */
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 4% 93%;
-  --secondary-foreground: 240 8% 8%;
-  --muted: 240 4% 93%;
-  --muted-foreground: 240 4% 42%;
-  --accent: 240 4% 90%;
-  --accent-foreground: 240 8% 8%;
-  --destructive: 4 60% 52%;
+  --primary-soft: 252 71% 96%;  /* #F0EDFC */
+  --primary-text: 251 51% 51%;  /* #5A42C2 — primary text on primary-soft */
+  --secondary: 225 18% 96%;  /* #F2F3F6 */
+  --secondary-foreground: 224 17% 13%;
+  --muted: 225 18% 96%;  /* #F2F3F6 — inputs, segment tracks, idle items */
+  --muted-foreground: 215 10% 58%;  /* #8A93A0 */
+  --accent: 225 18% 96%;
+  --accent-foreground: 224 17% 13%;
+  --destructive: 5 77% 56%;  /* #E5483B */
   --destructive-foreground: 0 0% 100%;
-  --border: 240 4% 88%;
-  --input: 240 4% 88%;
+  --border: 216 17% 94%;  /* #EEF0F3 — dividers only */
+  --input: 225 18% 96%;
   --ring: 252 56% 57%;
+  --tooltip: 224 17% 13%;
+  --tooltip-foreground: 0 0% 100%;
+  --elev-card: 0 1px 3px rgba(20, 22, 30, 0.04);
+  --elev-menu: 0 12px 40px rgba(20, 22, 30, 0.16), 0 0 0 1px rgba(20, 22, 30, 0.04);
 
-  --status-success: 158 55% 38%;
+  --status-success: 152 67% 37%;  /* #1F9D63 */
+  --status-success-soft: 150 47% 93%;  /* #E6F6EE */
   --status-success-foreground: 0 0% 100%;
-  --status-warning: 40 85% 52%;
-  --status-warning-foreground: 0 0% 8%;
-  --status-error: 4 60% 52%;
+  --status-warning: 36 100% 35%;  /* #B26B00 */
+  --status-warning-soft: 39 100% 93%;  /* #FFF3DC */
+  --status-warning-foreground: 0 0% 100%;
+  --status-error: 5 77% 56%;  /* #E5483B */
+  --status-error-soft: 6 83% 95%;  /* #FDECEA */
   --status-error-foreground: 0 0% 100%;
   --status-info: 252 56% 57%;
   --status-info-foreground: 0 0% 100%;
 
-  --waveform: 252 40% 52%;
-  --waveform-bg: 240 4% 95%;
-  --playhead: 4 65% 52%;
-  --subtitle-highlight: 252 50% 57%;
-  --waveform-grid: 240 3% 84%;
-  --waveform-label: 240 3% 52%;
-  --waveform-block: 240 4% 62%;
-  --waveform-block-active: 252 35% 52%;
-  --waveform-block-border: 252 50% 52%;
-  --waveform-text: 240 6% 22%;
+  --waveform: 251 61% 81%;  /* #BCB1EC */
+  --waveform-bg: 240 23% 97%;  /* #F7F7FA */
+  --playhead: 252 56% 57%;
+  --subtitle-highlight: 252 56% 57%;
+  --waveform-grid: 216 17% 90%;
+  --waveform-label: 215 10% 58%;
+  --waveform-block: 252 56% 57%;
+  --waveform-block-active: 252 56% 57%;
+  --waveform-block-border: 252 56% 57%;
+  --waveform-text: 224 17% 13%;
 
   --chart-1: 252 56% 57%;
-  --chart-2: 158 55% 38%;
-  --chart-3: 40 85% 52%;
+  --chart-2: 152 67% 37%;
+  --chart-3: 36 100% 35%;
   --chart-4: 280 40% 55%;
-  --chart-5: 4 60% 52%;
-  --radius: 0.625rem;
+  --chart-5: 5 77% 56%;
+  --radius: 0.75rem;
 
-  --sidebar-background: 240 4% 95%;
-  --sidebar-foreground: 240 4% 28%;
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 217 13% 35%;
   --sidebar-primary: 252 56% 57%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 4% 91%;
-  --sidebar-accent-foreground: 240 8% 8%;
-  --sidebar-border: 240 4% 88%;
+  --sidebar-accent: 252 71% 96%;
+  --sidebar-accent-foreground: 251 51% 51%;
+  --sidebar-border: 0 0% 100%;
   --sidebar-ring: 252 56% 57%;
 }
 
 .dark {
   color-scheme: dark;
-  --background: 240 8% 5%;
-  --foreground: 240 6% 88%;
-  --card: 240 8% 7%;
-  --card-foreground: 240 6% 88%;
-  --popover: 240 8% 8%;
-  --popover-foreground: 240 6% 88%;
-  --primary: 252 62% 65%;
-  --primary-foreground: 240 8% 5%;
-  --secondary: 240 6% 11%;
-  --secondary-foreground: 240 6% 88%;
-  --muted: 240 6% 11%;
-  --muted-foreground: 240 4% 48%;
-  --accent: 240 6% 13%;
-  --accent-foreground: 240 6% 88%;
-  --destructive: 4 55% 52%;
+  --background: 240 9% 6%;  /* #0F0F12 */
+  --foreground: 240 9% 94%;  /* #EDEDF0 */
+  --foreground-secondary: 240 7% 71%;  /* #B0B0BA */
+  --card: 240 8% 12%;  /* #1B1B20 */
+  --card-foreground: 240 9% 94%;
+  --popover: 240 8% 16%;  /* #26262D */
+  --popover-foreground: 240 9% 94%;
+  --primary: 252 62% 65%;  /* #856EDD */
+  --primary-foreground: 0 0% 100%;
+  --primary-soft: 252 62% 65% / 0.16;
+  --primary-text: 251 74% 78%;  /* #AC9CF0 */
+  --secondary: 240 8% 16%;  /* #26262D */
+  --secondary-foreground: 240 9% 94%;
+  --muted: 240 8% 16%;
+  --muted-foreground: 240 4% 51%;  /* #7D7D88 */
+  --accent: 240 8% 16%;
+  --accent-foreground: 240 9% 94%;
+  --destructive: 5 83% 65%;  /* #F06A5E */
   --destructive-foreground: 0 0% 100%;
-  --border: 240 6% 13%;
-  --input: 240 6% 13%;
+  --border: 240 8% 15%;  /* #24242A */
+  --input: 240 8% 16%;
   --ring: 252 62% 65%;
+  --tooltip: 240 9% 94%;
+  --tooltip-foreground: 240 9% 6%;
+  --elev-card: none;
+  --elev-menu: 0 12px 40px rgba(0, 0, 0, 0.5);
 
-  --status-success: 158 50% 42%;
+  --status-success: 152 51% 49%;  /* #3DBE82 */
+  --status-success-soft: 152 51% 49% / 0.14;
   --status-success-foreground: 0 0% 100%;
-  --status-warning: 40 80% 58%;
+  --status-warning: 40 79% 61%;  /* #EAB54E */
+  --status-warning-soft: 40 79% 61% / 0.14;
   --status-warning-foreground: 0 0% 5%;
-  --status-error: 4 55% 52%;
+  --status-error: 5 83% 65%;  /* #F06A5E */
+  --status-error-soft: 5 83% 65% / 0.14;
   --status-error-foreground: 0 0% 100%;
   --status-info: 252 62% 65%;
-  --status-info-foreground: 240 8% 5%;
+  --status-info-foreground: 0 0% 100%;
 
-  --waveform: 252 45% 52%;
-  --waveform-bg: 240 8% 6%;
-  --playhead: 4 65% 55%;
-  --subtitle-highlight: 252 55% 58%;
-  --waveform-grid: 240 5% 16%;
-  --waveform-label: 240 4% 36%;
-  --waveform-block: 240 5% 24%;
-  --waveform-block-active: 252 38% 42%;
-  --waveform-block-border: 252 50% 58%;
-  --waveform-text: 240 4% 78%;
+  --waveform: 250 36% 46%;  /* #5A4CA0 */
+  --waveform-bg: 240 9% 9%;  /* #141418 */
+  --playhead: 251 74% 78%;  /* #AC9CF0 */
+  --subtitle-highlight: 252 62% 65%;
+  --waveform-grid: 240 8% 16%;
+  --waveform-label: 240 4% 51%;
+  --waveform-block: 252 62% 65%;
+  --waveform-block-active: 252 62% 65%;
+  --waveform-block-border: 251 74% 78%;
+  --waveform-text: 240 9% 94%;
 
   --chart-1: 252 62% 65%;
-  --chart-2: 158 50% 42%;
-  --chart-3: 40 80% 58%;
+  --chart-2: 152 51% 49%;
+  --chart-3: 40 79% 61%;
   --chart-4: 280 42% 58%;
-  --chart-5: 4 55% 52%;
+  --chart-5: 5 83% 65%;
 
-  --sidebar-background: 240 8% 6%;
-  --sidebar-foreground: 240 4% 65%;
+  --sidebar-background: 240 8% 9%;  /* #16161A */
+  --sidebar-foreground: 240 7% 71%;
   --sidebar-primary: 252 62% 65%;
-  --sidebar-primary-foreground: 240 8% 5%;
-  --sidebar-accent: 240 6% 11%;
-  --sidebar-accent-foreground: 240 6% 88%;
-  --sidebar-border: 240 6% 10%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 252 62% 65% / 0.16;
+  --sidebar-accent-foreground: 251 74% 78%;
+  --sidebar-border: 240 8% 9%;
   --sidebar-ring: 252 62% 65%;
 }
 
 @theme inline {
-  --font-sans: "Pretendard", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  --font-sans: "Wanted Sans Variable", "Wanted Sans", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --radius-xs: 8px;   /* badges, chips */
+  --radius-sm: 10px;  /* menu items, small buttons */
+  --radius-md: 12px;  /* inputs, icon buttons, icon tiles */
+  --radius-lg: 14px;  /* buttons, segment tracks, choice cards */
+  --radius-xl: 20px;  /* cards, list panels */
+  --radius-2xl: 24px; /* large panels */
+  --radius-3xl: 28px; /* dialogs */
+
+  --shadow-card: var(--elev-card);
+  --shadow-menu: var(--elev-menu);
+  --shadow-segment: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.3);
+
+  --color-foreground-secondary: hsl(var(--foreground-secondary));
+  --color-primary-soft: hsl(var(--primary-soft));
+  --color-primary-text: hsl(var(--primary-text));
+  --color-status-success-soft: hsl(var(--status-success-soft));
+  --color-status-warning-soft: hsl(var(--status-warning-soft));
+  --color-status-error-soft: hsl(var(--status-error-soft));
+  --color-tooltip: hsl(var(--tooltip));
+  --color-tooltip-foreground: hsl(var(--tooltip-foreground));
+  /* Hover state for surfaces filled with --muted: a step toward the text color. */
+  --color-muted-hover: color-mix(in srgb, hsl(var(--muted)), hsl(var(--foreground)) 6%);
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -219,25 +264,7 @@ body {
   color: hsl(var(--foreground));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.01em;
-}
-
-/* Subtle noise texture for depth */
-.dark body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0.015;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 256px 256px;
-}
-
-/* Primary button glow in dark mode */
-.dark [data-slot="button"]:not([data-variant]) {
-  box-shadow: 0 0 12px -3px hsl(var(--primary) / 0.3);
+  letter-spacing: -0.02em;
 }
 
 /* Softer scrollbar */
@@ -261,18 +288,6 @@ body {
   transition: box-shadow 0.2s ease;
 }
 
-/* Badge refinement */
-[data-slot="badge"] {
-  letter-spacing: 0.02em;
-  font-weight: 500;
-}
-
-/* Input focus glow */
-.dark input:focus-visible,
-.dark textarea:focus-visible {
-  box-shadow: 0 0 0 1px hsl(var(--ring)), 0 0 8px -2px hsl(var(--ring) / 0.25);
-}
-
 .spinner {
   width: 20px;
   height: 20px;
@@ -284,4 +299,18 @@ body {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Indeterminate bar on the boot card: a 45%-wide fill sweeping across. */
+.boot-bar {
+  animation: boot-slide 1.3s ease-in-out infinite;
+}
+
+@keyframes boot-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(222%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-bar { animation: none; transform: translateX(61%); }
 }

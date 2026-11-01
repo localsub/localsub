@@ -1,11 +1,13 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Save, Download, FileText, Undo2, Redo2, Search, Video, VideoOff, Loader2, Keyboard } from "lucide-react"
+import { Download, Subtitles, Undo2, Redo2, Search, Video, VideoOff, Loader2, Keyboard } from "lucide-react"
 import { toastSuccess, toastError, toastWarning } from "@/lib/toast"
 import { convertFileSrc } from "@tauri-apps/api/core"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { PageActions, PageMeta } from "@/components/page-header"
+import { cn } from "@/lib/utils"
 import { Waveform } from "./Waveform"
 import { SubtitleList } from "./SubtitleList"
 import { EditPanel } from "./EditPanel"
@@ -801,43 +803,50 @@ export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetI
   // Empty state
   if (!jobId) {
     return (
-      <div className="flex flex-1 items-center justify-center text-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
-            <FileText className="h-8 w-8 text-muted-foreground/70" />
-          </div>
-          <div>
-            <p className="font-medium">{t("editor.empty.title")}</p>
-            <p className="text-sm text-muted-foreground mt-1">{t("editor.empty.description")}</p>
-          </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-3.5 rounded-2xl bg-card p-10 text-center shadow-card">
+        <PageMeta>{t("editor.description")}</PageMeta>
+        <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[22px] bg-muted text-foreground-secondary">
+          <Subtitles className="h-8 w-8" />
         </div>
+        <p className="mt-1.5 text-[22px] font-extrabold tracking-[-0.02em]">{t("editor.empty.title")}</p>
+        <p className="max-w-[420px] text-pretty text-[15px] leading-[1.55] text-muted-foreground">{t("editor.empty.description")}</p>
       </div>
     )
   }
 
+  const fileName = filePath ? filePath.split(/[\\/]/).pop() : null
+
   return (
-    <div className="flex flex-1 flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-1 pb-3 border-b">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {/* File line under the page title */}
+      <PageMeta>
+        {/* The file line gives way first: the save/processing state must stay readable */}
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="min-w-0 truncate text-sm" title={fileName ?? undefined}>
+            {fileName && <>{fileName} · </>}
             {displayLines.length} {t("editor.subtitlesCount")}
           </span>
           {liveMode && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-orange-500 font-medium">
-              <Loader2 className="h-3 w-3 animate-spin" />
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-primary-text">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
               {t("editor.processing")}
             </span>
           )}
           {!liveMode && dirty && (
-            <span className="text-xs text-yellow-500">{t("editor.unsaved")}</span>
+            <span className="shrink-0 text-[13px] font-semibold text-status-warning">{t("editor.unsaved")}</span>
           )}
           {!liveMode && autoSaveStatus === "saving" && (
-            <span className="text-xs text-muted-foreground">{t("editor.autoSaving")}</span>
+            <span className="shrink-0 text-[13px] text-muted-foreground">{t("editor.autoSaving")}</span>
           )}
           {!liveMode && autoSaveStatus === "saved" && (
-            <span className="text-xs text-green-500">{t("editor.autoSaved")}</span>
+            <span className="shrink-0 text-[13px] font-semibold text-status-success">{t("editor.autoSaved")}</span>
           )}
+        </div>
+      </PageMeta>
+
+      {/* Header actions */}
+      <PageActions>
+        <TooltipProvider>
           <RefusalToolbar
             count={refusalMap.size}
             filterActive={problemFilterActive}
@@ -847,52 +856,39 @@ export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetI
             progress={batchProgress}
             onCancel={handleCancelBatch}
           />
-        </div>
-        <TooltipProvider>
-          <div className="flex items-center gap-1.5">
+          {/* Same condition RefusalToolbar uses to render at all */}
+          {(refusalMap.size > 0 || batchProgress) && <div className="mx-1.5 h-[22px] w-px bg-border" />}
+          <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={undo} disabled={liveMode || !canUndo}>
-                  <Undo2 className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="icon" onClick={undo} disabled={liveMode || !canUndo} aria-label={t("editor.undo")}>
+                  <Undo2 />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>{t("editor.undo")} <kbd className="ml-1 text-[10px] opacity-60">Ctrl+Z</kbd></p></TooltipContent>
+              <TooltipContent><p>{t("editor.undo")} <kbd className="ml-1 opacity-60">Ctrl+Z</kbd></p></TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={redo} disabled={liveMode || !canRedo}>
-                  <Redo2 className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="icon" onClick={redo} disabled={liveMode || !canRedo} aria-label={t("editor.redo")}>
+                  <Redo2 />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>{t("editor.redo")} <kbd className="ml-1 text-[10px] opacity-60">Ctrl+Y</kbd></p></TooltipContent>
+              <TooltipContent><p>{t("editor.redo")} <kbd className="ml-1 opacity-60">Ctrl+Y</kbd></p></TooltipContent>
             </Tooltip>
-            <div className="w-px h-4 bg-border mx-1" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" onClick={handleSave} disabled={liveMode || !dirty}>
-                  <Save className="mr-1.5 h-3.5 w-3.5" />
-                  {t("editor.save")}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p><kbd className="text-[10px] opacity-60">Ctrl+S</kbd></p></TooltipContent>
-            </Tooltip>
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={liveMode || displayLines.length === 0}>
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              {t("editor.export.label")}
-            </Button>
-            <div className="w-px h-4 bg-border mx-1" />
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={findOpen ? "secondary" : "ghost"}
+                  variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className={cn(findOpen && "bg-primary-soft text-primary-text hover:bg-primary-soft hover:text-primary-text")}
                   onClick={() => setFindOpen((o) => !o)}
+                  aria-label={t("editor.findReplace.title")}
+                  aria-pressed={findOpen}
                 >
-                  <Search className="h-3.5 w-3.5" />
+                  <Search />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>{t("editor.findReplace.title")} <kbd className="ml-1 text-[10px] opacity-60">Ctrl+F</kbd></p></TooltipContent>
+              <TooltipContent><p>{t("editor.findReplace.title")} <kbd className="ml-1 opacity-60">Ctrl+F</kbd></p></TooltipContent>
             </Tooltip>
             <TimeShiftPopover
               disabled={liveMode || lines.length === 0}
@@ -903,34 +899,40 @@ export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetI
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={showVideo ? "secondary" : "ghost"}
+                    variant="ghost"
                     size="icon"
-                    className="h-7 w-7"
                     onClick={() => setShowVideo((v) => !v)}
+                    aria-label={showVideo ? t("editor.video.hide") : t("editor.video.show")}
                   >
-                    {showVideo ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+                    {showVideo ? <Video /> : <VideoOff />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent><p>{showVideo ? t("editor.video.hide") : t("editor.video.show")}</p></TooltipContent>
               </Tooltip>
             )}
-            <div className="w-px h-4 bg-border mx-1" />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setShortcutsOpen(true)}
-                >
-                  <Keyboard className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="icon" onClick={() => setShortcutsOpen(true)} aria-label={t("shortcuts.title")}>
+                  <Keyboard />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{t("shortcuts.title")}</p></TooltipContent>
             </Tooltip>
           </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="secondary" className="ml-1 h-11 px-[18px]" onClick={handleSave} disabled={liveMode || !dirty}>
+                {t("editor.save")}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p><kbd className="opacity-60">Ctrl+S</kbd></p></TooltipContent>
+          </Tooltip>
+          <Button className="h-11 px-[18px]" onClick={handleExport} disabled={liveMode || displayLines.length === 0}>
+            <Download />
+            {t("editor.export.label")}
+          </Button>
         </TooltipProvider>
-      </div>
+      </PageActions>
 
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
 
@@ -955,66 +957,62 @@ export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetI
         />
       )}
 
-      {/* Main content: waveform + panels */}
-      <div className="flex flex-1 flex-col min-h-0">
-        {/* Video preview (visible when video file + toggled on) */}
-        {isVideo && showVideo && videoElement && (
-          <VideoPreview videoElement={videoElement} currentSubtitle={currentSubtitle} />
-        )}
+      {/* Media card: video, minimap, waveform, transport — omitted for subtitle imports (no media file) */}
+      {!isSubtitleSource && (
+        <div className="flex shrink-0 flex-col gap-2.5 rounded-[20px] bg-card p-3 shadow-card">
+          {isVideo && showVideo && videoElement && (
+            <VideoPreview videoElement={videoElement} currentSubtitle={currentSubtitle} />
+          )}
 
-        {/* Waveform / playback UI — omitted for subtitle imports (no media file) */}
-        {!isSubtitleSource && (
-          <>
-            {/* Minimap (visible only when zoomed) */}
-            {zoomLevel > 1 && (
-              <WaveformMinimap
-                peaks={peaks}
-                duration={duration}
-                viewStart={viewStart}
-                visibleDuration={visibleDuration}
-                onViewStartChange={handleViewStartChange}
-              />
-            )}
-
-            {/* Waveform */}
-            <div className="h-[80px] border-b shrink-0">
-              <Waveform
-                lines={displayLines}
-                currentTime={currentTime}
-                selectedId={selectedId}
-                duration={duration}
-                peaks={peaks}
-                viewStart={viewStart}
-                visibleDuration={visibleDuration}
-                onSeek={handleSeek}
-                onSelect={setSelectedId}
-                onViewStartChange={handleViewStartChange}
-                onZoomIn={handleZoomIn}
-                onZoomOut={handleZoomOut}
-                onUpdateLineTiming={liveMode ? undefined : handleUpdateLineTiming}
-              />
-            </div>
-
-            {/* Playback controls */}
-            <PlaybackControls
-              currentTime={currentTime}
+          {/* Minimap (visible only when zoomed) */}
+          {zoomLevel > 1 && (
+            <WaveformMinimap
+              peaks={peaks}
               duration={duration}
-              isPlaying={isPlaying}
-              volume={volume}
-              playbackRate={playbackRate}
-              onTogglePlay={handleTogglePlay}
-              onSeek={handleSeek}
-              onSkipPrev={handleSkipPrev}
-              onSkipNext={handleSkipNext}
-              onVolumeChange={setVolume}
-              onPlaybackRateChange={setPlaybackRate}
+              viewStart={viewStart}
+              visibleDuration={visibleDuration}
+              onViewStartChange={handleViewStartChange}
             />
-          </>
-        )}
+          )}
 
-        {/* Subtitle list + Edit panel */}
-        <ResizablePanelGroup className="flex-1 min-h-0">
-          <ResizablePanel defaultSize={55} minSize={30}>
+          <div className="h-[76px] shrink-0 overflow-hidden rounded-md">
+            <Waveform
+              lines={displayLines}
+              currentTime={currentTime}
+              selectedId={selectedId}
+              duration={duration}
+              peaks={peaks}
+              viewStart={viewStart}
+              visibleDuration={visibleDuration}
+              onSeek={handleSeek}
+              onSelect={setSelectedId}
+              onViewStartChange={handleViewStartChange}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onUpdateLineTiming={liveMode ? undefined : handleUpdateLineTiming}
+            />
+          </div>
+
+          <PlaybackControls
+            currentTime={currentTime}
+            duration={duration}
+            isPlaying={isPlaying}
+            volume={volume}
+            playbackRate={playbackRate}
+            onTogglePlay={handleTogglePlay}
+            onSeek={handleSeek}
+            onSkipPrev={handleSkipPrev}
+            onSkipNext={handleSkipNext}
+            onVolumeChange={setVolume}
+            onPlaybackRateChange={setPlaybackRate}
+          />
+        </div>
+      )}
+
+      {/* Subtitle list + Edit panel — two cards; the handle is the gap between them */}
+      <ResizablePanelGroup className="min-h-0 flex-1">
+        <ResizablePanel defaultSize={55} minSize={30}>
+          <div className="h-full overflow-hidden rounded-[20px] bg-card shadow-card">
             <SubtitleList
               lines={visibleLines}
               selectedId={selectedId}
@@ -1031,9 +1029,11 @@ export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetI
               readOnly={liveMode}
               refusals={refusalMap}
             />
-          </ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel defaultSize={45} minSize={25}>
+          </div>
+        </ResizablePanel>
+        <ResizableHandle className="w-4 bg-transparent after:w-1 after:rounded-full after:transition-colors hover:after:bg-border" />
+        <ResizablePanel defaultSize={45} minSize={25}>
+          <div className="h-full overflow-hidden rounded-[20px] bg-card shadow-card">
             <EditPanel
               line={selectedLine}
               onUpdateLine={handleUpdateLine}
@@ -1047,9 +1047,9 @@ export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetI
               vocabularies={vocabularies}
               onUpdateVocabulary={onUpdateVocabulary}
             />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </div>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   )
 }

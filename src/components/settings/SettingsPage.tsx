@@ -6,7 +6,6 @@ import {
   Info,
   RotateCcw,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,13 +14,18 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogIcon,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { cn } from "@/lib/utils"
 import { toastSuccess, toastError } from "@/lib/toast"
 import { GeneralSection } from "./GeneralSection"
 import { ModelsSection } from "./ModelsSection"
 import { InfoSection } from "./InfoSection"
 import type { AppConfig, PartialConfig, ModelManifestEntry, ModelCatalog, HardwareInfo, SettingsTab, DownloadProgress } from "@/types"
+
+const navItemClass =
+  "flex h-11 cursor-pointer items-center gap-2.5 rounded-md px-3.5 text-left transition-[background-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
 const TABS: { value: SettingsTab; icon: typeof Settings2; labelKey: string }[] = [
   { value: "general", icon: Settings2, labelKey: "settings.tabs.general" },
@@ -72,41 +76,44 @@ export function SettingsPage({
   }
 
   return (
-    <div className="flex gap-4 h-full">
+    <div className="flex min-h-0 flex-1 gap-8">
       {/* Left sub-navigation */}
-      <nav className="flex w-36 flex-shrink-0 flex-col gap-1">
+      <nav className="flex w-[180px] shrink-0 flex-col gap-1">
         {TABS.map((tab) => {
           const Icon = tab.icon
+          const active = activeTab === tab.value
           return (
             <button
               key={tab.value}
-              className={`flex items-center gap-2.5 cursor-pointer rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                activeTab === tab.value
-                  ? "bg-primary/10 font-medium text-primary"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                navItemClass,
+                "text-[15px]",
+                active
+                  ? "bg-card font-bold text-foreground shadow-card"
+                  : "font-semibold text-foreground-secondary hover:bg-muted-hover hover:text-foreground",
+              )}
               onClick={() => setActiveTab(tab.value)}
             >
-              <Icon className="h-4 w-4 shrink-0" />
+              <Icon className="size-[18px] shrink-0" />
               {t(tab.labelKey as never)}
             </button>
           )
         })}
         <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="justify-start text-muted-foreground"
+        <button
+          className={cn(navItemClass, "text-sm font-semibold text-muted-foreground hover:bg-muted-hover hover:text-foreground")}
           onClick={() => setResetDialogOpen(true)}
         >
-          <RotateCcw className="mr-2 h-3.5 w-3.5" />
+          <RotateCcw className="size-4 shrink-0" />
           {t("settings.restoreDefaults")}
-        </Button>
+        </button>
       </nav>
 
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
+            <AlertDialogIcon tone="warning"><RotateCcw /></AlertDialogIcon>
             <AlertDialogTitle>{t("confirm.resetConfig")}</AlertDialogTitle>
             <AlertDialogDescription>{t("confirm.resetConfigMsg")}</AlertDialogDescription>
           </AlertDialogHeader>
@@ -118,8 +125,8 @@ export function SettingsPage({
       </AlertDialog>
 
       {/* Right content */}
-      <div className="flex-1 overflow-y-auto min-w-0 px-1">
-        <div className="max-w-[600px] pb-8">
+      <div className="min-w-0 flex-1 overflow-y-auto px-1">
+        <div className="max-w-[720px] pb-8">
           {activeTab === "general" && (
             <GeneralSection config={config} onUpdate={onUpdateConfig} />
           )}
