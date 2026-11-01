@@ -520,6 +520,7 @@
       "description": "Idioma, formato de salida y preferencias de traducción.",
       "outputFormat": "Formato de salida predeterminado",
       "sourceLanguage": "Idioma de origen",
+      "sourceLanguageDesc": "Idioma hablado para el reconocimiento de voz. Con Detección automática, Whisper lo identifica.",
       "targetLanguage": "Idioma de destino",
       "sourceLangs": {
         "auto": "Detección automática",
@@ -529,7 +530,10 @@
         "zh": "Chino",
         "es": "Español",
         "fr": "Francés",
-        "de": "Alemán"
+        "de": "Alemán",
+        "pt": "Portugués",
+        "ru": "Ruso",
+        "ar": "Árabe"
       },
       "targetLangs": {
         "en": "Inglés",

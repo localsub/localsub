@@ -520,6 +520,7 @@
       "description": "언어, 출력 형식, 번역 설정을 구성합니다.",
       "outputFormat": "기본 출력 형식",
       "sourceLanguage": "원본 언어",
+      "sourceLanguageDesc": "음성 인식에 쓰는 언어입니다. 자동 감지를 고르면 Whisper가 언어를 판별합니다.",
       "targetLanguage": "번역 언어",
       "sourceLangs": {
         "auto": "자동 감지",
@@ -529,7 +530,10 @@
         "zh": "중국어",
         "es": "스페인어",
         "fr": "프랑스어",
-        "de": "독일어"
+        "de": "독일어",
+        "pt": "포르투갈어",
+        "ru": "러시아어",
+        "ar": "아랍어"
       },
       "targetLangs": {
         "en": "영어",

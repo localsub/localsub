@@ -520,6 +520,7 @@
       "description": "言語、出力形式、翻訳の設定です。",
       "outputFormat": "デフォルト出力形式",
       "sourceLanguage": "ソース言語",
+      "sourceLanguageDesc": "音声認識に使う言語です。自動検出を選ぶと、Whisper が言語を判別します。",
       "targetLanguage": "ターゲット言語",
       "sourceLangs": {
         "auto": "自動検出",
@@ -529,7 +530,10 @@
         "zh": "中国語",
         "es": "スペイン語",
         "fr": "フランス語",
-        "de": "ドイツ語"
+        "de": "ドイツ語",
+        "pt": "ポルトガル語",
+        "ru": "ロシア語",
+        "ar": "アラビア語"
       },
       "targetLangs": {
         "en": "英語",

@@ -520,6 +520,7 @@
       "description": "语言、输出格式和翻译偏好。",
       "outputFormat": "默认输出格式",
       "sourceLanguage": "源语言",
+      "sourceLanguageDesc": "语音识别使用的语言。选择自动检测时，由 Whisper 判断语言。",
       "targetLanguage": "目标语言",
       "sourceLangs": {
         "auto": "自动检测",
@@ -529,7 +530,10 @@
         "zh": "中文",
         "es": "西班牙语",
         "fr": "法语",
-        "de": "德语"
+        "de": "德语",
+        "pt": "葡萄牙语",
+        "ru": "俄语",
+        "ar": "阿拉伯语"
       },
       "targetLangs": {
         "en": "英语",
