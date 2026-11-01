@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="LocalSub — 클라우드 없이, 구독 없이, 온전히 내 PC에서 돌아가는 AI 자막 생성·번역 데스크톱 앱." />
+  <meta name="description" content="외부 전송 없이 PC 안에서 모델을 구동하는 로컬 AI 자막기. 음성 인식과 4개 국어 번역, 파형 편집, 이중 자막 내보내기까지 설치 후 오프라인 완결." />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="LocalSub — 로컬 AI 자막 생성·번역" />
-  <meta property="og:description" content="내 영상. 내 언어. 내 컴퓨터. 클라우드 없이 돌아가는 AI 자막 도구." />
+  <meta property="og:description" content="외부 전송 없는 로컬 단독 구동. 음성 인식부터 4개 국어 번역과 파형 편집까지 PC 내 완결." />
   <!-- Social preview. Crawlers do NOT run JS, so this image MUST be a static path.
        Replace og-image.png with a 1200x630 image (the editor cover still works well). -->
   <meta property="og:image" content="https://localsub.app/og-image.png" />
@@ -15,18 +15,18 @@
   <meta property="og:url" content="https://localsub.app/" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="LocalSub — 로컬 AI 자막 생성·번역" />
-  <meta name="twitter:description" content="내 영상. 내 언어. 내 컴퓨터. 클라우드 없이 돌아가는 AI 자막 도구." />
+  <meta name="twitter:description" content="외부 전송 없는 로컬 단독 구동. 음성 인식부터 4개 국어 번역과 파형 편집까지 PC 내 완결." />
   <meta name="twitter:image" content="https://localsub.app/og-image.png" />
   <title>LocalSub — 로컬 AI 자막 생성·번역</title>
 
   <!-- Favicon: real app icon (purple shield) -->
   <link rel="icon" type="image/png" href="assets/logo.png" />
 
-  <!-- Fonts: Fraunces (EN serif display) · Noto Serif KR (KO serif display) · IBM Plex Mono · Pretendard (KO+EN body) -->
+  <!-- Fonts: Wanted Sans Variable (KO+EN, same face as the app UI) · IBM Plex Mono (labels, timecodes) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Noto+Serif+KR:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css" />
 
   <!-- Tailwind Play CDN (marketing page; endpoint is dynamic so SRI N/A) -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -44,10 +44,13 @@
             accent:  "#856edd",
           },
           fontFamily: {
-            display: ['Fraunces', '"Noto Serif KR"', "Georgia", "serif"],
-            sans:    ['Pretendard', '"Pretendard Variable"', "system-ui", "sans-serif"],
-            mono:    ['"IBM Plex Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
+            display: ['"Wanted Sans Variable"', '"Wanted Sans"', "system-ui", "sans-serif"],
+            sans:    ['"Wanted Sans Variable"', '"Wanted Sans"', "system-ui", "sans-serif"],
+            // Plex Mono has no Hangul; Korean labels fall through to Wanted Sans
+            mono:    ['"IBM Plex Mono"', '"Wanted Sans Variable"', "ui-monospace", "SFMono-Regular", "monospace"],
           },
+          // Numeric weight utilities (font-600 …); Tailwind only ships named ones
+          fontWeight: { 400: "400", 500: "500", 600: "600", 700: "700", 800: "800" },
           maxWidth: { content: "1160px" },
         },
       },
@@ -74,13 +77,19 @@
     main, header, footer { position: relative; z-index: 1; }
     ::selection { background: rgba(133,110,221,.30); color: #fff; }
 
-    h1, h2, h3, .font-display { font-feature-settings: "ss01"; }
-    /* per-script display tuning: Fraunces wants tight Latin tracking; Noto Serif KR does not */
-    :lang(en) h1, :lang(en) h2, :lang(en) h3 { letter-spacing: -0.022em; }
-    :lang(ko) h1, :lang(ko) h2, :lang(ko) h3 { letter-spacing: -0.004em; word-break: keep-all; }
+    /* Korean text: break between words, tighter tracking for Wanted Sans.
+       Headings set their own tracking through the type-scale classes. */
+    :lang(ko) body { word-break: keep-all; letter-spacing: -0.03em; font-feature-settings: "ss01" 1, "cv01" 1; }
+    h1, h2, h3 { font-feature-settings: normal; }
+    /* Spaces in mono labels come from Plex Mono (0.6em wide); pull them in between Korean words */
+    :lang(ko) .font-mono { word-spacing: -0.3em; }
+    /* Eyebrows wrap on phones; keep the two lines even instead of orphaning a word */
+    [data-i18n$=".eyebrow"] { text-wrap: balance; }
 
     /* Active-subtitle-cue highlight: coral word + underline that "fills" like caption timing */
-    .cue { position: relative; color: #9c89e6; white-space: nowrap; }
+    /* Phones may wrap the accent line; as an inline-block the underline then spans the whole block */
+    .cue { position: relative; display: inline-block; color: #9c89e6; text-wrap: balance; }
+    @media (min-width: 768px) { .cue { white-space: nowrap; } }
     .cue::after {
       content: ""; position: absolute; left: -.04em; right: -.04em; bottom: .04em; height: .07em;
       background: #856edd; transform: scaleX(0); transform-origin: left;
@@ -176,13 +185,13 @@
     <nav class="mx-auto flex max-w-content items-center justify-between px-6 py-4">
       <a href="#top" class="flex items-center gap-2.5">
         <img src="assets/logo.png" alt="LocalSub" class="h-7 w-7" />
-        <span class="font-display text-xl font-600 tracking-tight">LocalSub</span>
+        <span class="font-display text-xl font-700 tracking-[-0.03em]">LocalSub</span>
       </a>
 
       <div class="hidden items-center gap-8 md:flex">
-        <a href="#why"      class="ul-slide text-sm text-muted transition hover:text-fg" data-i18n="nav.why">왜</a>
-        <a href="#features" class="ul-slide text-sm text-muted transition hover:text-fg" data-i18n="nav.features">기능</a>
-        <a href="#workflow" class="ul-slide text-sm text-muted transition hover:text-fg" data-i18n="nav.workflow">워크플로우</a>
+        <a href="#why"      class="ul-slide text-sm text-muted transition hover:text-fg" data-i18n="nav.why">로컬 처리</a>
+        <a href="#features" class="ul-slide text-sm text-muted transition hover:text-fg" data-i18n="nav.features">내장 기능</a>
+        <a href="#workflow" class="ul-slide text-sm text-muted transition hover:text-fg" data-i18n="nav.workflow">작업 흐름</a>
         <a href="#faq"      class="ul-slide text-sm text-muted transition hover:text-fg" data-i18n="nav.faq">FAQ</a>
 
         <div class="flex items-center rounded-md border border-line font-mono text-xs">
@@ -190,7 +199,7 @@
           <button data-lang="en" class="lang-btn rounded-r-md px-2.5 py-1 transition">EN</button>
         </div>
 
-        <a href="#download" class="download-link rounded-md bg-accent px-4 py-1.5 text-sm font-500 text-ink transition hover:brightness-110" data-i18n="dl.ready">Windows용 다운로드</a>
+        <a href="#download" class="download-link rounded-md bg-accent px-4 py-1.5 text-sm font-500 text-ink transition hover:brightness-110" data-i18n="dl.ready">Windows 다운로드</a>
       </div>
 
       <div class="flex items-center gap-3 md:hidden">
@@ -206,11 +215,11 @@
 
     <div id="mobile-menu" class="hidden border-t border-line px-6 py-4 md:hidden">
       <div class="flex flex-col gap-4">
-        <a href="#why"      class="nav-mobile text-sm text-muted" data-i18n="nav.why">왜</a>
-        <a href="#features" class="nav-mobile text-sm text-muted" data-i18n="nav.features">기능</a>
-        <a href="#workflow" class="nav-mobile text-sm text-muted" data-i18n="nav.workflow">워크플로우</a>
+        <a href="#why"      class="nav-mobile text-sm text-muted" data-i18n="nav.why">로컬 처리</a>
+        <a href="#features" class="nav-mobile text-sm text-muted" data-i18n="nav.features">내장 기능</a>
+        <a href="#workflow" class="nav-mobile text-sm text-muted" data-i18n="nav.workflow">작업 흐름</a>
         <a href="#faq"      class="nav-mobile text-sm text-muted" data-i18n="nav.faq">FAQ</a>
-        <a href="#download" class="download-link nav-mobile mt-1 rounded-md bg-accent px-4 py-2 text-center text-sm font-500 text-ink" data-i18n="dl.ready">Windows용 다운로드</a>
+        <a href="#download" class="download-link nav-mobile mt-1 rounded-md bg-accent px-4 py-2 text-center text-sm font-500 text-ink" data-i18n="dl.ready">Windows 다운로드</a>
       </div>
     </div>
   </header>
@@ -221,20 +230,20 @@
     <section class="glow-top mx-auto max-w-content px-6 pb-24 pt-20 md:pt-28">
       <div class="grid items-center gap-14 lg:grid-cols-[1.1fr_0.9fr]">
         <div>
-          <p class="rise font-mono text-xs tracking-[0.22em] text-muted" style="animation-delay:.05s" data-i18n="hero.eyebrow">100% 로컬 · 클라우드 없음 · 구독 없음</p>
-          <h1 class="mt-6 font-display text-5xl font-600 leading-[1.04] tracking-tight sm:text-6xl md:text-[5rem]">
-            <span class="rise block text-3xl font-500 text-fg/85 sm:text-4xl md:text-[2.6rem] md:mb-1" style="animation-delay:.15s" data-i18n="hero.t1">완전한 로컬,</span>
-            <span class="rise block" style="animation-delay:.3s"><span class="cue" data-i18n="hero.t2">AI 자막 생성기</span></span>
+          <p class="rise font-mono text-[11px] font-600 leading-[1.3] tracking-[0.06em] text-muted" style="animation-delay:.05s" data-i18n="hero.eyebrow">로컬 AI 자막기 · 비상업용 무료 · 윈도우 64비트</p>
+          <h1 class="mt-6 font-display text-[clamp(36px,11.4vw,46px)] font-800 leading-[1.05] tracking-[-0.04em] md:text-[72px]">
+            <span class="rise mb-2 block text-[20px] font-600 leading-[1.2] tracking-[-0.03em] text-fg/85 md:mb-3 md:text-[28px]" style="animation-delay:.15s" data-i18n="hero.t1">자막 생성과 번역</span>
+            <span class="rise block" style="animation-delay:.3s"><span class="cue" data-i18n="hero.t2">내 컴퓨터 안에서</span></span>
           </h1>
-          <p class="rise mt-8 max-w-md text-lg leading-relaxed text-muted" style="animation-delay:.52s" data-i18n="hero.sub">클라우드 없이, 구독 없이, 타협 없이 — 온전히 로컬에서 돌아가는 AI 자막 도구.</p>
+          <p class="rise mt-7 max-w-md text-[15px] leading-[1.6] tracking-[-0.015em] text-muted md:text-[17px]" style="animation-delay:.52s" data-i18n="hero.sub">내 PC에서만 모델을 구동하여 완성하는 자막 작업.</p>
 
           <div class="rise mt-9 flex flex-wrap items-center gap-3" style="animation-delay:.62s">
-            <a href="#download" class="download-link rounded-lg bg-accent px-6 py-3 font-500 text-ink transition hover:brightness-110" data-i18n="dl.ready">Windows용 다운로드</a>
-            <a href="#" class="repo-link rounded-lg border border-line px-6 py-3 font-500 text-fg transition hover:border-white/30" target="_blank" rel="noopener" data-i18n="hero.repo">GitHub에서 보기</a>
+            <a href="#download" class="download-link rounded-lg bg-accent px-6 py-3 font-500 text-ink transition hover:brightness-110" data-i18n="dl.ready">Windows 다운로드</a>
+            <a href="#" class="repo-link rounded-lg border border-line px-6 py-3 font-500 text-fg transition hover:border-white/30" target="_blank" rel="noopener" data-i18n="hero.repo">GitHub 저장소</a>
           </div>
 
           <div class="rise mt-6 flex flex-wrap gap-x-5 gap-y-2 font-mono text-xs text-muted" style="animation-delay:.7s">
-            <span data-i18n="hero.os">Windows 10 / 11 · 64-bit</span>
+            <span data-i18n="hero.os">Windows 10 / 11 (64비트)</span>
             <span class="dl-version hidden"></span>
             <span class="dl-size hidden"></span>
           </div>
@@ -249,7 +258,7 @@
               <span>00:01:23,400&nbsp;&nbsp;→&nbsp;&nbsp;00:01:25,900</span>
               <span class="flex items-center gap-1.5">
                 <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span>
-                <span data-i18n="cue.speaker">화자 1</span>
+                <span data-i18n="cue.speaker">번역됨</span>
               </span>
             </div>
             <div class="mt-4 space-y-1.5 pl-2">
@@ -261,7 +270,7 @@
               <span class="playhead"></span>
             </div>
             <div class="mt-4 flex items-center justify-between border-t border-line pt-3 font-mono text-[11px] text-muted">
-              <span>EN → KO · 자연스러운</span>
+              <span>EN → KO · 자연스럽게</span>
               <span>localhost:9111</span>
             </div>
           </div>
@@ -273,30 +282,30 @@
     <section id="why" class="border-t border-line">
       <div class="mx-auto max-w-content px-6 py-20 md:py-28">
         <div class="reveal mb-14 max-w-3xl">
-          <p class="mb-4 font-mono text-xs tracking-[0.2em] text-muted" data-i18n="why.eyebrow">00:01 — 왜 LocalSub?</p>
-          <h2 class="font-display text-3xl font-600 leading-[1.12] tracking-tight text-balance md:text-5xl" data-i18n="why.title">자막 하나 만들자고 내 데이터를 넘길 이유는 없다.</h2>
+          <p class="mb-4 font-mono text-[11px] font-600 leading-[1.3] tracking-[0.06em] text-muted" data-i18n="why.eyebrow">00:01 — 로컬 아키텍처</p>
+          <h2 class="font-display text-[26px] font-700 leading-[1.2] tracking-[-0.03em] text-balance md:text-[36px]" data-i18n="why.title">외부 전송 없는 로컬 단독 처리</h2>
         </div>
 
         <!-- asymmetric: LocalSub side dominant, legacy side dimmed -->
         <div class="reveal grid gap-5 md:grid-cols-[0.85fr_1.15fr]">
           <!-- legacy (dimmed via subtle bg/strikethrough, NOT opacity — keeps text above AA contrast) -->
-          <div class="rounded-xl border border-line/70 bg-white/[0.015] p-7">
-            <p class="mb-6 font-mono text-xs tracking-wider text-muted" data-i18n="why.legacy">기존 클라우드 서비스</p>
+          <div class="rounded-xl border border-white/[0.06] bg-white/[0.015] p-7">
+            <p class="mb-6 font-mono text-xs tracking-wider text-muted" data-i18n="why.legacy">클라우드 자막 서비스</p>
             <ul class="space-y-4 text-muted">
-              <li class="flex items-start gap-3 line-through decoration-muted/40"><span class="mt-1 font-mono text-xs text-muted">데이터</span><span data-i18n="why.r1.a">클라우드 업로드</span></li>
-              <li class="flex items-start gap-3 line-through decoration-muted/40"><span class="mt-1 font-mono text-xs text-muted">비용</span><span data-i18n="why.r2.a">월 구독 · 분당 과금</span></li>
-              <li class="flex items-start gap-3 line-through decoration-muted/40"><span class="mt-1 font-mono text-xs text-muted">인터넷</span><span data-i18n="why.r3.a">항상 필요</span></li>
-              <li class="flex items-start gap-3 line-through decoration-muted/40"><span class="mt-1 font-mono text-xs text-muted">GPU</span><span data-i18n="why.r4.a">서버에 의존</span></li>
+              <li class="flex items-start gap-3 line-through decoration-muted/40"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r1.k">미디어</span><span data-i18n="why.r1.a">외부 서버로 업로드</span></li>
+              <li class="flex items-start gap-3 line-through decoration-muted/40"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r2.k">비용</span><span data-i18n="why.r2.a">월간 구독 또는 분당 과금</span></li>
+              <li class="flex items-start gap-3 line-through decoration-muted/40"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r3.k">네트워크</span><span data-i18n="why.r3.a">작업 시 상시 연결 필수</span></li>
+              <li class="flex items-start gap-3 line-through decoration-muted/40"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r4.k">연산 장치</span><span data-i18n="why.r4.a">업체 원격 서버 구동</span></li>
             </ul>
           </div>
           <!-- localsub -->
           <div class="rounded-xl border border-accent/40 bg-accent/[0.04] p-7">
             <p class="mb-6 font-mono text-xs tracking-wider text-accent">LocalSub</p>
             <ul class="space-y-4">
-              <li class="flex items-start gap-3"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r1.k">데이터</span><span class="text-lg" data-i18n="why.r1.b">내 PC에서 끝</span></li>
-              <li class="flex items-start gap-3"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r2.k">비용</span><span class="text-lg" data-i18n="why.r2.b">무료, 영원히</span></li>
-              <li class="flex items-start gap-3"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r3.k">인터넷</span><span class="text-lg" data-i18n="why.r3.b">오프라인 OK</span></li>
-              <li class="flex items-start gap-3"><span class="mt-1 font-mono text-xs text-muted">GPU</span><span class="text-lg" data-i18n="why.r4.b">내 GPU 직접 활용</span></li>
+              <li class="flex items-start gap-3"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r1.k">미디어</span><span class="text-lg" data-i18n="why.r1.b">로컬 PC 내부에만 보관</span></li>
+              <li class="flex items-start gap-3"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r2.k">비용</span><span class="text-lg" data-i18n="why.r2.b">비상업용 무료 이용</span></li>
+              <li class="flex items-start gap-3"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r3.k">네트워크</span><span class="text-lg" data-i18n="why.r3.b">설치 후 오프라인 작동</span></li>
+              <li class="flex items-start gap-3"><span class="mt-1 font-mono text-xs text-muted" data-i18n="why.r4.k">연산 장치</span><span class="text-lg" data-i18n="why.r4.b">로컬 CPU 및 GPU</span></li>
             </ul>
           </div>
         </div>
@@ -307,20 +316,20 @@
     <section id="workflow" class="border-t border-line">
       <div class="mx-auto max-w-content px-6 py-20 md:py-28">
         <div class="reveal mb-14 max-w-3xl">
-          <p class="mb-4 font-mono text-xs tracking-[0.2em] text-muted" data-i18n="wf.eyebrow">00:02 — 워크플로우</p>
-          <h2 class="font-display text-3xl font-600 leading-[1.12] tracking-tight text-balance md:text-5xl" data-i18n="wf.title">던지면, 자막이 나온다.</h2>
+          <p class="mb-4 font-mono text-[11px] font-600 leading-[1.3] tracking-[0.06em] text-muted" data-i18n="wf.eyebrow">00:02 — 작업 흐름</p>
+          <h2 class="font-display text-[26px] font-700 leading-[1.2] tracking-[-0.03em] text-balance md:text-[36px]" data-i18n="wf.title">파일 등록부터 이중 자막 내보내기까지</h2>
         </div>
 
         <div class="reveal relative">
           <!-- one continuous track line across the row (desktop); per-item border on smaller screens -->
           <span class="absolute inset-x-0 top-0 hidden h-px bg-line lg:block" aria-hidden="true"></span>
           <div class="grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-6">
-            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:01</div><h3 class="mt-2 font-display text-lg font-600" data-i18n="wf.s1.t">파일 드롭</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s1.d">영상이든 음성이든 끌어다 놓기.</p></div>
-            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:02</div><h3 class="mt-2 font-display text-lg font-600" data-i18n="wf.s2.t">음성 인식</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s2.d">AI가 음성을 텍스트로 바꾼다.</p></div>
-            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:03</div><h3 class="mt-2 font-display text-lg font-600" data-i18n="wf.s3.t">화자 검출</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s3.d">누가 말했는지 자동 구분 (선택).</p></div>
-            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:04</div><h3 class="mt-2 font-display text-lg font-600" data-i18n="wf.s4.t">AI 번역</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s4.d">자막 단위로, 원하는 톤까지 골라서.</p></div>
-            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:05</div><h3 class="mt-2 font-display text-lg font-600" data-i18n="wf.s5.t">편집</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s5.d">파형 위에서 다듬고, 자르고, 붙이기.</p></div>
-            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:06</div><h3 class="mt-2 font-display text-lg font-600" data-i18n="wf.s6.t">내보내기</h3><p class="mt-1.5 font-mono text-xs text-muted">SRT · VTT · ASS · TXT</p></div>
+            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:01</div><h3 class="mt-2 font-display text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="wf.s1.t">파일 등록</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s1.d">미디어 드래그 등록 및 SRT·VTT 번역 지원.</p></div>
+            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:02</div><h3 class="mt-2 font-display text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="wf.s2.t">음성 인식</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s2.d">로컬 Whisper 모델로 음성을 타임코드 자막으로 변환.</p></div>
+            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:03</div><h3 class="mt-2 font-display text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="wf.s3.t">AI 번역</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s3.d">프리셋의 언어쌍과 스타일에 맞춰 한 줄씩 번역.</p></div>
+            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:04</div><h3 class="mt-2 font-display text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="wf.s4.t">품질 검증</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s4.d">줄별 출력 검증. 1회 재시도 후 실패 줄 표시.</p></div>
+            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:05</div><h3 class="mt-2 font-display text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="wf.s5.t">파형 편집</h3><p class="mt-1.5 text-sm text-muted" data-i18n="wf.s5.d">파형에서 자막 수정 및 오류 줄 즉시 재번역.</p></div>
+            <div class="relative border-t border-line pt-7 lg:border-t-0"><span class="wf-node"></span><div class="font-mono text-xs text-muted">00:06</div><h3 class="mt-2 font-display text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="wf.s6.t">내보내기</h3><p class="mt-1.5 font-mono text-xs text-muted">SRT · VTT · ASS · TXT</p></div>
           </div>
         </div>
       </div>
@@ -330,65 +339,65 @@
     <section id="features" class="glow-mid border-t border-line">
       <div class="mx-auto max-w-content px-6 py-20 md:py-28">
         <div class="reveal mb-12 max-w-3xl">
-          <p class="mb-4 font-mono text-xs tracking-[0.2em] text-muted" data-i18n="ft.eyebrow">00:03 — 기능</p>
-          <h2 class="font-display text-3xl font-600 leading-[1.12] tracking-tight text-balance md:text-5xl" data-i18n="ft.title">전문가 도구의 디테일, 클릭 몇 번의 간편함.</h2>
+          <p class="mb-4 font-mono text-[11px] font-600 leading-[1.3] tracking-[0.06em] text-muted" data-i18n="ft.eyebrow">00:03 — 내장 작업 도구</p>
+          <h2 class="font-display text-[26px] font-700 leading-[1.2] tracking-[-0.03em] text-balance md:text-[36px]" data-i18n="ft.title">파형 편집기와 용어집 내장 작업 환경</h2>
         </div>
 
         <div class="reveal grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
           <!-- editor — wide feature -->
           <div class="group bg-ink p-7 transition hover:bg-surface sm:col-span-2 lg:row-span-2">
             <svg class="h-6 w-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h3l2-5 3 11 3-9 2 5h4"/></svg>
-            <h3 class="mt-5 font-display text-2xl font-600" data-i18n="ft.f8.t">자막 편집기</h3>
-            <p class="mt-2 max-w-sm text-muted" data-i18n="ft.f8.d">파형 + 분할/병합 + 키보드 내비게이션. 전문 편집기 부럽지 않은 수준.</p>
+            <h3 class="mt-5 font-display text-[22px] font-700 leading-[1.25] tracking-[-0.03em] md:text-[26px]" data-i18n="ft.f8.t">내장 자막 편집기</h3>
+            <p class="mt-2 max-w-sm text-muted" data-i18n="ft.f8.d">파형과 영상 미리보기를 확인하며 분할·병합, 한 줄 재번역, 자동 저장 지원.</p>
             <!-- editor cover still slot; defaults to the waveform until MEDIA.editor is set -->
             <div id="editor-media" class="mt-8"><div class="wave h-10 opacity-80" aria-hidden="true"></div></div>
           </div>
           <div class="group bg-ink p-7 transition hover:bg-surface">
             <svg class="h-5 w-5 text-muted transition group-hover:text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
-            <h3 class="mt-4 text-lg font-600" data-i18n="ft.f1.t">드래그 앤 드롭</h3>
-            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f1.d">파일 던지고 프리셋 고르면 끝.</p>
+            <h3 class="mt-4 text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="ft.f1.t">드래그 앤 드롭</h3>
+            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f1.d">미디어나 SRT·VTT 파일을 끌어다 놓고 프리셋 지정.</p>
             <div class="feature-media" data-media="dragdrop"></div>
           </div>
           <div class="group bg-ink p-7 transition hover:bg-surface">
             <svg class="h-5 w-5 text-muted transition group-hover:text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7l5-3v16l-5-3V7zM14 7a4 4 0 010 10M17.5 4.5a8 8 0 010 15"/></svg>
-            <h3 class="mt-4 text-lg font-600" data-i18n="ft.f2.t">번역 프리셋</h3>
-            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f2.d">언어쌍 · 스타일 · 용어를 저장해 재사용.</p>
+            <h3 class="mt-4 text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="ft.f2.t">번역 프리셋</h3>
+            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f2.d">언어 쌍, 스타일, 모델, 용어집 설정을 저장해 재사용.</p>
             <div class="feature-media" data-media="presets"></div>
           </div>
           <div class="group bg-ink p-7 transition hover:bg-surface">
             <svg class="h-5 w-5 text-muted transition group-hover:text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 4h11l3 3v13H5z M9 9h7M9 13h7M9 17h4"/></svg>
-            <h3 class="mt-4 text-lg font-600" data-i18n="ft.f3.t">용어사전</h3>
-            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f3.d">고유명사 번역을 직접 정의, CSV 일괄 입력.</p>
+            <h3 class="mt-4 text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="ft.f3.t">용어집</h3>
+            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f3.d">고유명사 번역을 고정하며 CSV 가져오기와 편집기 직접 추가 가능.</p>
             <div class="feature-media" data-media="vocab"></div>
           </div>
           <div class="group bg-ink p-7 transition hover:bg-surface">
-            <svg class="h-5 w-5 text-muted transition group-hover:text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.2"/><path d="M3 19a6 6 0 0112 0M14.5 19a4.5 4.5 0 016.5-4"/></svg>
-            <h3 class="mt-4 text-lg font-600" data-i18n="ft.f4.t">화자 검출</h3>
-            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f4.d">누가 말했는지 완전 로컬로 구분.</p>
-            <div class="feature-media" data-media="speaker"></div>
+            <svg class="h-5 w-5 text-muted transition group-hover:text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z M9 12l2 2 4-4"/></svg>
+            <h3 class="mt-4 text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="ft.f4.t">번역 품질 검증</h3>
+            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f4.d">이상 출력은 1회 재시도하며 실패한 줄은 편집기에 표시.</p>
+            <div class="feature-media" data-media="quality"></div>
           </div>
           <div class="group bg-ink p-7 transition hover:bg-surface">
             <svg class="h-5 w-5 text-muted transition group-hover:text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
-            <h3 class="mt-4 text-lg font-600" data-i18n="ft.f5.t">일괄 처리</h3>
-            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f5.d">파일 여러 개를 큐에 넣고 자동 처리.</p>
+            <h3 class="mt-4 text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="ft.f5.t">일괄 대기열</h3>
+            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f5.d">여러 파일을 대기열에 추가하여 순서대로 자동 처리.</p>
             <div class="feature-media" data-media="batch"></div>
           </div>
           <div class="group bg-ink p-7 transition hover:bg-surface">
             <svg class="h-5 w-5 text-muted transition group-hover:text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="6" width="16" height="9" rx="1"/><path d="M8 19h8M9 15v4M15 15v4"/></svg>
-            <h3 class="mt-4 text-lg font-600" data-i18n="ft.f6.t">하드웨어 프로필</h3>
-            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f6.d">Lite · Balanced · Power 자동 추천.</p>
+            <h3 class="mt-4 text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="ft.f6.t">하드웨어 프로필</h3>
+            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f6.d">사양 감지 후 Lite·Balanced·Power 자동 권장.</p>
             <div class="feature-media" data-media="hardware"></div>
           </div>
           <div class="group bg-ink p-7 transition hover:bg-surface">
             <svg class="h-5 w-5 text-muted transition group-hover:text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
-            <h3 class="mt-4 text-lg font-600" data-i18n="ft.f7.t">모델 관리</h3>
-            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f7.d">앱 안에서 모델 탐색 · 다운로드 · 교체.</p>
+            <h3 class="mt-4 text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="ft.f7.t">모델 관리</h3>
+            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f7.d">모델을 탐색해 내려받고 교체하며 SHA-&#8288;256 해시 검증.</p>
             <div class="feature-media" data-media="models"></div>
           </div>
           <div class="group bg-ink p-7 transition hover:bg-surface">
             <svg class="h-5 w-5 text-muted transition group-hover:text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 000 16 4 4 0 000-8 4 4 0 010-8z"/></svg>
-            <h3 class="mt-4 text-lg font-600" data-i18n="ft.f9.t">테마 & 언어</h3>
-            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f9.d">다크 / 라이트, 5개 UI 언어.</p>
+            <h3 class="mt-4 text-[17px] font-600 leading-[1.3] tracking-[-0.02em] md:text-[20px]" data-i18n="ft.f9.t">다국어 및 테마</h3>
+            <p class="mt-1.5 text-sm text-muted" data-i18n="ft.f9.d">5개 언어 UI와 다크·라이트 2종 화면 테마 지원.</p>
             <div class="feature-media" data-media="theme"></div>
           </div>
         </div>
@@ -399,15 +408,20 @@
     <section class="border-t border-line">
       <div class="mx-auto max-w-content px-6 py-20 md:py-28">
         <div class="reveal mb-14 max-w-3xl">
-          <p class="mb-4 font-mono text-xs tracking-[0.2em] text-muted" data-i18n="fm.eyebrow">00:04 — 형식 & 언어</p>
-          <h2 class="font-display text-3xl font-600 leading-[1.12] tracking-tight text-balance md:text-5xl" data-i18n="fm.title">익숙한 형식 그대로, 들어오고 나간다.</h2>
+          <p class="mb-4 font-mono text-[11px] font-600 leading-[1.3] tracking-[0.06em] text-muted" data-i18n="fm.eyebrow">00:04 — 언어 및 포맷</p>
+          <h2 class="font-display text-[26px] font-700 leading-[1.2] tracking-[-0.03em] text-balance md:text-[36px]" data-i18n="fm.title">4개 국어 및 주요 미디어 포맷 처리</h2>
         </div>
 
         <div class="reveal divide-y divide-line border-y border-line">
           <div class="grid gap-4 py-6 md:grid-cols-[200px_1fr]">
             <div class="flex items-baseline gap-3"><span class="font-mono text-xs text-accent">04:01</span><p class="font-mono text-xs tracking-wider text-muted" data-i18n="fm.input">입력</p></div>
-            <div class="flex flex-wrap gap-2 font-mono text-xs">
-              <span class="rounded border border-line px-2.5 py-1">MP4</span><span class="rounded border border-line px-2.5 py-1">MKV</span><span class="rounded border border-line px-2.5 py-1">AVI</span><span class="rounded border border-line px-2.5 py-1">MOV</span><span class="rounded border border-line px-2.5 py-1">WebM</span><span class="rounded border border-line px-2.5 py-1">MP3</span><span class="rounded border border-line px-2.5 py-1">WAV</span><span class="rounded border border-line px-2.5 py-1">M4A</span><span class="rounded border border-line px-2.5 py-1">FLAC</span>
+            <div>
+              <div class="flex flex-wrap gap-2 font-mono text-xs">
+                <span class="rounded border border-line px-2.5 py-1">MP4</span><span class="rounded border border-line px-2.5 py-1">MKV</span><span class="rounded border border-line px-2.5 py-1">AVI</span><span class="rounded border border-line px-2.5 py-1">MOV</span><span class="rounded border border-line px-2.5 py-1">WebM</span><span class="rounded border border-line px-2.5 py-1">MP3</span><span class="rounded border border-line px-2.5 py-1">WAV</span><span class="rounded border border-line px-2.5 py-1">M4A</span><span class="rounded border border-line px-2.5 py-1">FLAC</span><span class="rounded border border-line px-2.5 py-1">OGG</span><span class="rounded border border-line px-2.5 py-1">AAC</span>
+                <!-- subtitle imports: translate only, so set apart with a dashed border -->
+                <span class="rounded border border-dashed border-white/25 px-2.5 py-1 text-muted">SRT</span><span class="rounded border border-dashed border-white/25 px-2.5 py-1 text-muted">VTT</span>
+              </div>
+              <p class="mt-3 text-sm text-muted" data-i18n="fm.input.note">SRT / VTT 파일은 음성 인식 없이 번역만 처리.</p>
             </div>
           </div>
           <div class="grid gap-4 py-6 md:grid-cols-[200px_1fr]">
@@ -416,19 +430,20 @@
               <div class="flex flex-wrap gap-2 font-mono text-xs">
                 <span class="rounded border border-accent/40 px-2.5 py-1 text-accent">SRT</span><span class="rounded border border-accent/40 px-2.5 py-1 text-accent">VTT</span><span class="rounded border border-accent/40 px-2.5 py-1 text-accent">ASS</span><span class="rounded border border-accent/40 px-2.5 py-1 text-accent">TXT</span>
               </div>
-              <p class="mt-3 text-sm text-muted" data-i18n="fm.output.note">원문 + 번역 이중 자막(Dual Subtitle)도 지원합니다.</p>
+              <p class="mt-3 text-sm text-muted" data-i18n="fm.output.note">번역 내보내기는 원문과 번역문을 함께 담는 이중 자막 지원.</p>
             </div>
           </div>
           <div class="grid gap-4 py-6 md:grid-cols-[200px_1fr]">
-            <div class="flex items-baseline gap-3"><span class="font-mono text-xs text-accent">04:03</span><p class="font-mono text-xs tracking-wider text-muted" data-i18n="fm.langs">음성 인식 — 8개 언어</p></div>
-            <div class="flex flex-wrap gap-2 font-mono text-xs text-muted">
-              <span class="rounded border border-line px-2.5 py-1">auto</span><span class="rounded border border-line px-2.5 py-1">en</span><span class="rounded border border-line px-2.5 py-1">ko</span><span class="rounded border border-line px-2.5 py-1">ja</span><span class="rounded border border-line px-2.5 py-1">zh</span><span class="rounded border border-line px-2.5 py-1">es</span><span class="rounded border border-line px-2.5 py-1">fr</span><span class="rounded border border-line px-2.5 py-1">de</span>
+            <div class="flex items-baseline gap-3"><span class="font-mono text-xs text-accent">04:03</span><p class="font-mono text-xs tracking-wider text-muted" data-i18n="fm.langs">번역 언어 (4개)</p></div>
+            <!-- each language in its own script, so the chips read the same in KO and EN -->
+            <div class="flex flex-wrap gap-2 text-sm">
+              <span class="rounded border border-line px-2.5 py-1">한국어</span><span class="rounded border border-line px-2.5 py-1">English</span><span class="rounded border border-line px-2.5 py-1" lang="ja">日本語</span><span class="rounded border border-line px-2.5 py-1" lang="zh">中文</span>
             </div>
           </div>
           <div class="grid gap-4 py-6 md:grid-cols-[200px_1fr]">
-            <div class="flex items-baseline gap-3"><span class="font-mono text-xs text-accent">04:04</span><p class="font-mono text-xs tracking-wider text-muted" data-i18n="fm.styles">번역 스타일 — 4종</p></div>
+            <div class="flex items-baseline gap-3"><span class="font-mono text-xs text-accent">04:04</span><p class="font-mono text-xs tracking-wider text-muted" data-i18n="fm.styles">번역 스타일 (3종)</p></div>
             <div class="flex flex-wrap gap-3 text-sm">
-              <span data-i18n="fm.st1">직역</span><span class="text-muted">·</span><span data-i18n="fm.st2">자연스러운</span><span class="text-muted">·</span><span data-i18n="fm.st3">구어체</span><span class="text-muted">·</span><span data-i18n="fm.st4">격식체</span>
+              <span data-i18n="fm.st1">자연스럽게</span><span class="text-muted">·</span><span data-i18n="fm.st2">존댓말</span><span class="text-muted">·</span><span data-i18n="fm.st3">반말</span>
             </div>
           </div>
         </div>
@@ -439,9 +454,9 @@
     <section class="border-t border-line">
       <div class="mx-auto grid max-w-content gap-12 px-6 py-20 md:grid-cols-[1fr_1.5fr] md:items-start md:py-28">
         <div class="reveal md:sticky md:top-28">
-          <p class="mb-4 font-mono text-xs tracking-[0.2em] text-muted" data-i18n="req.eyebrow">00:05 — 시스템 요구사항</p>
-          <h2 class="font-display text-3xl font-600 leading-[1.12] tracking-tight text-balance md:text-4xl" data-i18n="req.title">가벼운 PC에서도 동작, 빠른 PC에선 더 빠르게.</h2>
-          <p class="mt-5 text-sm text-muted" data-i18n="req.note">GPU가 없어도 CPU만으로 충분히 동작합니다 — 있으면 확실히 빠릅니다. 현재 Windows 전용이며, macOS · Linux는 향후 지원 예정입니다.</p>
+          <p class="mb-4 font-mono text-[11px] font-600 leading-[1.3] tracking-[0.06em] text-muted" data-i18n="req.eyebrow">00:05 — 하드웨어 사양</p>
+          <h2 class="font-display text-[26px] font-700 leading-[1.2] tracking-[-0.03em] text-balance md:text-[36px]" data-i18n="req.title">사양 감지 기반 프로필 자동 권장</h2>
+          <p class="mt-5 text-sm text-muted" data-i18n="req.note">CPU 단독 구동 가능하며 NVIDIA GPU 사용 시 속도 향상. 설치 마법사가 RAM·GPU를 감지해 프로필 권장. 현재 Windows 전용이며 macOS와 Linux 지원 예정.</p>
         </div>
 
         <div class="reveal overflow-hidden rounded-xl border border-line">
@@ -454,10 +469,10 @@
               </tr>
             </thead>
             <tbody>
-              <tr class="border-b border-line"><td class="px-5 py-4 font-display text-base font-600">OS</td><td class="px-5 py-4 text-muted">Windows 10 (64-bit)</td><td class="px-5 py-4">Windows 11</td></tr>
+              <tr class="border-b border-line"><td class="px-5 py-4 font-display text-base font-600">OS</td><td class="px-5 py-4 text-muted" data-i18n="req.os.min">Windows 10 (64비트)</td><td class="px-5 py-4">Windows 11</td></tr>
               <tr class="border-b border-line"><td class="px-5 py-4 font-display text-base font-600">RAM</td><td class="px-5 py-4 text-muted">8 GB</td><td class="px-5 py-4">16 GB+</td></tr>
-              <tr class="border-b border-line"><td class="px-5 py-4 font-display text-base font-600" data-i18n="req.disk">디스크</td><td class="px-5 py-4 text-muted" data-i18n="req.disk.min">4 GB 여유</td><td class="px-5 py-4" data-i18n="req.disk.rec">10 GB+</td></tr>
-              <tr><td class="px-5 py-4 font-display text-base font-600">GPU</td><td class="px-5 py-4 text-muted" data-i18n="req.gpu.min">없어도 됨</td><td class="px-5 py-4">NVIDIA 4 GB+ VRAM</td></tr>
+              <tr class="border-b border-line"><td class="px-5 py-4 font-display text-base font-600" data-i18n="req.disk">디스크</td><td class="px-5 py-4 text-muted" data-i18n="req.disk.min">4 GB 여유</td><td class="px-5 py-4" data-i18n="req.disk.rec">10 GB+ 여유</td></tr>
+              <tr><td class="px-5 py-4 font-display text-base font-600">GPU</td><td class="px-5 py-4 text-muted" data-i18n="req.gpu.min">불필요(CPU)</td><td class="px-5 py-4">NVIDIA 4 GB+ VRAM</td></tr>
             </tbody>
           </table>
         </div>
@@ -468,58 +483,66 @@
     <section id="faq" class="border-t border-line">
       <div class="mx-auto max-w-content px-6 py-20 md:py-28">
         <div class="reveal mb-12 max-w-3xl">
-          <p class="mb-4 font-mono text-xs tracking-[0.2em] text-muted" data-i18n="faq.eyebrow">00:06 — FAQ</p>
-          <h2 class="font-display text-3xl font-600 leading-[1.12] tracking-tight text-balance md:text-5xl" data-i18n="faq.title">자주 묻는 질문.</h2>
+          <p class="mb-4 font-mono text-[11px] font-600 leading-[1.3] tracking-[0.06em] text-muted" data-i18n="faq.eyebrow">00:06 — 질문 및 기준</p>
+          <h2 class="font-display text-[26px] font-700 leading-[1.2] tracking-[-0.03em] text-balance md:text-[36px]" data-i18n="faq.title">오프라인 작동 및 비상업용 이용 기준</h2>
         </div>
 
         <div class="reveal divide-y divide-line border-y border-line">
           <div class="faq-item" data-open="false">
             <button class="faq-q flex w-full items-center gap-4 py-5 text-left" aria-expanded="false">
               <span class="faq-tc font-mono text-xs text-muted">Q.01</span>
-              <span class="flex-1 font-display text-lg font-500" data-i18n="faq.q1">GPU가 없으면 많이 느린가요?</span>
+              <span class="flex-1 font-display text-[16px] font-600 tracking-[-0.02em] md:text-[17px]" data-i18n="faq.q1">GPU 미장착 환경 구동</span>
               <svg class="faq-plus h-5 w-5 shrink-0 text-muted transition-transform" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 4v12M4 10h12"/></svg>
             </button>
-            <div class="faq-panel pb-6 pl-12 pr-8 text-muted" data-i18n="faq.a1">CPU만으로도 충분히 동작합니다. GPU가 있으면 음성 인식과 번역 속도가 눈에 띄게 빨라집니다. 설치 시 하드웨어 프로필(Lite · Balanced · Power)을 자동으로 추천해 드립니다.</div>
+            <div class="faq-panel pb-6 pl-12 pr-8 text-[14px] leading-[1.65] text-muted md:text-[15px]" data-i18n="faq.a1">CPU 단독 환경에서도 모든 기능 정상 동작. 시스템 사양 감지 후 Lite 프로필 자동 권장. NVIDIA GPU 탑재 시 음성 인식과 번역 속도 향상.</div>
           </div>
           <div class="faq-item" data-open="false">
             <button class="faq-q flex w-full items-center gap-4 py-5 text-left" aria-expanded="false">
               <span class="faq-tc font-mono text-xs text-muted">Q.02</span>
-              <span class="flex-1 font-display text-lg font-500" data-i18n="faq.q2">인터넷이 정말 필요 없나요?</span>
+              <span class="flex-1 font-display text-[16px] font-600 tracking-[-0.02em] md:text-[17px]" data-i18n="faq.q2">인터넷 연결 필요 시점</span>
               <svg class="faq-plus h-5 w-5 shrink-0 text-muted transition-transform" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 4v12M4 10h12"/></svg>
             </button>
-            <div class="faq-panel pb-6 pl-12 pr-8 text-muted" data-i18n="faq.a2">모든 AI 처리는 내 PC에서 이뤄집니다. 인터넷은 초기 설정에만 필요합니다 — 앱 다운로드, 첫 실행 시 AI 엔진 자동 설치, 모델 다운로드. 그 이후로는 완전한 오프라인 사용이 가능합니다.</div>
+            <div class="faq-panel pb-6 pl-12 pr-8 text-[14px] leading-[1.65] text-muted md:text-[15px]" data-i18n="faq.a2">엔진 설치와 AI 모델·FFmpeg 다운로드, 설정 화면의 수동 업데이트 확인에만 연결 필요. 그 밖의 자막 작업은 모두 오프라인 단독 처리.</div>
           </div>
           <div class="faq-item" data-open="false">
             <button class="faq-q flex w-full items-center gap-4 py-5 text-left" aria-expanded="false">
               <span class="faq-tc font-mono text-xs text-muted">Q.03</span>
-              <span class="flex-1 font-display text-lg font-500" data-i18n="faq.q3">영상 길이에 제한이 있나요?</span>
+              <span class="flex-1 font-display text-[16px] font-600 tracking-[-0.02em] md:text-[17px]" data-i18n="faq.q3">외부 데이터 전송 여부</span>
               <svg class="faq-plus h-5 w-5 shrink-0 text-muted transition-transform" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 4v12M4 10h12"/></svg>
             </button>
-            <div class="faq-panel pb-6 pl-12 pr-8 text-muted" data-i18n="faq.a3">소프트웨어 자체의 길이 제한은 없습니다. 다만 길수록 처리 시간과 메모리 사용량이 늘어나므로, PC 사양에 따라 체감 한계가 달라질 수 있습니다.</div>
+            <div class="faq-panel pb-6 pl-12 pr-8 text-[14px] leading-[1.65] text-muted md:text-[15px]" data-i18n="faq.a3">모든 처리는 127.0.0.1 로컬 엔진 내부에서 완결. 영상, 오디오, 자막 데이터 일체는 외부로 전송되지 않고 로컬 PC에만 저장.</div>
           </div>
           <div class="faq-item" data-open="false">
             <button class="faq-q flex w-full items-center gap-4 py-5 text-left" aria-expanded="false">
               <span class="faq-tc font-mono text-xs text-muted">Q.04</span>
-              <span class="flex-1 font-display text-lg font-500" data-i18n="faq.q4">자막 정확도는 어느 정도인가요?</span>
+              <span class="flex-1 font-display text-[16px] font-600 tracking-[-0.02em] md:text-[17px]" data-i18n="faq.q4">라이선스 및 이용 범위</span>
               <svg class="faq-plus h-5 w-5 shrink-0 text-muted transition-transform" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 4v12M4 10h12"/></svg>
             </button>
-            <div class="faq-panel pb-6 pl-12 pr-8 text-muted" data-i18n="faq.a4">OpenAI Whisper 기반 음성 인식 엔진을 사용하며, 음질이 좋은 영상에서는 상당히 높은 정확도를 보입니다. 결과물은 내장 편집기에서 바로 수정할 수 있습니다.</div>
+            <div class="faq-panel pb-6 pl-12 pr-8 text-[14px] leading-[1.65] text-muted md:text-[15px]" data-i18n="faq.a4">PolyForm Noncommercial 1.0.0 라이선스 적용. 비상업 용도에 한해 무료 이용 가능하며 상업 목적 이용은 허용 범위 밖. 전체 소스 코드는 깃허브 저장소에 공개 중.</div>
           </div>
           <div class="faq-item" data-open="false">
             <button class="faq-q flex w-full items-center gap-4 py-5 text-left" aria-expanded="false">
               <span class="faq-tc font-mono text-xs text-muted">Q.05</span>
-              <span class="flex-1 font-display text-lg font-500" data-i18n="faq.q5">macOS나 Linux에서도 쓸 수 있나요?</span>
+              <span class="flex-1 font-display text-[16px] font-600 tracking-[-0.02em] md:text-[17px]" data-i18n="faq.q5">음성 인식 정확도</span>
               <svg class="faq-plus h-5 w-5 shrink-0 text-muted transition-transform" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 4v12M4 10h12"/></svg>
             </button>
-            <div class="faq-panel pb-6 pl-12 pr-8 text-muted" data-i18n="faq.a5">현재는 Windows 전용입니다. 내부적으로 크로스플랫폼 대응 코드가 준비되어 있어, 향후 macOS · Linux 지원이 계획되어 있습니다.</div>
+            <div class="faq-panel pb-6 pl-12 pr-8 text-[14px] leading-[1.65] text-muted md:text-[15px]" data-i18n="faq.a5">인식 정확도는 원본 오디오 품질과 선택한 Whisper 모델 크기에 따라 변동. 음성 감지 기능으로 무음 구간을 자동 제외하며 상위 모델 선택 시 정확도 향상.</div>
           </div>
           <div class="faq-item" data-open="false">
             <button class="faq-q flex w-full items-center gap-4 py-5 text-left" aria-expanded="false">
               <span class="faq-tc font-mono text-xs text-muted">Q.06</span>
-              <span class="flex-1 font-display text-lg font-500" data-i18n="faq.q6">내 데이터가 외부로 전송되나요?</span>
+              <span class="flex-1 font-display text-[16px] font-600 tracking-[-0.02em] md:text-[17px]" data-i18n="faq.q6">미디어 길이 제한</span>
               <svg class="faq-plus h-5 w-5 shrink-0 text-muted transition-transform" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 4v12M4 10h12"/></svg>
             </button>
-            <div class="faq-panel pb-6 pl-12 pr-8 text-muted" data-i18n="faq.a6">아닙니다. 영상 · 음성 · 자막은 전부 localhost 안에서 처리되며 어디로도 전송되지 않습니다. 외부로 나가는 통신은 AI 모델과 FFmpeg를 내려받을 때, 그리고 업데이트를 확인할 때뿐입니다.</div>
+            <div class="faq-panel pb-6 pl-12 pr-8 text-[14px] leading-[1.65] text-muted md:text-[15px]" data-i18n="faq.a6">입력 파일의 재생 시간 상한선 미설정. 60분 초과 미디어는 30분 단위로 자동 분할 처리. 미디어 길이에 비례해 작업 시간만 증가.</div>
+          </div>
+          <div class="faq-item" data-open="false">
+            <button class="faq-q flex w-full items-center gap-4 py-5 text-left" aria-expanded="false">
+              <span class="faq-tc font-mono text-xs text-muted">Q.07</span>
+              <span class="flex-1 font-display text-[16px] font-600 tracking-[-0.02em] md:text-[17px]" data-i18n="faq.q7">macOS · Linux 지원</span>
+              <svg class="faq-plus h-5 w-5 shrink-0 text-muted transition-transform" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 4v12M4 10h12"/></svg>
+            </button>
+            <div class="faq-panel pb-6 pl-12 pr-8 text-[14px] leading-[1.65] text-muted md:text-[15px]" data-i18n="faq.a7">현재 64비트 Windows 10 및 11 환경만 정식 지원. macOS와 Linux 버전은 향후 지원 예정. 출시 일정은 현재 미정 상태.</div>
           </div>
         </div>
       </div>
@@ -528,14 +551,14 @@
     <!-- ============================= DOWNLOAD BAND ============================= -->
     <section id="download" class="glow-top border-t border-line">
       <div class="mx-auto max-w-content px-6 py-24 text-center md:py-32">
-        <p class="reveal font-mono text-sm text-accent" data-i18n="cta.flow">다운로드 → 설치 → 마법사 → 끝</p>
-        <h2 class="reveal mx-auto mt-5 max-w-3xl font-display text-4xl font-600 leading-[1.08] tracking-tight text-balance md:text-6xl" data-i18n="cta.title">Python? 커맨드라인? 필요 없습니다.</h2>
-        <p class="reveal mx-auto mt-6 max-w-xl text-lg text-muted" data-i18n="cta.sub">설치 마법사가 하드웨어를 감지하고, 프로필을 추천하고, 모델까지 받아줍니다.</p>
+        <p class="reveal font-mono text-sm text-accent" data-i18n="cta.flow">다운로드 → 설치 → 마법사 설정 → 준비 완료</p>
+        <h2 class="reveal mx-auto mt-5 max-w-3xl font-display text-[30px] font-700 leading-[1.15] tracking-[-0.035em] text-balance md:text-[44px]" data-i18n="cta.title">명령줄 입력 없는 데스크톱 실행 환경</h2>
+        <p class="reveal mx-auto mt-6 max-w-xl text-[14px] leading-[1.6] tracking-[-0.015em] text-muted md:text-[15px]" data-i18n="cta.sub">출시 준비 중이며 깃허브 저장소에서 코드를 공개 중.</p>
 
         <div class="reveal mt-10 flex flex-col items-center gap-3">
-          <a href="#" class="download-link rounded-lg bg-accent px-8 py-3.5 text-lg font-500 text-ink transition hover:brightness-110" data-i18n="dl.ready">Windows용 다운로드</a>
+          <a href="#" class="download-link rounded-lg bg-accent px-8 py-3.5 text-lg font-500 text-ink transition hover:brightness-110" data-i18n="dl.ready">Windows 다운로드</a>
           <p class="font-mono text-xs text-muted">
-            <span data-i18n="hero.os">Windows 10 / 11 · 64-bit</span>
+            <span data-i18n="hero.os">Windows 10 / 11 (64비트)</span>
             <span class="dl-version hidden"></span>
             <span class="dl-size hidden"></span>
           </p>
@@ -549,7 +572,7 @@
     <div class="mx-auto flex max-w-content flex-col items-center justify-between gap-5 px-6 py-10 sm:flex-row">
       <div class="flex items-center gap-2.5">
         <img src="assets/logo.png" alt="" class="h-6 w-6 opacity-80" />
-        <span class="font-mono text-sm text-muted" data-i18n="footer.tagline">내 영상. 내 언어. 내 컴퓨터.</span>
+        <span class="font-mono text-sm text-muted" data-i18n="footer.tagline">내 컴퓨터에서 끝내는 로컬 AI 자막</span>
       </div>
       <div class="flex items-center gap-6 text-sm text-muted">
         <a href="#" class="repo-link ul-slide transition hover:text-fg" target="_blank" rel="noopener">GitHub</a>
@@ -591,7 +614,7 @@
       heroPoster: "assets/editor.png",
       editor:     "assets/editor.png",
       features: {
-        speaker:  "assets/speaker.png",
+        quality:  "assets/speaker.png", // subtitle list with a status badge per line
         batch:    "assets/batch.png",
         models:   "assets/models.png",
         dragdrop: "assets/dragdrop.png",
@@ -639,116 +662,234 @@
 
     const I18N = {
       ko: {
-        "nav.why": "왜", "nav.features": "기능", "nav.workflow": "워크플로우", "nav.faq": "FAQ",
-        "dl.ready": "Windows용 다운로드", "dl.soon": "곧 출시",
-        "hero.eyebrow": "100% 로컬 · 클라우드 없음 · 구독 없음",
-        "hero.t1": "완전한 로컬,", "hero.t2": "AI 자막 생성기",
-        "hero.sub": "생성부터 번역까지, 100% 내 컴퓨터에서. 무료로.",
-        "hero.repo": "GitHub에서 보기", "hero.os": "Windows 10 / 11 · 64-bit", "cue.speaker": "화자 1",
-        "why.eyebrow": "00:01 — 왜 LocalSub?", "why.title": "내 영상은 내 PC를 벗어나지 않습니다.",
-        "why.legacy": "기존 클라우드 서비스",
-        "why.r1.k": "데이터", "why.r1.a": "남의 서버로 업로드", "why.r1.b": "내 PC 안에만",
-        "why.r2.k": "비용", "why.r2.a": "월 구독 · 분당 과금", "why.r2.b": "무료, 영원히",
-        "why.r3.k": "인터넷", "why.r3.a": "항상 필요", "why.r3.b": "오프라인에서도",
-        "why.r4.a": "서버에 의존", "why.r4.b": "내 GPU를 직접",
-        "wf.eyebrow": "00:02 — 워크플로우", "wf.title": "놓으면, 끝.",
-        "wf.s1.t": "파일 드롭", "wf.s1.d": "영상이든 음성이든 끌어다 놓습니다.",
-        "wf.s2.t": "음성 인식", "wf.s2.d": "AI가 음성을 텍스트로 옮깁니다.",
-        "wf.s3.t": "화자 검출", "wf.s3.d": "누가 말했는지 자동으로 구분합니다 (선택).",
-        "wf.s4.t": "AI 번역", "wf.s4.d": "자막 한 줄씩, 원하는 톤까지 골라 번역합니다.",
-        "wf.s5.t": "편집", "wf.s5.d": "파형 위에서 다듬고, 자르고, 붙입니다.",
+        "nav.why": "로컬 처리",
+        "nav.features": "내장 기능",
+        "nav.workflow": "작업 흐름",
+        "nav.faq": "FAQ",
+
+        "dl.ready": "Windows 다운로드",
+        "dl.soon": "곧 출시",
+
+        "hero.eyebrow": "로컬 AI 자막기 · 비상업용 무료 · 윈도우 64비트",
+        "hero.t1": "자막 생성과 번역",
+        "hero.t2": "내 컴퓨터 안에서",
+        "hero.sub": "내 PC에서만 모델을 구동하여 완성하는 자막 작업.",
+        "hero.repo": "GitHub 저장소",
+        "hero.os": "Windows 10 / 11 (64비트)",
+
+        "cue.speaker": "번역됨",
+
+        "why.eyebrow": "00:01 — 로컬 아키텍처",
+        "why.title": "외부 전송 없는 로컬 단독 처리",
+        "why.legacy": "클라우드 자막 서비스",
+        "why.r1.k": "미디어",
+        "why.r1.a": "외부 서버로 업로드",
+        "why.r2.k": "비용",
+        "why.r2.a": "월간 구독 또는 분당 과금",
+        "why.r3.k": "네트워크",
+        "why.r3.a": "작업 시 상시 연결 필수",
+        "why.r4.k": "연산 장치",
+        "why.r4.a": "업체 원격 서버 구동",
+        "why.r1.b": "로컬 PC 내부에만 보관",
+        "why.r2.b": "비상업용 무료 이용",
+        "why.r3.b": "설치 후 오프라인 작동",
+        "why.r4.b": "로컬 CPU 및 GPU",
+
+        "wf.eyebrow": "00:02 — 작업 흐름",
+        "wf.title": "파일 등록부터 이중 자막 내보내기까지",
+        "wf.s1.t": "파일 등록",
+        "wf.s1.d": "미디어 드래그 등록 및 SRT·VTT 번역 지원.",
+        "wf.s2.t": "음성 인식",
+        "wf.s2.d": "로컬 Whisper 모델로 음성을 타임코드 자막으로 변환.",
+        "wf.s3.t": "AI 번역",
+        "wf.s3.d": "프리셋의 언어쌍과 스타일에 맞춰 한 줄씩 번역.",
+        "wf.s4.t": "품질 검증",
+        "wf.s4.d": "줄별 출력 검증. 1회 재시도 후 실패 줄 표시.",
+        "wf.s5.t": "파형 편집",
+        "wf.s5.d": "파형에서 자막 수정 및 오류 줄 즉시 재번역.",
         "wf.s6.t": "내보내기",
-        "ft.eyebrow": "00:03 — 기능", "ft.title": "전문가 도구를, 가장 쉽게.",
-        "ft.f1.t": "드래그 앤 드롭", "ft.f1.d": "파일을 끌어다 놓고 프리셋만 고르면 됩니다.",
-        "ft.f2.t": "번역 프리셋", "ft.f2.d": "언어쌍과 스타일, 용어집을 저장해 그대로 다시 씁니다.",
-        "ft.f3.t": "용어사전", "ft.f3.d": "고유명사 번역을 직접 정해두고, CSV로 한꺼번에 불러옵니다.",
-        "ft.f4.t": "화자 검출", "ft.f4.d": "누가 말했는지, 전부 로컬에서 구분해 라벨을 붙입니다.",
-        "ft.f5.t": "일괄 처리", "ft.f5.d": "여러 파일을 큐에 넣어두면, 알아서 차례로 처리합니다.",
-        "ft.f6.t": "하드웨어 프로필", "ft.f6.d": "내 PC에 맞춰 Lite · Balanced · Power를 자동으로 추천합니다.",
-        "ft.f7.t": "모델 관리", "ft.f7.d": "앱 안에서 모델을 찾고, 받고, 바꿔 끼웁니다.",
-        "ft.f8.t": "자막 편집기", "ft.f8.d": "파형, 분할·병합, 키보드 내비게이션까지 — 전문 편집기가 부럽지 않습니다.",
-        "ft.f9.t": "테마 & 언어", "ft.f9.d": "다크와 라이트, 한국어 · English · 日本語 · 简体中文 · Español.",
-        "fm.eyebrow": "00:04 — 형식 & 언어", "fm.title": "쓰던 형식 그대로.",
-        "fm.input": "입력", "fm.output": "출력", "fm.output.note": "원문 + 번역 이중 자막(Dual Subtitle)도 지원합니다.",
-        "fm.langs": "음성 인식 — 8개 언어", "fm.styles": "번역 스타일 — 4종",
-        "fm.st1": "직역", "fm.st2": "자연스러운", "fm.st3": "구어체", "fm.st4": "격식체",
-        "req.eyebrow": "00:05 — 시스템 요구사항", "req.title": "가벼운 PC에서도 무리 없이, 빠른 PC에선 더 빠르게.",
-        "req.min": "최소", "req.rec": "권장",
-        "req.disk": "디스크", "req.disk.min": "4 GB 여유", "req.disk.rec": "10 GB+", "req.gpu.min": "없어도 됨",
-        "req.note": "GPU가 없어도 CPU만으로 충분히 동작합니다 — 있으면 확실히 빠릅니다. 현재 Windows 전용이며, macOS · Linux는 향후 지원 예정입니다.",
-        "faq.eyebrow": "00:06 — FAQ", "faq.title": "자주 묻는 질문.",
-        "faq.q1": "GPU가 없으면 많이 느린가요?",
-        "faq.a1": "CPU만으로도 충분히 동작합니다. GPU가 있으면 음성 인식과 번역 속도가 눈에 띄게 빨라집니다. 설치 시 하드웨어 프로필(Lite · Balanced · Power)을 자동으로 추천해 드립니다.",
-        "faq.q2": "인터넷이 정말 필요 없나요?",
-        "faq.a2": "모든 AI 처리는 내 PC에서 이뤄집니다. 인터넷은 초기 설정에만 필요합니다 — 앱 다운로드, 첫 실행 시 AI 엔진 자동 설치, 모델 다운로드. 그 이후로는 완전한 오프라인 사용이 가능합니다.",
-        "faq.q3": "영상 길이에 제한이 있나요?",
-        "faq.a3": "소프트웨어 자체의 길이 제한은 없습니다. 다만 길수록 처리 시간과 메모리 사용량이 늘어나므로, PC 사양에 따라 체감 한계가 달라질 수 있습니다.",
-        "faq.q4": "자막 정확도는 어느 정도인가요?",
-        "faq.a4": "OpenAI Whisper 기반 음성 인식 엔진을 사용하며, 음질이 좋은 영상에서는 상당히 높은 정확도를 보입니다. 결과물은 내장 편집기에서 바로 수정할 수 있습니다.",
-        "faq.q5": "macOS나 Linux에서도 쓸 수 있나요?",
-        "faq.a5": "현재는 Windows 전용입니다. 내부적으로 크로스플랫폼 대응 코드가 준비되어 있어, 향후 macOS · Linux 지원이 계획되어 있습니다.",
-        "faq.q6": "내 데이터가 외부로 전송되나요?",
-        "faq.a6": "아닙니다. 영상 · 음성 · 자막은 전부 localhost 안에서 처리되며 어디로도 전송되지 않습니다. 외부로 나가는 통신은 AI 모델과 FFmpeg를 내려받을 때, 그리고 업데이트를 확인할 때뿐입니다.",
-        "cta.flow": "다운로드 → 설치 → 마법사 → 완료",
-        "cta.title": "Python? 커맨드라인? 필요 없습니다.",
-        "cta.sub": "설치 마법사가 하드웨어를 감지하고, 프로필을 추천하고, 모델까지 받아줍니다.",
-        "footer.tagline": "영상도 자막도, 내 컴퓨터를 떠나지 않습니다.",
+
+        "ft.eyebrow": "00:03 — 내장 작업 도구",
+        "ft.title": "파형 편집기와 용어집 내장 작업 환경",
+        "ft.f8.t": "내장 자막 편집기",
+        "ft.f8.d": "파형과 영상 미리보기를 확인하며 분할·병합, 한 줄 재번역, 자동 저장 지원.",
+        "ft.f1.t": "드래그 앤 드롭",
+        "ft.f1.d": "미디어나 SRT·VTT 파일을 끌어다 놓고 프리셋 지정.",
+        "ft.f2.t": "번역 프리셋",
+        "ft.f2.d": "언어 쌍, 스타일, 모델, 용어집 설정을 저장해 재사용.",
+        "ft.f3.t": "용어집",
+        "ft.f3.d": "고유명사 번역을 고정하며 CSV 가져오기와 편집기 직접 추가 가능.",
+        "ft.f4.t": "번역 품질 검증",
+        "ft.f4.d": "이상 출력은 1회 재시도하며 실패한 줄은 편집기에 표시.",
+        "ft.f5.t": "일괄 대기열",
+        "ft.f5.d": "여러 파일을 대기열에 추가하여 순서대로 자동 처리.",
+        "ft.f6.t": "하드웨어 프로필",
+        "ft.f6.d": "사양 감지 후 Lite·Balanced·Power 자동 권장.",
+        "ft.f7.t": "모델 관리",
+        "ft.f7.d": "모델을 탐색해 내려받고 교체하며 SHA-\u2060256 해시 검증.",
+        "ft.f9.t": "다국어 및 테마",
+        "ft.f9.d": "5개 언어 UI와 다크·라이트 2종 화면 테마 지원.",
+
+        "fm.eyebrow": "00:04 — 언어 및 포맷",
+        "fm.title": "4개 국어 및 주요 미디어 포맷 처리",
+        "fm.input": "입력",
+        "fm.input.note": "SRT / VTT 파일은 음성 인식 없이 번역만 처리.",
+        "fm.output": "출력",
+        "fm.output.note": "번역 내보내기는 원문과 번역문을 함께 담는 이중 자막 지원.",
+        "fm.langs": "번역 언어 (4개)",
+        "fm.styles": "번역 스타일 (3종)",
+        "fm.st1": "자연스럽게",
+        "fm.st2": "존댓말",
+        "fm.st3": "반말",
+
+        "req.eyebrow": "00:05 — 하드웨어 사양",
+        "req.title": "사양 감지 기반 프로필 자동 권장",
+        "req.note": "CPU 단독 구동 가능하며 NVIDIA GPU 사용 시 속도 향상. 설치 마법사가 RAM·GPU를 감지해 프로필 권장. 현재 Windows 전용이며 macOS와 Linux 지원 예정.",
+        "req.min": "최소",
+        "req.rec": "권장",
+        "req.os.min": "Windows 10 (64비트)",
+        "req.disk": "디스크",
+        "req.disk.min": "4 GB 여유",
+        "req.disk.rec": "10 GB+ 여유",
+        "req.gpu.min": "불필요(CPU)",
+
+        "faq.eyebrow": "00:06 — 질문 및 기준",
+        "faq.title": "오프라인 작동 및 비상업용 이용 기준",
+        "faq.q1": "GPU 미장착 환경 구동",
+        "faq.a1": "CPU 단독 환경에서도 모든 기능 정상 동작. 시스템 사양 감지 후 Lite 프로필 자동 권장. NVIDIA GPU 탑재 시 음성 인식과 번역 속도 향상.",
+        "faq.q2": "인터넷 연결 필요 시점",
+        "faq.a2": "엔진 설치와 AI 모델·FFmpeg 다운로드, 설정 화면의 수동 업데이트 확인에만 연결 필요. 그 밖의 자막 작업은 모두 오프라인 단독 처리.",
+        "faq.q3": "외부 데이터 전송 여부",
+        "faq.a3": "모든 처리는 127.0.0.1 로컬 엔진 내부에서 완결. 영상, 오디오, 자막 데이터 일체는 외부로 전송되지 않고 로컬 PC에만 저장.",
+        "faq.q4": "라이선스 및 이용 범위",
+        "faq.a4": "PolyForm Noncommercial 1.0.0 라이선스 적용. 비상업 용도에 한해 무료 이용 가능하며 상업 목적 이용은 허용 범위 밖. 전체 소스 코드는 깃허브 저장소에 공개 중.",
+        "faq.q5": "음성 인식 정확도",
+        "faq.a5": "인식 정확도는 원본 오디오 품질과 선택한 Whisper 모델 크기에 따라 변동. 음성 감지 기능으로 무음 구간을 자동 제외하며 상위 모델 선택 시 정확도 향상.",
+        "faq.q6": "미디어 길이 제한",
+        "faq.a6": "입력 파일의 재생 시간 상한선 미설정. 60분 초과 미디어는 30분 단위로 자동 분할 처리. 미디어 길이에 비례해 작업 시간만 증가.",
+        "faq.q7": "macOS · Linux 지원",
+        "faq.a7": "현재 64비트 Windows 10 및 11 환경만 정식 지원. macOS와 Linux 버전은 향후 지원 예정. 출시 일정은 현재 미정 상태.",
+
+        "cta.flow": "다운로드 → 설치 → 마법사 설정 → 준비 완료",
+        "cta.title": "명령줄 입력 없는 데스크톱 실행 환경",
+        "cta.sub": "출시 준비 중이며 깃허브 저장소에서 코드를 공개 중.",
+
+        "footer.tagline": "내 컴퓨터에서 끝내는 로컬 AI 자막",
       },
       en: {
-        "nav.why": "Why", "nav.features": "Features", "nav.workflow": "Workflow", "nav.faq": "FAQ",
-        "dl.ready": "Download for Windows", "dl.soon": "Coming soon",
-        "hero.eyebrow": "100% LOCAL · NO CLOUD · NO SUBSCRIPTION",
-        "hero.t1": "Fully local,", "hero.t2": "AI subtitle generator",
-        "hero.sub": "From subtitles to translation, 100% on your machine. Free.",
-        "hero.repo": "View on GitHub", "hero.os": "Windows 10 / 11 · 64-bit", "cue.speaker": "Speaker 1",
-        "why.eyebrow": "00:01 — WHY LOCALSUB", "why.title": "Your video never leaves your PC.",
-        "why.legacy": "Cloud services",
-        "why.r1.k": "Data", "why.r1.a": "Uploaded to their servers", "why.r1.b": "Stays on your PC",
-        "why.r2.k": "Cost", "why.r2.a": "Subscriptions · per-minute", "why.r2.b": "Free, forever",
-        "why.r3.k": "Internet", "why.r3.a": "Always required", "why.r3.b": "Works offline",
-        "why.r4.a": "Tied to their servers", "why.r4.b": "Uses your own GPU",
-        "wf.eyebrow": "00:02 — WORKFLOW", "wf.title": "Drop it. Done.",
-        "wf.s1.t": "Drop", "wf.s1.d": "Drag in any video or audio file.",
-        "wf.s2.t": "Transcribe", "wf.s2.d": "AI turns the speech into text.",
-        "wf.s3.t": "Diarize", "wf.s3.d": "It detects who spoke, if you want.",
-        "wf.s4.t": "Translate", "wf.s4.d": "Cue by cue, in the tone you choose.",
-        "wf.s5.t": "Edit", "wf.s5.d": "Trim, split and merge right on the waveform.",
+        "nav.why": "Why local",
+        "nav.features": "Features",
+        "nav.workflow": "Workflow",
+        "nav.faq": "FAQ",
+
+        "dl.ready": "Download for Windows",
+        "dl.soon": "Coming soon",
+
+        "hero.eyebrow": "Local AI Subtitles · Non-\u2060Commercial · Windows x64",
+        "hero.t1": "AI subtitle creation",
+        "hero.t2": "Entirely on your PC",
+        "hero.sub": "Speech recognition and translation powered by local models on your own PC.",
+        "hero.repo": "GitHub repo",
+        "hero.os": "Windows 10 / 11 (64-bit)",
+
+        "cue.speaker": "Translated",
+
+        "why.eyebrow": "00:01 — LOCAL ARCHITECTURE",
+        "why.title": "Media files never leave your workstation",
+        "why.legacy": "Cloud subtitle tools",
+        "why.r1.k": "Media",
+        "why.r1.a": "Uploaded to remote servers",
+        "why.r2.k": "Pricing",
+        "why.r2.a": "Monthly or per-minute fees",
+        "why.r3.k": "Network",
+        "why.r3.a": "Always-on access required",
+        "why.r4.k": "Compute",
+        "why.r4.a": "Third-party cloud servers",
+        "why.r1.b": "Kept on local disk",
+        "why.r2.b": "Free for non-commercial",
+        "why.r3.b": "Offline after setup",
+        "why.r4.b": "Local workstation CPU/GPU",
+
+        "wf.eyebrow": "00:02 — WORKFLOW PIPELINE",
+        "wf.title": "From file drop to dual subtitle export",
+        "wf.s1.t": "Add files",
+        "wf.s1.d": "Drop media files, or SRT/VTT to translate only.",
+        "wf.s2.t": "Transcription",
+        "wf.s2.d": "Local Whisper turns speech into timed lines.",
+        "wf.s3.t": "Translation",
+        "wf.s3.d": "Translates line by line per preset and style.",
+        "wf.s4.t": "Quality check",
+        "wf.s4.d": "Checks each line, retries once, flags failures.",
+        "wf.s5.t": "Waveform edit",
+        "wf.s5.d": "Edit on waveform and retranslate flagged lines.",
         "wf.s6.t": "Export",
-        "ft.eyebrow": "00:03 — FEATURES", "ft.title": "Pro tools, made simple.",
-        "ft.f1.t": "Drag & drop", "ft.f1.d": "Drop a file and pick a preset — that's it.",
-        "ft.f2.t": "Translation presets", "ft.f2.d": "Save a language pair, style and glossary, then reuse them.",
-        "ft.f3.t": "Glossary", "ft.f3.d": "Define how names translate, and import them in bulk via CSV.",
-        "ft.f4.t": "Speaker detection", "ft.f4.d": "It tells speakers apart and labels them, fully on-device.",
-        "ft.f5.t": "Batch processing", "ft.f5.d": "Queue up many files and let it work through them.",
-        "ft.f6.t": "Hardware profiles", "ft.f6.d": "It recommends Lite, Balanced or Power to match your PC.",
-        "ft.f7.t": "Model manager", "ft.f7.d": "Browse, download and swap models without leaving the app.",
-        "ft.f8.t": "Subtitle editor", "ft.f8.d": "Waveform, split and merge, keyboard navigation — it holds its own against a dedicated editor.",
-        "ft.f9.t": "Theme & language", "ft.f9.d": "Dark or light, in five UI languages.",
-        "fm.eyebrow": "00:04 — FORMATS & LANGUAGES", "fm.title": "The formats you already use.",
-        "fm.input": "Input", "fm.output": "Output", "fm.output.note": "Dual (source + translation) subtitles are supported too.",
-        "fm.langs": "Speech recognition — 8 languages", "fm.styles": "Translation styles — 4",
-        "fm.st1": "Literal", "fm.st2": "Natural", "fm.st3": "Casual", "fm.st4": "Formal",
-        "req.eyebrow": "00:05 — REQUIREMENTS", "req.title": "Runs on modest PCs, flies on fast ones.",
-        "req.min": "Minimum", "req.rec": "Recommended",
-        "req.disk": "Disk", "req.disk.min": "4 GB free", "req.disk.rec": "10 GB+", "req.gpu.min": "Not required",
-        "req.note": "It runs on CPU alone — a GPU just makes it noticeably faster. Windows only for now; macOS · Linux support is planned.",
-        "faq.eyebrow": "00:06 — FAQ", "faq.title": "Frequently asked.",
-        "faq.q1": "Is it slow without a GPU?",
-        "faq.a1": "It works on CPU alone. A GPU noticeably speeds up transcription and translation. During setup, LocalSub auto-recommends a hardware profile (Lite · Balanced · Power) for your PC.",
-        "faq.q2": "Do I really not need internet?",
-        "faq.a2": "All AI processing happens on your PC. Internet is only needed for initial setup — downloading the app, the automatic AI engine install on first launch, and model downloads. After that, it works fully offline.",
-        "faq.q3": "Is there a limit on video length?",
-        "faq.a3": "There's no hard limit in the software itself. Longer media simply needs more time and memory, so your PC's specs set the practical ceiling.",
-        "faq.q4": "How accurate are the subtitles?",
-        "faq.a4": "It uses an OpenAI Whisper–based engine and is highly accurate on clean audio. You can fix anything directly in the built-in editor.",
-        "faq.q5": "Can I use it on macOS or Linux?",
-        "faq.a5": "Windows only for now. The codebase is cross-platform under the hood, and macOS · Linux support is planned.",
-        "faq.q6": "Is my data sent anywhere?",
-        "faq.a6": "No. Your video, audio, and subtitles are processed entirely within localhost and never leave your machine. The only outbound traffic is downloading AI models and FFmpeg, and checking for updates.",
-        "cta.flow": "Download → Install → Wizard → Done",
-        "cta.title": "No Python. No command line.",
-        "cta.sub": "The setup wizard detects your hardware, recommends a profile, and even fetches the models.",
-        "footer.tagline": "Your video and subtitles never leave your machine.",
+
+        "ft.eyebrow": "00:03 — WORKSTATION TOOLS",
+        "ft.title": "Built-in waveform editor and glossary",
+        "ft.f8.t": "Built-in editor",
+        "ft.f8.d": "Inspect waveforms and video. Edit with split, merge, find and replace, single-line retranslation, and autosave.",
+        "ft.f1.t": "Drag and drop",
+        "ft.f1.d": "Drop media or SRT/VTT files directly and select a preset.",
+        "ft.f2.t": "Translation presets",
+        "ft.f2.d": "Save language pairs, styles, models, and glossaries for reuse.",
+        "ft.f3.t": "Glossary",
+        "ft.f3.d": "Fix term translations. Import from CSV or add from the editor.",
+        "ft.f4.t": "Quality checks",
+        "ft.f4.d": "Checks each line, retries once, and flags issues in the editor.",
+        "ft.f5.t": "Batch queue",
+        "ft.f5.d": "Queue multiple files to run one after another automatically.",
+        "ft.f6.t": "Hardware profiles",
+        "ft.f6.d": "Detects RAM and GPU to recommend Lite, Balanced, or Power.",
+        "ft.f7.t": "Model manager",
+        "ft.f7.d": "Browse, download, and switch models with SHA-\u2060256 hash checks.",
+        "ft.f9.t": "Themes and languages",
+        "ft.f9.d": "UI available in five languages with dark and light themes.",
+
+        "fm.eyebrow": "00:04 — FORMATS & LANGUAGES",
+        "fm.title": "Four languages and common media formats",
+        "fm.input": "Input",
+        "fm.input.note": "SRT and VTT files skip speech recognition to translate only.",
+        "fm.output": "Output",
+        "fm.output.note": "Translated exports output dual subtitles with original lines.",
+        "fm.langs": "4 translation languages",
+        "fm.styles": "3 translation styles",
+        "fm.st1": "Natural",
+        "fm.st2": "Formal",
+        "fm.st3": "Casual",
+
+        "req.eyebrow": "00:05 — HARDWARE PROFILES",
+        "req.title": "Hardware detection with profile tuning",
+        "req.note": "Runs on CPU alone; an NVIDIA GPU speeds up processing noticeably. The setup wizard detects RAM and VRAM to recommend Power, Balanced, or Lite. Windows only now; macOS and Linux planned.",
+        "req.min": "Minimum",
+        "req.rec": "Recommended",
+        "req.os.min": "Windows 10 (64-bit)",
+        "req.disk": "Disk",
+        "req.disk.min": "4 GB free",
+        "req.disk.rec": "10 GB+ free",
+        "req.gpu.min": "None (CPU)",
+
+        "faq.eyebrow": "00:06 — TECHNICAL FAQ",
+        "faq.title": "Offline workflow and licensing rules",
+        "faq.q1": "Running without a dedicated GPU",
+        "faq.a1": "LocalSub runs on CPU alone with full functionality. The setup wizard recommends the Lite profile for CPU-only systems. Adding an NVIDIA GPU noticeably speeds up recognition and translation.",
+        "faq.q2": "When internet is required",
+        "faq.a2": "Internet access is required only to install the engine, download AI models and FFmpeg, or check for updates manually. All subtitle generation and translation runs offline.",
+        "faq.q3": "External data transmission",
+        "faq.a3": "Processing runs strictly through a local engine bound to 127.0.0.1. Video, audio, and subtitle files remain entirely on your local storage and are never uploaded.",
+        "faq.q4": "License and commercial use",
+        "faq.a4": "LocalSub is licensed under PolyForm Noncommercial 1.0.0. It is free for non-commercial use, while commercial use is not permitted under this license. Full source code is available on GitHub.",
+        "faq.q5": "Speech recognition accuracy",
+        "faq.a5": "Accuracy depends directly on source audio quality and the selected Whisper model size. Integrated voice-activity detection automatically skips silent segments. Larger models yield more precise transcripts.",
+        "faq.q6": "Media duration limits",
+        "faq.a6": "There is no length limit imposed by the software. Media exceeding 60 minutes is divided and processed in 30-minute chunks. Longer files simply require more processing time.",
+        "faq.q7": "macOS and Linux support",
+        "faq.a7": "LocalSub currently runs on 64-bit Windows 10 and 11 only. Builds for macOS and Linux are planned. No release schedule or launch dates are set.",
+
+        "cta.flow": "Download → Install → Setup wizard → Ready",
+        "cta.title": "Desktop ease without terminal commands",
+        "cta.sub": "Currently in pre-release, with full source code hosted on GitHub.",
+
+        "footer.tagline": "Self-contained local AI subtitles.",
       },
     };
 

@@ -29,7 +29,7 @@ const MEDIA = {
   heroPoster: "assets/hero-poster.jpg", // 비디오 로드 전 또는 미지원 브라우저용 포스터 이미지
   editor:     "assets/editor.png",      // 메인 에디터 대시보드 캡처 (고해상도 피처 카드)
   features: {
-    speaker: "assets/speaker.png",      // 화자 분리 및 이중 언어 자막 목록
+    quality: "assets/speaker.png",      // 줄별 번역 상태 배지가 붙은 이중 언어 자막 목록
     batch:   "assets/batch.png",        // 배치 작업 큐 및 진행 상태 화면
     models:  "assets/models.png",       // 모델 관리 및 GPU 하드웨어 감지 패널
   },
@@ -44,7 +44,7 @@ const MEDIA = {
 |---|---|---|---|
 | `heroVideo` | 파일 드래그앤드롭 → STT 실시간 스트리밍 → 신경망 번역 → 자막 내보내기 흐름 | MP4/WebM (음소거, ~10초 루프) | **16:10**, 가로 ≥1280px (수 MB 이내 최적화) |
 | `editor` | 통합 자막 에디터: 오디오 파형 + 화자 라벨 + 이중 언어 라인 단위 편집 | PNG | **16:10**, 가로 ≥1600px |
-| `features.speaker` | 화자 라벨이 부여된 이중 언어 세그먼트 목록 | PNG | **16:10** |
+| `features.quality` | 화자 라벨이 부여된 이중 언어 세그먼트 목록 | PNG | **16:10** |
 | `features.batch` | 복수 작업 큐 일괄 처리 및 진행률 상태 | PNG | **16:10** |
 | `features.models` | 모델 다운로드 진행률 및 하드웨어 사양 진단 카드 | PNG | **16:10** |
 | **Open Graph (OG)** | 소셜 미리보기 대표 이미지 (에디터 전경 뷰) | PNG / JPG | **1200×630** (고정 규격) |
