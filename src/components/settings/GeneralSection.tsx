@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { pickDirectory } from "@/lib/tauriApi"
 import { SOURCE_LANGUAGES } from "@/lib/languages"
 import { SectionHeader, SettingsCard, SettingsRow } from "./SettingsCard"
@@ -96,6 +97,20 @@ export function GeneralSection({ config, onUpdate }: GeneralSectionProps) {
               ))}
             </SelectContent>
           </Select>
+        </SettingsRow>
+
+        {/* Boost Quiet Speech — the server applies it while extracting audio for STT */}
+        <SettingsRow className="flex-row items-center">
+          <div className="flex flex-1 flex-col gap-1">
+            <span id="settings-boost-quiet-speech" className="text-[15px] font-bold">{t("settings.general.boostQuietSpeech")}</span>
+            <p id="settings-boost-quiet-speech-desc" className="text-[13px] text-muted-foreground">{t("settings.general.boostQuietSpeechDesc")}</p>
+          </div>
+          <Switch
+            checked={config.boost_quiet_speech ?? false}
+            onCheckedChange={(v) => onUpdate({ boost_quiet_speech: v })}
+            aria-labelledby="settings-boost-quiet-speech"
+            aria-describedby="settings-boost-quiet-speech-desc"
+          />
         </SettingsRow>
 
         {/* Output Format */}

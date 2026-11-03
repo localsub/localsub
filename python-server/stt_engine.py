@@ -56,6 +56,17 @@ CHUNK_DURATION_S = 30 * 60        # 1800s — 30-min chunks when splitting
 # share is minutes of reading. Cancel stops it at once regardless.
 EXTRACT_MIN_TIMEOUT_S = 5 * 60
 
+# "Boost quiet speech" (config.boost_quiet_speech): raise quiet passages such as
+# whispered lines before VAD and Whisper see them. Neither has a gain option of
+# its own, so this is applied while ffmpeg extracts the 16 kHz mono audio.
+# dynaudnorm adjusts gain per short window (200 ms frames, 11-frame Gaussian),
+# unlike loudnorm, which only levels the file as a whole and leaves a whisper
+# among normal lines just as quiet. m=20 (up to 26 dB) instead of the default
+# 10 (20 dB): with TTS speech dropped 40 dB below its neighbours, the default
+# still lost the passage to VAD and this setting recovered every line, while a
+# 20 s noise-only gap stayed free of hallucinated text.
+QUIET_SPEECH_FILTER = "dynaudnorm=f=200:g=11:m=20"
+
 
 def _compute_chunks(
     duration: float | None,
@@ -341,6 +352,7 @@ def create_stt_job(
     model_id: str | None = None,
     start_time: float | None = None,
     end_time: float | None = None,
+    boost_quiet_speech: bool = False,
 ) -> str:
     job_id = str(uuid.uuid4())
     _stt_jobs[job_id] = {
@@ -350,6 +362,7 @@ def create_stt_job(
         "model_id": model_id,
         "start_time": start_time,
         "end_time": end_time,
+        "boost_quiet_speech": boost_quiet_speech,
         "state": SttJobState.QUEUED,
         "cancel_flag": False,
     }
@@ -513,12 +526,17 @@ async def _transcribe_range(
                 "-ss", str(range_start),
                 "-to", str(range_end),
                 "-i", source_file,
+            ]
+            if job.get("boost_quiet_speech"):
+                cmd += ["-af", QUIET_SPEECH_FILTER]
+            cmd += [
                 "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le",
                 temp_audio_path,
             ]
             log.info(
-                "[STT] Extracting audio segment: %s -> %s (%.1fs~%.1fs)",
+                "[STT] Extracting audio segment: %s -> %s (%.1fs~%.1fs, quiet-speech boost %s)",
                 source_file, temp_audio_path, range_start, range_end,
+                "on" if job.get("boost_quiet_speech") else "off",
             )
             # Off the event loop: while ffmpeg reads a slice (minutes, on a slow
             # disk) the server must keep answering /health, or the app
@@ -539,6 +557,8 @@ async def _transcribe_range(
             elif whole_file:
                 # The range is the whole file: reading it directly loses nothing.
                 log.warning("[STT] ffmpeg extraction failed (%s), using original file", detail)
+                if job.get("boost_quiet_speech"):
+                    log.warning("[STT] quiet-speech boost not applied: it needs the ffmpeg extraction")
             else:
                 # Anything else would transcribe the WHOLE file at this range's
                 # offset — a duplicated timeline running past the end.
@@ -546,6 +566,8 @@ async def _transcribe_range(
                     f"Could not extract audio {range_start:.0f}s-{range_end:.0f}s "
                     f"from {os.path.basename(source_file)}: ffmpeg {detail}"
                 )
+        elif job.get("boost_quiet_speech"):
+            log.warning("[STT] quiet-speech boost not applied: duration unknown, so no ffmpeg extraction")
 
         log.info(
             "[STT] Transcribing range: file=%s, lang=%s, offset=%.1fs, base_idx=%d",

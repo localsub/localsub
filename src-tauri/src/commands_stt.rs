@@ -137,6 +137,9 @@ pub async fn start_stt(
     if let Some(et) = end_time {
         body["end_time"] = serde_json::json!(et);
     }
+    if config.boost_quiet_speech == Some(true) {
+        body["boost_quiet_speech"] = serde_json::Value::Bool(true);
+    }
 
     let job_id = request_stt_start(state.inner(), port, &body).await?;
 

@@ -42,17 +42,20 @@ class _FakeFfmpeg:
         self.seconds = seconds
         self.windows: list[tuple[float, float]] = []
         self.killed: list[str] = []
+        self.cmds: list[list[str]] = []
 
     def _rc(self, cmd) -> int:
         return 1 if float(cmd[cmd.index("-ss") + 1]) == self.fail_at else 0
 
     def run(self, cmd, **kw):
+        self.cmds.append(cmd)
         t0 = time.monotonic()
         time.sleep(self.seconds)
         self.windows.append((t0, time.monotonic()))
         return subprocess.CompletedProcess(cmd, self._rc(cmd), b"", b"")
 
     def Popen(self, cmd, **kw):
+        self.cmds.append(cmd)
         fake = self
         out_path = cmd[-1]
         with open(out_path, "wb"):
@@ -142,6 +145,41 @@ def test_single_pass_file_still_falls_back_to_the_original(monkeypatch):
     assert done, events
     texts = [s["text"] for s in json.loads(done[0]["result"])]
     assert texts == ["whole@0", "whole@600", "whole@1200"]
+
+
+def _audio_filters(cmd: list[str]) -> list[str]:
+    return [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "-af"]
+
+
+def test_quiet_speech_boost_filters_every_extraction(monkeypatch):
+    # Single pass, every chunk of a long file, and a preview window alike.
+    for duration, window in ((1800.0, None), (5400.0, None), (5400.0, (600.0, 660.0))):
+        ffmpeg = _FakeFfmpeg()
+        _setup(monkeypatch, duration, ffmpeg)
+        start, end = window or (None, None)
+        job_id = stt_engine.create_stt_job(
+            SRC, model_id="fake", start_time=start, end_time=end, boost_quiet_speech=True,
+        )
+
+        events = asyncio.run(_events(job_id))
+
+        assert [e for e in events if e["type"] == "done"], events
+        assert ffmpeg.cmds, "no audio was extracted"
+        for cmd in ffmpeg.cmds:
+            assert _audio_filters(cmd) == [stt_engine.QUIET_SPEECH_FILTER], cmd
+            # An output option: it must sit between the input and the output file.
+            assert cmd.index("-i") < cmd.index("-af") < len(cmd) - 1, cmd
+
+
+def test_quiet_speech_boost_is_off_by_default(monkeypatch):
+    ffmpeg = _FakeFfmpeg()
+    _setup(monkeypatch, 5400.0, ffmpeg)
+    job_id = stt_engine.create_stt_job(SRC, model_id="fake")
+
+    asyncio.run(_events(job_id))
+
+    assert len(ffmpeg.cmds) == 3
+    assert all(_audio_filters(cmd) == [] for cmd in ffmpeg.cmds), ffmpeg.cmds
 
 
 def test_extraction_does_not_block_the_event_loop(monkeypatch):
