@@ -106,6 +106,9 @@ pub fn update_config(partial: PartialConfig, current: &mut AppConfig) -> Result<
     if let Some(v) = partial.custom_translation_prompt {
         current.custom_translation_prompt = v;
     }
+    if let Some(v) = partial.boost_quiet_speech {
+        current.boost_quiet_speech = v;
+    }
 
     save_config(current)
 }

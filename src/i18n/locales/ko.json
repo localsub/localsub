@@ -521,6 +521,8 @@
       "outputFormat": "기본 출력 형식",
       "sourceLanguage": "원본 언어",
       "sourceLanguageDesc": "음성 인식에 쓰는 언어입니다. 자동 감지를 고르면 Whisper가 언어를 판별합니다.",
+      "boostQuietSpeech": "작은 목소리 보정",
+      "boostQuietSpeechDesc": "음성 인식 전에 속삭임처럼 작은 대사의 음량을 키웁니다. 작은 대사가 자막에서 빠질 때 켜세요.",
       "targetLanguage": "번역 언어",
       "sourceLangs": {
         "auto": "자동 감지",

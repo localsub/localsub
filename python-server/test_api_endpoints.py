@@ -42,6 +42,16 @@ def test_stt_start(media_file):
     assert len(data["job_id"]) > 0
 
 
+def test_stt_start_passes_quiet_speech_boost(media_file):
+    import stt_engine
+
+    r = client.post("/stt/start", json={"file_path": media_file, "boost_quiet_speech": True})
+    assert stt_engine.get_stt_job(r.json()["job_id"])["boost_quiet_speech"] is True
+
+    r = client.post("/stt/start", json={"file_path": media_file})
+    assert stt_engine.get_stt_job(r.json()["job_id"])["boost_quiet_speech"] is False
+
+
 def test_stt_start_rejects_missing_file():
     r = client.post("/stt/start", json={"file_path": "/nonexistent/test.wav"})
     assert r.status_code == 400

@@ -116,6 +116,9 @@ pub struct AppConfig {
     pub translation_quality: Option<String>,
     #[serde(default)]
     pub custom_translation_prompt: Option<String>,
+    /// Raise quiet passages (whispers) before speech recognition. Off unless set.
+    #[serde(default)]
+    pub boost_quiet_speech: Option<bool>,
 }
 
 impl Default for AppConfig {
@@ -143,6 +146,7 @@ impl Default for AppConfig {
             max_memory_mb: None,
             translation_quality: None,
             custom_translation_prompt: None,
+            boost_quiet_speech: None,
         }
     }
 }
@@ -177,6 +181,7 @@ pub struct PartialConfig {
     pub max_memory_mb: Option<Option<u32>>,
     pub translation_quality: Option<Option<String>>,
     pub custom_translation_prompt: Option<Option<String>>,
+    pub boost_quiet_speech: Option<Option<bool>>,
 }
 
 // ── Glossary types ──
@@ -508,5 +513,22 @@ mod tests {
         assert!(pc.ui_language.is_none());
         assert!(pc.active_whisper_model.is_none());
         assert!(pc.active_llm_model.is_none());
+        assert!(pc.boost_quiet_speech.is_none());
+    }
+
+    #[test]
+    fn test_boost_quiet_speech_is_off_in_a_config_saved_before_it_existed() {
+        let mut legacy = serde_json::to_value(AppConfig::default()).unwrap();
+        legacy.as_object_mut().unwrap().remove("boost_quiet_speech");
+        let cfg: AppConfig = serde_json::from_value(legacy).unwrap();
+        assert!(cfg.boost_quiet_speech.is_none());
+    }
+
+    #[test]
+    fn test_partial_config_carries_boost_quiet_speech() {
+        let on: PartialConfig = serde_json::from_str(r#"{"boost_quiet_speech":true}"#).unwrap();
+        assert_eq!(on.boost_quiet_speech, Some(Some(true)));
+        let off: PartialConfig = serde_json::from_str(r#"{"boost_quiet_speech":false}"#).unwrap();
+        assert_eq!(off.boost_quiet_speech, Some(Some(false)));
     }
 }

@@ -139,6 +139,7 @@ export interface AppConfig {
   max_memory_mb: number | null;
   translation_quality: string | null;
   custom_translation_prompt: string | null;
+  boost_quiet_speech?: boolean | null;
 }
 
 export interface PartialConfig {
@@ -162,6 +163,7 @@ export interface PartialConfig {
   max_memory_mb?: number | null;
   translation_quality?: string | null;
   custom_translation_prompt?: string | null;
+  boost_quiet_speech?: boolean | null;
 }
 
 // ── Model Catalog types ──

@@ -521,6 +521,8 @@
       "outputFormat": "Default Output Format",
       "sourceLanguage": "Source Language",
       "sourceLanguageDesc": "The spoken language for speech recognition. With Auto Detect, Whisper identifies it.",
+      "boostQuietSpeech": "Boost Quiet Speech",
+      "boostQuietSpeechDesc": "Raises quiet lines such as whispers before speech recognition. Turn it on if quiet dialogue is missing from subtitles.",
       "targetLanguage": "Target Language",
       "sourceLangs": {
         "auto": "Auto Detect",

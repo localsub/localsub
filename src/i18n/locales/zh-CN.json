@@ -521,6 +521,8 @@
       "outputFormat": "默认输出格式",
       "sourceLanguage": "源语言",
       "sourceLanguageDesc": "语音识别使用的语言。选择自动检测时，由 Whisper 判断语言。",
+      "boostQuietSpeech": "增强小声语音",
+      "boostQuietSpeechDesc": "在语音识别前提高耳语等小声台词的音量。如果小声台词没有出现在字幕中，请开启此选项。",
       "targetLanguage": "目标语言",
       "sourceLangs": {
         "auto": "自动检测",
