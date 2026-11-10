@@ -9,9 +9,10 @@ log = logging.getLogger(__name__)
 
 import psutil
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import stt_engine
+from stt_backends import DEFAULT_ENGINE
 import llm_engine
 
 router = APIRouter(prefix="/runtime")
@@ -22,6 +23,9 @@ router = APIRouter(prefix="/runtime")
 class LoadRequest(BaseModel):
     model_type: str  # "whisper" | "llm"
     model_id: str
+    # STT only: backend and helper models by role (see stt_router.SttStartRequest).
+    engine: str = DEFAULT_ENGINE
+    aux_models: dict[str, str] = Field(default_factory=dict)
 
 
 class UnloadRequest(BaseModel):
@@ -73,7 +77,7 @@ async def load_model(req: LoadRequest):
     loop = asyncio.get_running_loop()
     try:
         if req.model_type == "whisper":
-            await loop.run_in_executor(None, stt_engine.load_model, req.model_id)
+            await loop.run_in_executor(None, stt_engine.load_model, req.model_id, req.engine, req.aux_models)
         else:
             await loop.run_in_executor(None, llm_engine.load_model, req.model_id)
     except HTTPException:

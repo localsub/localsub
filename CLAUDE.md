@@ -80,6 +80,9 @@ python-server/        # FastAPI 기반 AI 추론 서버
   stt_engine.py       # STT 오케스트레이션 (작업·취소, 60분 초과 미디어의 30분 청크 분할, ffmpeg 추출, SSE)
   stt_backends.py     # STT 엔진 계약(SttBackend)과 엔진 레지스트리. 엔진은 평면 모듈 stt_backend_<이름>.py (번들 글롭이 하위 폴더를 담지 않음)
   stt_backend_whisper.py # faster-whisper 백엔드 (디코딩 설정 TRANSCRIBE_KWARGS)
+  stt_backend_qwen.py # Qwen3-ASR 백엔드 (VAD → ASR → 강제 정렬, 정렬기 미지원 언어 거부)
+  subtitle_segmenter.py # 정렬기 단어 타임스탬프 → 자막 큐 (순수 함수)
+  engine_packs.py     # 온디맨드 엔진 팩을 백엔드 로드 시 sys.path 맨 뒤에 연결
   llm_engine.py       # LLM 번역 엔진 (세그먼트 단위 추론, 품질 게이트)
   prompt_builder.py   # 번역 프롬프트 구성 모듈
   quality_filters.py  # 구조적 비-번역 탐지 (문자 집합/길이 비율/퇴행적 반복)

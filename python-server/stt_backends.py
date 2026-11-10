@@ -50,8 +50,9 @@ class SttBackend(Protocol):
         there and a DLL failed to load)."""
         ...
 
-    def load(self, model_path: Path) -> None:
-        """Load the model from a directory `find_model` returned."""
+    def load(self, model_path: Path, aux_paths: dict[str, Path] | None = None) -> None:
+        """Load the model from a directory `find_model` returned. `aux_paths`
+        maps a helper's role ("aligner") to its directory."""
         ...
 
     def unload(self) -> None:
@@ -70,12 +71,14 @@ class SttBackend(Protocol):
         ...
 
 
-from stt_backend_whisper import WhisperBackend  # noqa: E402 - needs the Protocols above
+from stt_backend_qwen import QwenBackend  # noqa: E402 - needs the Protocols above
+from stt_backend_whisper import WhisperBackend  # noqa: E402
 
 DEFAULT_ENGINE = "faster-whisper"
 
 _ENGINES: dict[str, Callable[[], SttBackend]] = {
     WhisperBackend.engine_id: WhisperBackend,
+    QwenBackend.engine_id: QwenBackend,
 }
 
 

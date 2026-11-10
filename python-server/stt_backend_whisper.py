@@ -64,7 +64,7 @@ class WhisperBackend:
             # a missing DLL.
             raise RuntimeError(f"faster-whisper unavailable ({WHISPER_LOAD_ERROR})")
 
-    def load(self, model_path: Path) -> None:
+    def load(self, model_path: Path, aux_paths: dict[str, Path] | None = None) -> None:
         self.check_available()
         device, compute_type = gpu_utils.get_stt_device()
         self._model = WhisperModel(str(model_path), device=device, compute_type=compute_type)

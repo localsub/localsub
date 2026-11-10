@@ -89,12 +89,24 @@ pub async fn load_runtime_model(
         (s.http_client.clone(), s.python_port)
     };
 
+    let mut body = serde_json::json!({
+        "model_type": model_type,
+        "model_id": model_id,
+    });
+    if model_type == "whisper" {
+        // Same engine/helper resolution as start_stt, so a preload loads the
+        // backend the job will use.
+        let catalog = crate::commands_model::load_catalog(&app).ok();
+        let (engine, aux_models) = crate::stt_catalog::stt_request_extras(catalog.as_ref(), &model_id);
+        body["engine"] = serde_json::Value::String(engine.to_string());
+        if !aux_models.is_empty() {
+            body["aux_models"] = serde_json::json!(aux_models);
+        }
+    }
+
     let resp = client
         .post(format!("http://127.0.0.1:{}/runtime/load", port))
-        .json(&serde_json::json!({
-            "model_type": model_type,
-            "model_id": model_id,
-        }))
+        .json(&body)
         .send()
         .await;
 
