@@ -180,7 +180,22 @@ export interface WhisperModelEntry {
   profiles: Profile[];
   license: string;
   license_url: string;
+  // "Whisper" entries are STT models in general; these say which kind.
+  // The Rust side always fills them (defaults = a Whisper model).
+  /** Python STT backend that runs the model. */
+  engine?: SttEngine;
+  /** Helper models installed with this one (an aligner). */
+  requires?: string[];
+  /** "aligner" entries are helpers: never offer them as a choice. */
+  role?: SttRole;
+  /** Languages with usable timestamps (ISO 639-1); absent = all Whisper languages. */
+  languages?: string[] | null;
+  /** VRAM the model needs on the GPU, in MB. */
+  min_vram_mb?: number | null;
 }
+
+export type SttEngine = "faster-whisper" | "qwen3-asr";
+export type SttRole = "stt" | "aligner";
 
 export interface LlmSplitFile {
   filename: string;

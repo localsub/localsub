@@ -31,6 +31,7 @@ mod python_manager;
 mod setup_manager;
 mod sse_client;
 mod state;
+mod stt_catalog;
 mod subtitle_manager;
 mod subtitle_reader;
 mod subtitle_writer;

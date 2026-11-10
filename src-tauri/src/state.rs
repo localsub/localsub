@@ -213,6 +213,55 @@ pub struct WhisperCatalogEntry {
     // 카탈로그 등재 = 다운로드 링크 제공. 라이선스 미신고 모델은 파싱 단계에서 거부된다.
     pub license: String,
     pub license_url: String,
+    // "whisper_models" now means STT models in general; the names stay so saved
+    // configs and presets need no migration. Every field below defaults to what
+    // a Whisper entry has always meant, so older catalogs parse unchanged.
+    /// Python STT backend that runs this model (`stt_backends.create_backend`).
+    #[serde(default)]
+    pub engine: SttEngine,
+    /// Ids of other entries that must be installed with this one (e.g. a forced
+    /// aligner). Downloaded first, in this order, as part of the same download.
+    #[serde(default)]
+    pub requires: Vec<String>,
+    /// `aligner` entries are helpers: never offered as a choice, only pulled in
+    /// through `requires`.
+    #[serde(default)]
+    pub role: SttRole,
+    /// Languages the model can transcribe with usable timestamps (ISO 639-1).
+    /// None means every language Whisper supports.
+    #[serde(default)]
+    pub languages: Option<Vec<String>>,
+    /// VRAM the model needs on the GPU the server is pinned to. None = no GPU
+    /// requirement beyond what the profile implies.
+    #[serde(default)]
+    pub min_vram_mb: Option<u32>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum SttEngine {
+    #[default]
+    #[serde(rename = "faster-whisper")]
+    FasterWhisper,
+    #[serde(rename = "qwen3-asr")]
+    Qwen3Asr,
+}
+
+impl SttEngine {
+    /// The engine id the Python server's backend registry knows.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SttEngine::FasterWhisper => "faster-whisper",
+            SttEngine::Qwen3Asr => "qwen3-asr",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum SttRole {
+    #[default]
+    Stt,
+    Aligner,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

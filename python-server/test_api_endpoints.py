@@ -52,6 +52,33 @@ def test_stt_start_passes_quiet_speech_boost(media_file):
     assert stt_engine.get_stt_job(r.json()["job_id"])["boost_quiet_speech"] is False
 
 
+def test_stt_start_defaults_to_faster_whisper_without_helpers(media_file):
+    """A request from an app version that knows nothing about engines."""
+    import stt_engine
+
+    r = client.post("/stt/start", json={"file_path": media_file})
+    job = stt_engine.get_stt_job(r.json()["job_id"])
+    assert job["engine"] == "faster-whisper"
+    assert job["aux_models"] == {}
+
+
+def test_stt_start_passes_engine_and_helpers(media_file):
+    import stt_engine
+
+    r = client.post(
+        "/stt/start",
+        json={
+            "file_path": media_file,
+            "model_id": "qwen3-asr-1.7b",
+            "engine": "qwen3-asr",
+            "aux_models": {"aligner": "qwen3-forced-aligner-0.6b"},
+        },
+    )
+    job = stt_engine.get_stt_job(r.json()["job_id"])
+    assert job["engine"] == "qwen3-asr"
+    assert job["aux_models"] == {"aligner": "qwen3-forced-aligner-0.6b"}
+
+
 def test_stt_start_rejects_missing_file():
     r = client.post("/stt/start", json={"file_path": "/nonexistent/test.wav"})
     assert r.status_code == 400

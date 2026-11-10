@@ -109,6 +109,11 @@ Whisper 모델 구동에는 `model.bin`, `config.json`, `tokenizer.json`, `vocab
 3. **무결성 검증**:
    - `sha256` 해시는 Hugging Face LFS OID를 기반으로 사전에 고정하며, 분할 파일 모델은 `split_files` 배열을 통해 관리합니다.
 
+### STT 카탈로그 등록 기준 (`whisper_models`)
+- `whisper_*` 명칭은 역사적 이름이며 엔진과 무관하게 STT 모델 전체를 뜻합니다(`docs/glossary.md`). 엔진은 `engine`(`"faster-whisper"` 기본, `"qwen3-asr"`)으로 구분합니다.
+- `requires`에 적힌 보조 모델(`role: "aligner"`)은 본 모델 다운로드 시 먼저 함께 설치되고, 이를 필요로 하는 마지막 모델 삭제 시 함께 삭제됩니다. 보조 모델은 선택 목록에 노출하지 않습니다.
+- faster-whisper 외 엔진의 항목은 `files`의 **모든 파일**을 `sha256`으로 고정해야 하며, `stt_catalog::validate`가 카탈로그 로드 시점과 단위 테스트에서 이를 강제합니다. `verify_model`은 `sha256`에 적힌 모든 파일을 검증합니다.
+
 ## 6. 번역 파이프라인 및 품질 게이트 (Translation Pipeline & Quality Gates)
 
 1. **음성 인식 (Whisper)**: 오디오 신호 분석 및 타임스탬프 세그먼트 생성
