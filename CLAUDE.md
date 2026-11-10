@@ -153,6 +153,12 @@ LocalSub은 최초 실행 셋업 시 다운로드되는 모든 외부 바이너�
    - 사전 빌드된 휠을 공식 릴리스로부터 직접 다운로드하여 SHA-256 검증 후 `pip install --no-deps`로 설치합니다. GPU 감지 결과에 따라 CUDA 휠(`0.3.31-cu124`) 또는 CPU 휠(`0.3.28`)을 선택합니다.
    - 휠 설치 시 `--upgrade` 옵션을 사용하지 않고 사전 제거 함수(`purge_installed_llama`)를 통해 기존 패키지 디렉토리 및 dist-info를 원자적으로 정리하여 파일 공유 충돌(Sharing Violation)을 방지합니다.
    - CUDA 휠이 링크하지만 번들하지 않는 CUDA 런타임(`nvidia-cuda-runtime-cu12`, `nvidia-cublas-cu12`)은 `integrity.json`의 `cuda_runtime`에 정확한 버전과 `win_amd64` 휠 SHA-256으로 고정되며, 해시 요구사항 파일을 생성해 `pip install --require-hashes --only-binary=:all: --no-deps`로 설치합니다. 버전만으로 설치하지 마십시오. 이 패키지들은 최상위 `bin/`이 없어 `--upgrade`를 사용해도 안전합니다.
+2-1. **온디맨드 엔진 팩 (Qwen3-ASR)**:
+   - Qwen 계열 STT가 쓰는 패키지(torch cu126, transformers 등)는 기본 셋업에 넣지 않고, 사용자가 Qwen 모델을 처음 받을 때 `install_engine_pack`으로 설치합니다 (`engine_pack.rs`). 사용자에게는 모델 다운로드의 일부로만 보여야 합니다(최종 사용자는 일반인).
+   - `python-server/requirements-qwen.lock`은 `scripts/lock_python.py qwen`으로 생성하며, 기본 lock을 constraints로 해석한 뒤 **기본 lock에 있는 패키지를 모두 뺀** 폐포입니다. 설치는 `--require-hashes --no-deps --only-binary=:all:`이고 torch 인덱스(`--extra-index-url`)는 lock 파일 안에 있습니다. CI가 해시 설치 가능성, 기본 lock과의 겹침 없음, `requirements-qwen.txt` 반영을 검증합니다.
+   - 설치 위치는 `%APPDATA%/LocalSub/engine-packs/<engine>/`(`.partial`에 설치 후 이름 변경)이며, `.complete` 마커에 기본 lock + 팩 lock 해시를 기록합니다. 서버는 백엔드 로드 시 `engine_packs.activate()`로 팩을 `sys.path` **맨 뒤**에 붙입니다(재시작 불필요).
+   - transformers 4.57.6 호환을 위해 기본 lock의 `tokenizers`(0.22.2)·`huggingface_hub`(0.36.2)는 `requirements.txt`에 고정되어 있습니다. 올리려면 팩의 transformers도 함께 검증해야 합니다.
+   - 기본 lock 재생성은 `scripts/lock_python.py base`로 하며, 기존 lock을 constraints로 써서 `requirements.txt`가 바꾼 것만 움직입니다.
 3. **FFmpeg 배포 규정 및 GPL 준수**:
    - FFmpeg 공식 Windows 빌드(GyanD/codexffmpeg 버전 태그 아카이브)를 업스트림으로부터 클라이언트가 직접 다운로드하도록 설계하여 제3자 미러링에 따른 GPLv3 전달자(Conveyer) 법적 의무를 배제합니다. 따라서 `FfmpegEntry`에는 미러 URL 필드가 존재하지 않으며, 임의의 미러 추가를 거부하는 단위 테스트(`bundled_ffmpeg_is_not_self_hosted`)가 유지됩니다.
 4. **MSVC C++ 재배포 패키지 거버넌스 (`vcredist.rs`)**:

@@ -7,3 +7,15 @@ onnxruntime==1.26.0
 soundfile==0.14.0
 numpy==2.4.6
 scikit-learn==1.9.0
+# Pinned for the Qwen3-ASR engine pack: transformers 4.57.6 (requirements-qwen.txt)
+# refuses to import with tokenizers > 0.23.0 or huggingface_hub >= 1.0, and the
+# pack shares this environment. faster-whisper and the server suite are verified
+# on these versions (docs/design/qwen3-asr-stt-engine.md section 10.3).
+tokenizers==0.22.2
+huggingface_hub==0.36.2
+# huggingface_hub 0.36 requires hf-xet only where platform_machine matches
+# "x86_64"/"amd64" in lower case. Windows reports "AMD64", so resolving on
+# Windows drops it, but pip on the Linux CI runner evaluates the marker for
+# its own machine, demands it, and fails the --require-hashes check. Pinning
+# it makes the lock one closure everywhere (1.5.1 = the version master had).
+hf-xet==1.5.1

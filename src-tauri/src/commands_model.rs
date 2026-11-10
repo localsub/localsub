@@ -507,3 +507,31 @@ pub(crate) fn fs2_free_space(path: &std::path::Path) -> u64 {
         0 // Skip disk space check on non-Windows
     }
 }
+
+fn parse_engine(engine: &str) -> Result<crate::state::SttEngine, AppError> {
+    serde_json::from_value(serde_json::Value::String(engine.to_string()))
+        .map_err(|_| AppError::Config(format!("Unknown STT engine: {}", engine)))
+}
+
+/// Whether the Python packages an STT engine needs are installed.
+#[tauri::command]
+pub async fn get_engine_pack_status(
+    app: AppHandle,
+    engine: String,
+) -> Result<crate::engine_pack::PackStatus, AppError> {
+    crate::engine_pack::status(&app, parse_engine(&engine)?)
+}
+
+/// Installs an engine's pack (no-op if ready). Progress and failure arrive as
+/// "engine-pack-progress" events; the frontend runs this as part of a model
+/// download, so the user only ever sees one download.
+#[tauri::command]
+pub async fn install_engine_pack(
+    app: AppHandle,
+    engine: String,
+) -> Result<crate::engine_pack::PackStatus, AppError> {
+    let engine = parse_engine(&engine)?;
+    tauri::async_runtime::spawn_blocking(move || crate::engine_pack::install(&app, engine))
+        .await
+        .map_err(|e| AppError::Setup(format!("Engine pack task failed: {}", e)))?
+}

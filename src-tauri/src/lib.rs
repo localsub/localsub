@@ -17,6 +17,7 @@ mod commands_vocabulary;
 mod commands_wizard;
 mod config_manager;
 mod csv_reader;
+mod engine_pack;
 mod contracts;
 mod error;
 mod gpu;
@@ -141,6 +142,8 @@ pub fn run() {
             commands_model::delete_model,
             commands_model::get_model_manifest,
             commands_model::verify_model,
+            commands_model::get_engine_pack_status,
+            commands_model::install_engine_pack,
             // STT commands
             commands_stt::start_stt,
             commands_stt::cancel_stt,
