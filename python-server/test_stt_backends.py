@@ -160,7 +160,7 @@ def test_run_stt_picks_an_installed_model_when_none_is_given(fake_whisper, monke
     (fake_whisper / "not-a-model").mkdir()
     loaded: list[tuple[str, str]] = []
 
-    def fake_load(model_id, engine):
+    def fake_load(model_id, engine, aux_models):
         loaded.append((model_id, engine))
         raise RuntimeError("stop here")
 
@@ -202,7 +202,7 @@ def test_run_stt_reloads_when_the_engine_changes(fake_whisper, monkeypatch):
     monkeypatch.setattr(stt_engine, "_loaded_engine", "qwen3-asr")
     loaded: list = []
 
-    def fake_load(model_id, engine):
+    def fake_load(model_id, engine, aux_models):
         loaded.append((model_id, engine))
         raise RuntimeError("stop here")
 

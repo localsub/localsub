@@ -74,7 +74,7 @@ Qwen3-ASR(1.7B / 0.6B)을 faster-whisper 옆에 **두 번째 STT 엔진**으로 
   `transcribe`는 지금의 faster-whisper와 같은 `(지연 세그먼트 이터레이터, info)`를 돌려준다. 오케스트레이터가 세그먼트를 하나씩 꺼내며 취소 플래그를 확인하고, `info.language`는 이터레이터를 다 소비한 뒤에 읽는다. 그래서 Qwen처럼 디코딩 중에 언어를 알게 되는 엔진도 나중에 채워 넣을 수 있다.
 - **모듈은 평면 구조**: 앱 번들 글롭(`resources/python-server/*`)과 `sync-python-resources.mjs`가 하위 폴더를 전제하지 않으므로 패키지 대신 `stt_backends.py`(계약·레지스트리) + `stt_backend_whisper.py` + (P4) `stt_backend_qwen.py`로 둔다.
 - `stt_backend_whisper.py`: 기존 코드를 옮겼다(동작 변경 없음). 디코딩 설정은 `TRANSCRIBE_KWARGS`로 모아 테스트로 고정했다.
-- `stt_backend_qwen.py`(P4): §3.1 흐름을 구현한다. import는 기존 규약대로 `try/except Exception` 가드와 `QWEN_LOAD_ERROR`로 감싸고, `test_native_import_guards.py`에 행을 추가한다.
+- `stt_backend_qwen.py`(P4에서 구현): §3.1 흐름을 구현한다. torch·qwen_asr는 엔진 팩에 있으므로 **모듈 import 시점이 아니라 `check_available()`에서 지연 import**하며, 팩 미설치나 DLL 로드 실패는 실제 이유를 담은 `RuntimeError`로 보고한다(기존 가드 규약의 취지와 동일). 언어는 첫 ~20초 분량 발화의 투표로 정하고, 다른 지원 언어로 전환된 구간은 그 언어로 정렬한다. 미지원 언어 오류는 `stt_language_unsupported_by_engine:` 접두로 시작한다. `load(model_path, aux_paths)`가 `{"aligner": 경로}`를 받는다.
 - `run_stt`의 기본 모델 탐색과 `load_model`은 이미 `backend.find_model`을 쓴다(P1). P4에서 요청의 `engine` 값을 넘기기만 하면 된다.
 
 ### 3.3 카탈로그·Rust: 이름은 유지하고 `engine` 필드 추가
@@ -100,7 +100,7 @@ Qwen3-ASR(1.7B / 0.6B)을 faster-whisper 옆에 **두 번째 STT 엔진**으로 
 
 정렬기 출력(`text`, `start_time`, `end_time`의 목록)을 자막 큐로 묶는다.
 
-- 분할 기준: 문장부호(`.?!。？！`), 단어 간 공백 ≥ 0.6초, 큐 최대 길이 7초, 최대 42자(CJK 기준 별도). 상수는 모듈 상단에 둔다.
+- 분할 기준: 문장부호(`.?!。？！…`), 단어 간 공백 ≥ 0.6초, 큐 최대 길이 7초, 최대 42자(중국어·일본어 24자, 한국어 32자). 상수는 모듈 상단에 둔다. 실제 녹음에서 한국어에 24자를 적용하면 문장 중간("시험해 / 보겠습니다")에서 끊겨 한글은 별도 기준으로 분리했다.
 - 텍스트 재구성: 정렬기 토큰을 그대로 이으면 공백과 문장부호가 사라지므로, ASR 원문 텍스트에 토큰을 순서대로 대응시켜 원문 구간을 잘라 쓴다.
 - 입력과 출력만 있는 순수 함수라서 모델 없이 pytest로 고정할 수 있다.
 
@@ -169,7 +169,7 @@ torch CUDA 휠만 ~2.5GB라서 기본 설치에 넣으면 모든 사용자의 �
 | P1 ✅ 완료 | 백엔드 추상화 리팩터(Whisper만, 동작 변경 없음) | 기존 테스트 전부 통과 |
 | P2 ✅ 완료 | 카탈로그 필드, `requires` 다운로드, 전체 파일 검증 (+ 보조 모델 자동 삭제, `start_stt`의 `engine`·`aux_models` 전달) | cargo 테스트, 기존 카탈로그 호환 |
 | P3 ✅ 완료 | 엔진 팩 lock과 설치 명령, CI 검증 | 깨끗한 환경에서 설치·재설치 |
-| P4 | Qwen 백엔드 + `subtitle_segmenter` | pytest, 수동 전사 비교 |
+| P4 ✅ 완료 | Qwen 백엔드 + `subtitle_segmenter` | pytest, 수동 전사 비교 |
 | P5 | UI, i18n, 문서 | Vitest, 실제 앱에서 마법사→작업→번역 전 과정 |
 
 P1과 P2는 서로 독립적이라 병렬로 진행할 수 있다. P4는 P1~P3이 끝나야 시작할 수 있다.

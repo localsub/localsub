@@ -148,6 +148,21 @@ def test_runtime_unload():
     assert r.json()["status"] == "UNLOADED"
 
 
+def test_runtime_load_passes_engine_and_helpers_to_stt():
+    import stt_engine
+
+    calls = []
+    with patch.object(stt_engine, "load_model", lambda *a: calls.append(a)):
+        r = client.post("/runtime/load", json={"model_type": "whisper", "model_id": "w"})
+        assert r.status_code == 200
+        r = client.post("/runtime/load", json={
+            "model_type": "whisper", "model_id": "q", "engine": "qwen3-asr",
+            "aux_models": {"aligner": "a"},
+        })
+        assert r.status_code == 200
+    assert calls == [("w", "faster-whisper", {}), ("q", "qwen3-asr", {"aligner": "a"})]
+
+
 def test_runtime_load_bad_type():
     # An unknown model_type is a client error, not a server error.
     r = client.post("/runtime/load", json={"model_type": "bad", "model_id": "test"})

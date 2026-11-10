@@ -101,7 +101,7 @@ def _resolve_model_dir() -> Path:
     return Path(os.environ.get("MODEL_DIR", "./models"))
 
 
-def load_model(model_id: str, engine: str = DEFAULT_ENGINE) -> bool:
+def load_model(model_id: str, engine: str = DEFAULT_ENGINE, aux_models: dict[str, str] | None = None) -> bool:
     global _backend, _loaded_model_id, _loaded_engine
 
     if _backend is not None and _loaded_model_id == model_id and _loaded_engine == engine:
@@ -114,10 +114,17 @@ def load_model(model_id: str, engine: str = DEFAULT_ENGINE) -> bool:
     # Runtime first: when the engine itself cannot load, that is the error the
     # user needs, even if the model files are missing too.
     backend.check_available()
-    model_path = backend.find_model(_resolve_model_dir(), model_id)
+    model_dir = _resolve_model_dir()
+    model_path = backend.find_model(model_dir, model_id)
     if model_path is None:
         raise FileNotFoundError(f"{backend.display_name} model not found: {model_id}")
-    backend.load(model_path)
+    aux_paths: dict[str, Path] = {}
+    for role, aux_id in (aux_models or {}).items():
+        aux_path = backend.find_model(model_dir, aux_id)
+        if aux_path is None:
+            raise FileNotFoundError(f"{backend.display_name} {role} model not found: {aux_id}")
+        aux_paths[role] = aux_path
+    backend.load(model_path, aux_paths)
     _backend = backend
     _loaded_model_id = model_id
     _loaded_engine = engine
@@ -435,7 +442,9 @@ async def run_stt(job_id: str) -> AsyncGenerator[dict[str, Any], None]:
             "message": f"Loading {probe.display_name} model...",
         }
         try:
-            await asyncio.get_running_loop().run_in_executor(None, load_model, model_id, engine)
+            await asyncio.get_running_loop().run_in_executor(
+                None, load_model, model_id, engine, job.get("aux_models") or {}
+            )
         except Exception as e:
             yield {"type": "error", "job_id": job_id, "error": f"Failed to load model: {e}"}
             job["state"] = SttJobState.FAILED
