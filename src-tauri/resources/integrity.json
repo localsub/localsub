@@ -20,5 +20,15 @@
       "mirror_url": "https://github.com/localsub/localsub/releases/download/vendor-assets-v1/llama_cpp_python-0.3.28-cpu-py3-none-win_amd64.whl",
       "sha256": "22baaf0b2bf19278c66d77e35770c3442f60a3e7b1efc44770eb2496aedb73e0"
     }
-  }
+  },
+  "cuda_runtime": [
+    {
+      "requirement": "nvidia-cuda-runtime-cu12==12.9.79",
+      "sha256": "8e018af8fa02363876860388bd10ccb89eb9ab8fb0aa749aaf58430a9f7c4891"
+    },
+    {
+      "requirement": "nvidia-cublas-cu12==12.9.2.10",
+      "sha256": "623f43027d40d44ceadf0043f002bd25cf353e8f13ce90b9a87057019f560661"
+    }
+  ]
 }

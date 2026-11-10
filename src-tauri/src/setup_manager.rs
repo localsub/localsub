@@ -78,6 +78,11 @@ pub fn classify_pip_error(stderr: &str) -> SetupErrorKind {
         return SetupErrorKind::NoWheel;
     }
 
+    // pip's `--require-hashes` refusal (requirements.lock and the CUDA runtime).
+    if lower.contains("do not match the hashes") {
+        return SetupErrorKind::Integrity;
+    }
+
     SetupErrorKind::Unknown
 }
 
@@ -863,40 +868,84 @@ pub async fn install_llm_package(app: &AppHandle) -> Result<String, AppError> {
 /// env_dir/nvidia/*/bin, which `build_python_env` adds to PATH.
 ///
 /// Pinned to a CUDA 12.x runtime that is binary-compatible with the cu124
-/// wheel (CUDA minor-version forward compatibility).
-/// The CUDA runtime packages, pinned. Bumping these has the same delivery
-/// problem the wheel had, so they get `--upgrade` for the same reason.
-const CUDA_RUNTIME_PKGS: [&str; 2] = [
-    "nvidia-cuda-runtime-cu12==12.9.79",
-    "nvidia-cublas-cu12==12.9.2.10",
-];
+/// wheel (CUDA minor-version forward compatibility). The pins — exact version
+/// plus the `win_amd64` wheel's SHA-256 — live in `integrity.json`
+/// (`cuda_runtime`), so a bump also changes `setup_inputs_hash` and re-runs
+/// setup on existing installs.
+///
+/// Bumping these has the same delivery problem the wheel had, so they get
+/// `--upgrade`. Unlike the llama wheel, that is safe here: these packages ship
+/// only `nvidia/...`, no top-level `bin/` that collides with `pip.exe`.
+fn cuda_runtime_requirements(
+    pkgs: &[crate::integrity::CudaRuntimePkg],
+) -> Result<String, AppError> {
+    if pkgs.is_empty() {
+        return Err(AppError::Config(
+            "integrity.json cuda_runtime is empty; the CUDA wheel cannot load without it".into(),
+        ));
+    }
+    let mut out = String::new();
+    for pkg in pkgs {
+        out.push_str(&pkg.requirement_line()?);
+        out.push('\n');
+    }
+    Ok(out)
+}
 
-fn cuda_runtime_pip_args(env_dir: &std::path::Path) -> Vec<String> {
-    let mut args = vec![
+/// pip arguments for the CUDA runtime. `--require-hashes` makes pip refuse any
+/// wheel whose SHA-256 is not the one in the requirements file, and
+/// `--only-binary` keeps it from ever falling back to an sdist (which would
+/// have no matching hash anyway, but fail less legibly).
+fn cuda_runtime_pip_args(
+    requirements_file: &std::path::Path,
+    env_dir: &std::path::Path,
+) -> Vec<String> {
+    vec![
         "install".to_string(),
         "--no-user".to_string(),
         "--no-deps".to_string(),
         "--upgrade".to_string(),
-    ];
-    args.extend(CUDA_RUNTIME_PKGS.iter().map(|p| p.to_string()));
-    args.push("--target".to_string());
-    args.push(env_dir.to_string_lossy().into_owned());
-    args
+        "--require-hashes".to_string(),
+        "--only-binary=:all:".to_string(),
+        "-r".to_string(),
+        requirements_file.to_string_lossy().into_owned(),
+        "--target".to_string(),
+        env_dir.to_string_lossy().into_owned(),
+    ]
 }
 
 fn install_cuda_runtime(app: &AppHandle, env_dir: &std::path::Path) -> Result<(), AppError> {
     emit_progress(app, "llm", "Installing CUDA runtime...", 0.96);
 
+    let manifest = crate::integrity::load_integrity_manifest(app)?;
+    let requirements = cuda_runtime_requirements(&manifest.cuda_runtime)?;
+    let req_file = env_dir.join("cuda-runtime-requirements.txt");
+    std::fs::write(&req_file, requirements).map_err(|e| {
+        AppError::Setup(format!("Failed to write CUDA runtime requirements: {}", e))
+    })?;
+
+    let result = run_cuda_runtime_pip(app, env_dir, &req_file);
+    let _ = std::fs::remove_file(&req_file);
+    result
+}
+
+fn run_cuda_runtime_pip(
+    app: &AppHandle,
+    env_dir: &std::path::Path,
+    req_file: &std::path::Path,
+) -> Result<(), AppError> {
     let env_vars = build_python_env(app)?;
     let pip_exe = env_dir.join("bin").join("pip.exe");
     let mut cmd = if pip_exe.exists() {
         let mut c = Command::new(&pip_exe);
-        c.args(cuda_runtime_pip_args(env_dir));
+        c.args(cuda_runtime_pip_args(req_file, env_dir));
         c
     } else {
         let python = get_python_executable(app)?;
         let mut c = Command::new(&python);
-        c.arg("-m").arg("pip").args(cuda_runtime_pip_args(env_dir));
+        c.arg("-m")
+            .arg("pip")
+            .args(cuda_runtime_pip_args(req_file, env_dir));
         c
     };
     for (k, v) in &env_vars {
@@ -1128,11 +1177,57 @@ mod tests {
 
     #[test]
     fn cuda_runtime_install_forces_replacement() {
-        let args = cuda_runtime_pip_args(std::path::Path::new(r"C:\env"));
+        let args = cuda_runtime_pip_args(
+            std::path::Path::new(r"C:\env\cuda-runtime-requirements.txt"),
+            std::path::Path::new(r"C:\env"),
+        );
         assert!(args.contains(&"--upgrade".to_string()), "args: {args:?}");
-        for pkg in CUDA_RUNTIME_PKGS {
-            assert!(args.contains(&pkg.to_string()), "missing {pkg} in {args:?}");
+        assert!(args.contains(&"--no-deps".to_string()), "args: {args:?}");
+        let target_idx = args.iter().position(|a| a == "--target").unwrap();
+        assert_eq!(args.get(target_idx + 1).map(String::as_str), Some(r"C:\env"));
+    }
+
+    /// The CUDA runtime used to be installed by version alone — the one pip
+    /// call in setup that accepted whatever the index served. It must go
+    /// through a hashed requirements file under `--require-hashes`, never as
+    /// bare `name==version` arguments.
+    #[test]
+    fn cuda_runtime_install_requires_hashes() {
+        let req = std::path::Path::new(r"C:\env\cuda-runtime-requirements.txt");
+        let args = cuda_runtime_pip_args(req, std::path::Path::new(r"C:\env"));
+        assert!(args.contains(&"--require-hashes".to_string()), "args: {args:?}");
+        assert!(args.contains(&"--only-binary=:all:".to_string()), "args: {args:?}");
+        let r_idx = args.iter().position(|a| a == "-r").expect("no -r in args");
+        assert_eq!(
+            args.get(r_idx + 1).map(String::as_str),
+            Some(r"C:\env\cuda-runtime-requirements.txt")
+        );
+        assert!(
+            !args.iter().any(|a| a.contains("==")),
+            "packages must come from the hashed file, not bare args: {args:?}"
+        );
+    }
+
+    /// The bundled pins, not a fixture: every package becomes a hashed line.
+    #[test]
+    fn bundled_cuda_runtime_pins_render_as_hashed_requirements() {
+        let m: crate::integrity::IntegrityManifest =
+            serde_json::from_str(include_str!("../resources/integrity.json")).unwrap();
+        let text = cuda_runtime_requirements(&m.cuda_runtime).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), m.cuda_runtime.len());
+        for name in ["nvidia-cuda-runtime-cu12==", "nvidia-cublas-cu12=="] {
+            let line = lines
+                .iter()
+                .find(|l| l.starts_with(name))
+                .unwrap_or_else(|| panic!("{name} missing from {text}"));
+            assert!(line.contains(" --hash=sha256:"), "unhashed line: {line}");
         }
+    }
+
+    #[test]
+    fn empty_cuda_runtime_pins_are_rejected() {
+        assert!(cuda_runtime_requirements(&[]).is_err());
     }
 
     /// The marker used to hash only requirements.lock, which does not mention
@@ -1242,6 +1337,18 @@ mod tests {
                 "ERROR: Could not find a version that satisfies the requirement llama-cpp-python"
             ),
             SetupErrorKind::NoWheel
+        );
+    }
+
+    /// Verbatim from pip 26 refusing a wheel under `--require-hashes`.
+    #[test]
+    fn classify_hash_mismatch_as_integrity() {
+        assert_eq!(
+            classify_pip_error(
+                "ERROR: THESE PACKAGES DO NOT MATCH THE HASHES FROM THE REQUIREMENTS FILE. \
+                 If you have updated the package versions, please update the hashes."
+            ),
+            SetupErrorKind::Integrity
         );
     }
 

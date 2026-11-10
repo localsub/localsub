@@ -14,6 +14,57 @@ pub struct IntegrityManifest {
     pub ffmpeg: FfmpegEntry,
     pub vc_redist: VcRedistEntry,
     pub llama_cpp: LlamaCpp,
+    /// Required, not `#[serde(default)]`: an absent list would install nothing
+    /// and leave the CUDA wheel without the DLLs it links against.
+    pub cuda_runtime: Vec<CudaRuntimePkg>,
+}
+
+/// One NVIDIA CUDA runtime package that the prebuilt CUDA llama-cpp wheel links
+/// against but does not bundle (`cudart64_12.dll`, `cublas64_12.dll`, ...).
+///
+/// These come from PyPI rather than a URL we download ourselves, because pip
+/// already knows where they live. The pin is the exact version plus the SHA-256
+/// of its `win_amd64` wheel; setup hands both to pip under `--require-hashes`,
+/// so a wheel whose bytes differ from the pin is refused instead of installed.
+/// They used to be installed by version alone, the one step in setup that took
+/// whatever the index served.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CudaRuntimePkg {
+    /// Exact pin, e.g. `nvidia-cublas-cu12==12.9.2.10`.
+    pub requirement: String,
+    /// SHA-256 of the `win_amd64` wheel, lowercase hex.
+    pub sha256: String,
+}
+
+impl CudaRuntimePkg {
+    /// The line for a pip requirements file:
+    /// `name==version --hash=sha256:<hex>`.
+    ///
+    /// Rejects anything that is not an exact `==` pin with a 64-hex hash, so a
+    /// typo in `integrity.json` fails setup loudly. Under `--require-hashes` pip
+    /// already refuses an unpinned requirement, but a hash of the wrong length
+    /// would only surface as a mismatch on the user's machine.
+    pub fn requirement_line(&self) -> Result<String, AppError> {
+        let req = self.requirement.trim();
+        let pinned = req
+            .split_once("==")
+            .map(|(name, ver)| !name.trim().is_empty() && !ver.trim().is_empty())
+            .unwrap_or(false);
+        if !pinned || req.contains(char::is_whitespace) || req.contains(';') {
+            return Err(AppError::Config(format!(
+                "cuda_runtime requirement must be an exact `name==version` pin: {:?}",
+                self.requirement
+            )));
+        }
+        let hash = self.sha256.trim().to_ascii_lowercase();
+        if hash.len() != 64 || !hash.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(AppError::Config(format!(
+                "cuda_runtime sha256 for {req} must be 64 hex characters"
+            )));
+        }
+        Ok(format!("{req} --hash=sha256:{hash}"))
+    }
 }
 
 /// ffmpeg is deliberately single-sourced — note the absent `mirror_url`.
@@ -314,7 +365,8 @@ mod tests {
           "llama_cpp": {
             "cuda": { "url": "https://up/cu.whl", "sha256": "bb" },
             "cpu":  { "url": "https://up/cpu.whl", "sha256": "cc" }
-          }
+          },
+          "cuda_runtime": [{ "requirement": "nvidia-x==1.0", "sha256": "ee" }]
         }"#;
         let err = serde_json::from_str::<IntegrityManifest>(json).unwrap_err();
         assert!(
@@ -332,7 +384,8 @@ mod tests {
           "llama_cpp": {
             "cuda": { "url": "https://x/cu.whl", "sha256": "bb" },
             "cpu":  { "url": "https://x/cpu.whl", "sha256": "cc" }
-          }
+          },
+          "cuda_runtime": [{ "requirement": "nvidia-x==1.0", "sha256": "ee" }]
         }"#;
         let m: IntegrityManifest = serde_json::from_str(json).unwrap();
         assert_eq!(m.ffmpeg.exe_suffixes, vec!["bin/ffmpeg.exe".to_string()]);
@@ -340,6 +393,82 @@ mod tests {
         assert_eq!(m.llama_cpp.cpu.url, "https://x/cpu.whl");
         assert_eq!(m.ffmpeg.urls(), vec!["https://x/ff.zip".to_string()]);
         assert!(m.llama_cpp.cuda.mirror_url.is_none());
+        assert_eq!(m.cuda_runtime.len(), 1);
+        assert_eq!(m.cuda_runtime[0].requirement, "nvidia-x==1.0");
+    }
+
+    /// Dropping the pins must not parse as "no CUDA runtime to install".
+    #[test]
+    fn manifest_without_cuda_runtime_fails_to_parse() {
+        let json = r#"{
+          "version": 1,
+          "ffmpeg": { "url": "https://x/ff.zip", "sha256": "aa", "exe_suffixes": ["bin/ffmpeg.exe"] },
+          "vc_redist": { "url": "https://x/vc.exe", "sha256": "dd" },
+          "llama_cpp": {
+            "cuda": { "url": "https://x/cu.whl", "sha256": "bb" },
+            "cpu":  { "url": "https://x/cpu.whl", "sha256": "cc" }
+          }
+        }"#;
+        let err = serde_json::from_str::<IntegrityManifest>(json).unwrap_err();
+        assert!(err.to_string().contains("cuda_runtime"), "got: {err}");
+    }
+
+    fn pkg(requirement: &str, sha256: &str) -> CudaRuntimePkg {
+        CudaRuntimePkg { requirement: requirement.into(), sha256: sha256.into() }
+    }
+
+    #[test]
+    fn cuda_runtime_requirement_line_is_pinned_and_hashed() {
+        let hash = "A".repeat(64);
+        assert_eq!(
+            pkg("nvidia-cublas-cu12==12.9.2.10", &hash).requirement_line().unwrap(),
+            format!("nvidia-cublas-cu12==12.9.2.10 --hash=sha256:{}", "a".repeat(64))
+        );
+    }
+
+    #[test]
+    fn cuda_runtime_rejects_loose_pins_and_bad_hashes() {
+        let good = "0".repeat(64);
+        for bad_req in [
+            "nvidia-cublas-cu12",
+            "nvidia-cublas-cu12>=12.9",
+            "==12.9",
+            "nvidia-cublas-cu12==",
+            "nvidia-cublas-cu12==12.9 --index-url=https://evil",
+            "nvidia-cublas-cu12==12.9; sys_platform=='win32'",
+        ] {
+            assert!(pkg(bad_req, &good).requirement_line().is_err(), "accepted {bad_req:?}");
+        }
+        for bad_hash in ["", "ee", &"0".repeat(63), &"g".repeat(64)] {
+            assert!(
+                pkg("nvidia-x==1.0", bad_hash).requirement_line().is_err(),
+                "accepted hash {bad_hash:?}"
+            );
+        }
+    }
+
+    /// Unknown keys (`url`, `mirror_url`, ...) would be silently dropped
+    /// otherwise and read as a working override.
+    #[test]
+    fn cuda_runtime_entry_rejects_unknown_fields() {
+        let err = serde_json::from_str::<CudaRuntimePkg>(
+            r#"{ "requirement": "nvidia-x==1.0", "sha256": "ee", "url": "https://x" }"#,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("url"), "got: {err}");
+    }
+
+    /// Every bundled pin must render; a malformed hash would otherwise only
+    /// surface as a failed GPU setup on a user's machine.
+    #[test]
+    fn bundled_cuda_runtime_pins_are_well_formed() {
+        let m: IntegrityManifest =
+            serde_json::from_str(include_str!("../resources/integrity.json")).unwrap();
+        assert!(!m.cuda_runtime.is_empty());
+        for p in &m.cuda_runtime {
+            p.requirement_line()
+                .unwrap_or_else(|e| panic!("{}: {e}", p.requirement));
+        }
     }
 
     #[test]
@@ -351,7 +480,8 @@ mod tests {
           "llama_cpp": {
             "cuda": { "url": "https://up/cu.whl", "mirror_url": "https://mir/cu.whl", "sha256": "bb" },
             "cpu":  { "url": "https://up/cpu.whl", "sha256": "cc" }
-          }
+          },
+          "cuda_runtime": [{ "requirement": "nvidia-x==1.0", "sha256": "ee" }]
         }"#;
         let m: IntegrityManifest = serde_json::from_str(json).unwrap();
         assert_eq!(
@@ -399,7 +529,8 @@ mod tests {
           "llama_cpp": {
             "cuda": { "url": "https://up/cu.whl", "sha256": "bb" },
             "cpu":  { "url": "https://up/cpu.whl", "sha256": "cc" }
-          }
+          },
+          "cuda_runtime": [{ "requirement": "nvidia-x==1.0", "sha256": "ee" }]
         }"#;
         let err = serde_json::from_str::<IntegrityManifest>(json).unwrap_err();
         assert!(
