@@ -42,6 +42,7 @@ import { JobStatusBadge } from "./JobStatusBadge"
 import { NewJobDialog, type SelectedFile } from "./NewJobDialog"
 import { isAcceptedFile } from "@/lib/sourceType"
 import type { JobStatus, DashboardJob, Preset, Vocabulary } from "@/types"
+import { friendlySttError } from "@/lib/sttModels"
 
 type SortOption = "newest" | "oldest" | "nameAsc" | "nameDesc"
 
@@ -326,7 +327,7 @@ export function DashboardPage({
                     } else if (job.status === "pending") {
                       toastInfo(t("toast.jobStillProcessing"))
                     } else if (job.status === "failed") {
-                      toastError(t("toast.jobFailedClick"), job.error)
+                      toastError(t("toast.jobFailedClick"), friendlySttError(job.error, t))
                     }
                   }}
                 >
@@ -397,7 +398,7 @@ export function DashboardPage({
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs">
-                          <p>{job.error}</p>
+                          <p>{friendlySttError(job.error, t)}</p>
                         </TooltipContent>
                       </Tooltip>
                     ) : job.status === "interrupted" ? (

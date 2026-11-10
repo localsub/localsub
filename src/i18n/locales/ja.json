@@ -307,7 +307,8 @@
       "saveChanges": "変更を保存",
       "createPreset": "プリセットを作成",
       "createVocab": "用語集を作成",
-      "entriesCount": "{{count}}件"
+      "entriesCount": "{{count}}件",
+      "qwenLanguagesNote": "Qwen3-ASRでは字幕のタイミングを合わせられる言語だけを選べます。その他の言語はWhisperモデルを使ってください。"
     }
   },
   "setup": {
@@ -670,7 +671,11 @@
         "ready": "準備完了",
         "missing": "見つかりません",
         "corrupt": "破損"
-      }
+      },
+      "preparingEngine": "音声認識コンポーネントを準備しています(初回のみ、約3GBのダウンロード)…",
+      "needsNvidiaGpu": "NVIDIAのグラフィックカードが必要です",
+      "needsVram": "グラフィックメモリ{{size}}以上が必要",
+      "qwenNote": "韓国語・英語・日本語・中国語を含む{{count}}言語の字幕を作成します。初回のダウンロード時に必要なコンポーネントも一緒にセットアップされます(ディスク約7GB追加)。"
     },
     "api": {
       "title": "外部API",
@@ -730,5 +735,15 @@
     "redo": "やり直す",
     "find": "検索と置換",
     "closeFind": "検索を閉じる"
+  },
+  "errors": {
+    "stt": {
+      "languageUnsupported": "Qwen3-ASRはこの動画の言語では字幕のタイミングを合わせられません。この言語にはWhisperモデルを選んで、もう一度お試しください。",
+      "qwenUnavailable": "Qwen3-ASRを起動できませんでした。設定 > モデルでQwen3-ASRモデルを削除してから再ダウンロードするか、Whisperモデルを使ってください。"
+    },
+    "enginePack": {
+      "disk": "Qwen3-ASRを準備する空き容量が足りません。約10GBを空けてから、もう一度お試しください。",
+      "failed": "Qwen3-ASRを準備できませんでした。インターネット接続を確認して、もう一度お試しください。"
+    }
   }
 }

@@ -363,6 +363,15 @@ export interface DownloadError {
   cancelled: boolean;
 }
 
+/** "engine-pack-progress": the one-time install of an STT engine's components
+ * (Qwen3-ASR), which runs as the first step of that model's download. */
+export interface EnginePackProgress {
+  engine: SttEngine;
+  stage: "installing" | "done" | "failed";
+  error_kind: string | null;
+  message: string | null;
+}
+
 // ── Model manifest ──
 
 export interface ModelManifestEntry {

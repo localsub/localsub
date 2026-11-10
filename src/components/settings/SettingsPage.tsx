@@ -22,7 +22,7 @@ import { toastSuccess, toastError } from "@/lib/toast"
 import { GeneralSection } from "./GeneralSection"
 import { ModelsSection } from "./ModelsSection"
 import { InfoSection } from "./InfoSection"
-import type { AppConfig, PartialConfig, ModelManifestEntry, ModelCatalog, HardwareInfo, SettingsTab, DownloadProgress } from "@/types"
+import type { AppConfig, PartialConfig, ModelManifestEntry, ModelCatalog, HardwareInfo, SettingsTab, DownloadProgress, SttEngine } from "@/types"
 
 const navItemClass =
   "flex h-11 cursor-pointer items-center gap-2.5 rounded-md px-3.5 text-left transition-[background-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -39,6 +39,7 @@ interface SettingsPageProps {
   catalog: ModelCatalog | null
   hardware: HardwareInfo | null
   downloads: Map<string, DownloadProgress>
+  installingPacks?: Set<SttEngine>
   onUpdateConfig: (partial: PartialConfig) => void
   onDeleteModel: (id: string) => void
   onDownloadModel: (id: string) => void
@@ -51,6 +52,7 @@ export function SettingsPage({
   catalog,
   hardware,
   downloads,
+  installingPacks,
   onUpdateConfig,
   onDeleteModel,
   onDownloadModel,
@@ -147,6 +149,7 @@ export function SettingsPage({
               onCancelDownload={onCancelDownload}
               sourceLanguage={config.source_language}
               targetLanguage={config.target_language}
+              installingPacks={installingPacks}
             />
           )}
           {activeTab === "info" && (

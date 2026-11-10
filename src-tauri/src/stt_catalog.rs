@@ -79,6 +79,21 @@ pub fn orphaned_helpers(
         .collect()
 }
 
+/// Whether any installed model (other than `deleted`) still runs on `engine`.
+/// When none does, the engine's on-demand pack can go too.
+pub fn engine_still_used(
+    catalog: &ModelCatalog,
+    installed: &[String],
+    deleted: &str,
+    engine: crate::state::SttEngine,
+) -> bool {
+    installed
+        .iter()
+        .filter(|id| id.as_str() != deleted)
+        .filter_map(|id| find(catalog, id))
+        .any(|e| e.engine == engine && e.role == SttRole::Stt)
+}
+
 /// (file name, expected sha256) pairs `verify_model` checks, sorted by name.
 pub fn files_to_verify(entry: &WhisperCatalogEntry) -> Vec<(String, String)> {
     let mut files: Vec<(String, String)> =
@@ -296,6 +311,17 @@ mod tests {
         let c = full();
         let installed = vec!["qwen-1.7b".into()];
         assert!(orphaned_helpers(&c, &installed, "qwen-1.7b").is_empty());
+    }
+
+    #[test]
+    fn the_engine_is_unused_once_its_last_model_goes() {
+        use crate::state::SttEngine::Qwen3Asr;
+        let c = full();
+        let two = vec!["qwen-1.7b".to_string(), "qwen-0.6b".into(), "qwen-aligner".into(), "whisper-small".into()];
+        assert!(engine_still_used(&c, &two, "qwen-1.7b", Qwen3Asr));
+        // The aligner alone does not keep the engine "in use".
+        let one = vec!["qwen-1.7b".to_string(), "qwen-aligner".into(), "whisper-small".into()];
+        assert!(!engine_still_used(&c, &one, "qwen-1.7b", Qwen3Asr));
     }
 
     #[test]

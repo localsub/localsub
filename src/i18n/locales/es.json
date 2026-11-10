@@ -307,7 +307,8 @@
       "saveChanges": "Guardar cambios",
       "createPreset": "Crear predefinido",
       "createVocab": "Crear vocabulario",
-      "entriesCount": "{{count}} entradas"
+      "entriesCount": "{{count}} entradas",
+      "qwenLanguagesNote": "Qwen3-ASR solo ofrece los idiomas en los que puede sincronizar subtítulos. Para otros idiomas, usa un modelo Whisper."
     }
   },
   "setup": {
@@ -670,7 +671,11 @@
         "ready": "Listo",
         "missing": "Faltante",
         "corrupt": "Corrupto"
-      }
+      },
+      "preparingEngine": "Preparando los componentes de reconocimiento de voz (solo la primera vez, unos 3 GB de descarga)…",
+      "needsNvidiaGpu": "Requiere una tarjeta gráfica NVIDIA",
+      "needsVram": "Requiere {{size}} de memoria gráfica",
+      "qwenNote": "Crea subtítulos en {{count}} idiomas, entre ellos coreano, inglés, japonés y chino. La primera descarga también instala sus componentes (unos 7 GB adicionales de disco)."
     },
     "api": {
       "title": "API externa",
@@ -730,5 +735,15 @@
     "redo": "Rehacer",
     "find": "Buscar y reemplazar",
     "closeFind": "Cerrar búsqueda"
+  },
+  "errors": {
+    "stt": {
+      "languageUnsupported": "Qwen3-ASR no puede sincronizar subtítulos en el idioma de este vídeo. Elige un modelo Whisper para este idioma y vuelve a intentarlo.",
+      "qwenUnavailable": "Qwen3-ASR no pudo iniciarse. Elimina el modelo Qwen3-ASR en Ajustes > Modelos y descárgalo de nuevo, o usa un modelo Whisper."
+    },
+    "enginePack": {
+      "disk": "No hay espacio suficiente para preparar Qwen3-ASR. Libera unos 10 GB y vuelve a intentarlo.",
+      "failed": "No se pudo preparar Qwen3-ASR. Revisa tu conexión a internet y vuelve a intentarlo."
+    }
   }
 }

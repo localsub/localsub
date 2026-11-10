@@ -121,6 +121,25 @@ pub fn status(app: &AppHandle, engine: SttEngine) -> Result<PackStatus, AppError
     Ok(status_of(&pack_dir(&packs_root(), engine), expected.as_deref()))
 }
 
+/// Deletes an engine's pack (after its last model was deleted): ~6.7 GB the
+/// user could not otherwise see or remove. Best effort; logged on failure.
+pub fn remove(engine: SttEngine) {
+    if lock_file(engine).is_none() || INSTALLING.load(Ordering::SeqCst) {
+        return;
+    }
+    let dir = pack_dir(&packs_root(), engine);
+    if dir.exists() {
+        // Marker first: if the server still has the pack's DLLs loaded the
+        // tree delete stops part way, and the pack must then read as missing
+        // (so the next Qwen download reinstalls it), not as ready.
+        let _ = std::fs::remove_file(dir.join(MARKER));
+        match std::fs::remove_dir_all(&dir) {
+            Ok(()) => log::info!("[engine-pack] removed {} (no model uses it)", dir.display()),
+            Err(e) => log::warn!("[engine-pack] could not remove {}: {}", dir.display(), e),
+        }
+    }
+}
+
 /// Progress for the frontend. The model download shows this as part of the
 /// same card; `error_kind` set means the install failed.
 #[derive(Debug, Clone, Serialize)]
