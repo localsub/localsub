@@ -7,3 +7,9 @@ onnxruntime==1.26.0
 soundfile==0.14.0
 numpy==2.4.6
 scikit-learn==1.9.0
+# Pinned for the Qwen3-ASR engine pack: transformers 4.57.6 (requirements-qwen.txt)
+# refuses to import with tokenizers > 0.23.0 or huggingface_hub >= 1.0, and the
+# pack shares this environment. faster-whisper and the server suite are verified
+# on these versions (docs/design/qwen3-asr-stt-engine.md section 10.3).
+tokenizers==0.22.2
+huggingface_hub==0.36.2

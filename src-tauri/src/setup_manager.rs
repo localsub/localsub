@@ -265,6 +265,13 @@ fn run_streaming(
     Err(AppError::Setup(message))
 }
 
+/// `run_streaming` for a stage whose caller reports failure itself (engine
+/// packs emit their own "engine-pack-progress"), so no "setup-progress" error
+/// reaches the first-run setup screen.
+pub fn run_streaming_quiet(cmd: &mut Command, app: &AppHandle, stage: &str) -> Result<(), AppError> {
+    run_streaming(cmd, app, stage, false)
+}
+
 /// Resolves the app's bundled resource directory, mapping the (rare) failure to
 /// an AppError instead of panicking. A panic here would crash the app on first
 /// launch with no error screen the user could act on. See issue #10.
@@ -323,10 +330,15 @@ fn get_models_dir() -> PathBuf {
 pub fn build_python_env(app: &AppHandle) -> Result<Vec<(String, String)>, AppError> {
     let models_dir = get_models_dir().to_string_lossy().to_string();
 
+    // Where on-demand engine packs live; the server adds a pack to sys.path
+    // only when its backend loads (engine_pack.rs).
+    let packs_dir = crate::engine_pack::packs_root().to_string_lossy().to_string();
+
     if cfg!(debug_assertions) {
         return Ok(vec![
             ("MODEL_DIR".to_string(), models_dir),
             ("LOCALSUB_DEBUG".to_string(), "1".to_string()),
+            ("LOCALSUB_ENGINE_PACKS".to_string(), packs_dir),
         ]);
     }
 
@@ -365,6 +377,7 @@ pub fn build_python_env(app: &AppHandle) -> Result<Vec<(String, String)>, AppErr
         ("PIP_TARGET".to_string(), env_dir_str.clone()),
         ("PIP_NO_USER".to_string(), "1".to_string()),
         ("MODEL_DIR".to_string(), models_dir),
+        ("LOCALSUB_ENGINE_PACKS".to_string(), packs_dir),
         (
             "PATH".to_string(),
             format!(

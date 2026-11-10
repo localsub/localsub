@@ -108,11 +108,12 @@ Qwen3-ASR(1.7B / 0.6B)을 faster-whisper 옆에 **두 번째 STT 엔진**으로 
 
 torch CUDA 휠만 ~2.5GB라서 기본 설치에 넣으면 모든 사용자의 첫 설치가 몇 배로 커진다. 그래서 **Qwen 모델을 처음 내려받을 때 자동으로 함께 설치**한다. 사용자에게는 모델 다운로드의 일부로만 보인다(§1 제0원칙).
 
-- `python-server/requirements-qwen.lock`: `torch`(cu12x, download.pytorch.org 휠), `transformers==4.57.6`, `accelerate==1.12.0`, 그리고 실제로 import되는 전이 의존성만 포함한다. 전부 SHA-256 고정이다.
-- **`qwen-asr`는 `--no-deps`로 설치한다.** gradio·flask·nagisa·soynlp 같은 데모·형태소 의존성은 추론 경로에서 import되는지 스파이크(§6 P0)에서 확인하고, 필요한 것만 lock에 넣는다.
-- 기본 lock과 **같은 `env_dir`에 설치**하되, 기본 lock의 버전을 constraints로 걸어 `tokenizers`·`huggingface_hub`·`numpy` 등이 바뀌지 않게 한다. 이를 위해 **기본 lock의 `tokenizers`를 0.22.2로, `huggingface_hub`를 0.36.x로 낮춘다**(§10.3). 한 환경에 한 버전만 두어야 서버 프로세스 안에서 Whisper와 Qwen이 같은 라이브러리를 본다. CI `lockfile` 잡에 "기본 lock + qwen lock 동시 `--dry-run --require-hashes`" 단계를 추가한다.
-- 설치 상태는 `qwen-pack-complete.marker`에 lock 해시로 기록한다(`setup-complete.marker`와 같은 방식). lock이 바뀌면 재설치한다.
-- 새 Tauri 명령 `install_engine_pack("qwen3-asr")`는 진행률 이벤트와 디스크 여유 검사를 포함한다. 설치 후 팩 ~6.7GB(내려받는 양은 ~3GB)에 모델(1.7B 4.4GB / 0.6B 1.8GB)과 정렬기 1.8GB가 더해진다(§10.4).
+- `python-server/requirements-qwen.lock` (P3에서 구현): `scripts/lock_python.py qwen`으로 생성한다. `requirements-qwen.txt`(torch 2.8.0+cu126, transformers 4.57.6, accelerate 1.12.0, nagisa, soynlp, librosa)를 기본 lock을 constraints로 해석하고, **기본 lock에 있는 패키지를 전부 뺀다.** `qwen-asr`는 `--no-deps`로 추가한다(gradio·flask·sox·qwen-omni-utils·pytz·vllm 제외). 결과 23개 패키지, 모두 SHA-256 고정. torch 인덱스 줄은 lock 안에 둔다.
+- **설치 위치 (설계 변경)**: 처음 안은 기본 `env_dir`에 같이 설치하는 것이었으나, `%APPDATA%/LocalSub/engine-packs/qwen3-asr/`에 따로 둔다. `.partial`에 설치한 뒤 이름을 바꿔 넣으므로 업데이트·재설치가 원자적이고, 반쯤 설치된 팩이 기본 환경에 섞이지 않는다. 기본 lock과 겹치는 패키지가 없고, 서버가 팩을 `sys.path` 맨 뒤에 붙이므로 한 프로세스에 두 버전이 보이는 일은 없다.
+- 기본 lock의 `tokenizers`를 0.22.2로, `huggingface_hub`를 0.36.2로 `requirements.txt`에 고정했다(§10.3). 다른 패키지는 기존 lock 버전을 그대로 유지했다(httpx·typer·rich 등 1.x hub 전용 의존성만 빠지고 requests·urllib3·charset_normalizer가 들어옴).
+- 설치 상태는 팩 폴더의 `.complete` 마커에 **기본 lock + 팩 lock** 해시로 기록한다. 둘 중 하나가 바뀌면 `Stale`이 되어 재설치한다.
+- 서버는 시작 시 팩을 import하지 않는다. Qwen 백엔드가 로드될 때 `engine_packs.activate("qwen3-asr")`가 경로를 붙이므로, 서버 실행 중에 팩을 설치해도 재시작이 필요 없다.
+- Tauri 명령 `get_engine_pack_status` / `install_engine_pack("qwen3-asr")`: `engine-pack-progress` 이벤트(`installing` / `done` / `failed` + `error_kind`)와 10GB 디스크 여유 검사를 포함한다. 설치 후 팩 ~6.7GB(내려받는 양은 ~3GB)에 모델(1.7B 4.4GB / 0.6B 1.8GB)과 정렬기 1.8GB가 더해진다(§10.4).
 - CLAUDE.md §8 공급망 정책을 그대로 따르고, 정책 문서에 엔진 팩 항목을 추가한다.
 
 ### 3.6 GPU와 VRAM
@@ -167,7 +168,7 @@ torch CUDA 휠만 ~2.5GB라서 기본 설치에 넣으면 모든 사용자의 �
 | **P0 스파이크** ✅ 완료 | 임베디드 CPython 3.12 + Windows + torch cu12 + `qwen-asr` transformers 백엔드로 실제 파일 전사. `--no-deps` 최소 의존성 확인, VRAM과 속도 측정, 정렬기 출력 단위 확인, `faster_whisper.vad` 단독 사용 확인 | 동작 여부와 수치 보고. **실패하면 여기서 중단하거나 §7 대안으로 전환** |
 | P1 ✅ 완료 | 백엔드 추상화 리팩터(Whisper만, 동작 변경 없음) | 기존 테스트 전부 통과 |
 | P2 ✅ 완료 | 카탈로그 필드, `requires` 다운로드, 전체 파일 검증 (+ 보조 모델 자동 삭제, `start_stt`의 `engine`·`aux_models` 전달) | cargo 테스트, 기존 카탈로그 호환 |
-| P3 | 엔진 팩 lock과 설치 명령, CI 검증 | 깨끗한 환경에서 설치·재설치 |
+| P3 ✅ 완료 | 엔진 팩 lock과 설치 명령, CI 검증 | 깨끗한 환경에서 설치·재설치 |
 | P4 | Qwen 백엔드 + `subtitle_segmenter` | pytest, 수동 전사 비교 |
 | P5 | UI, i18n, 문서 | Vitest, 실제 앱에서 마법사→작업→번역 전 과정 |
 

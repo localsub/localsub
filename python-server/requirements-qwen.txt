@@ -1,0 +1,13 @@
+# Qwen3-ASR engine pack: what the Qwen backend imports, installed on demand when
+# the user first downloads a Qwen model (never part of the base setup).
+# Locked by `python scripts/lock_python.py qwen` into requirements-qwen.lock,
+# which drops everything requirements.lock already pins. qwen-asr itself is
+# added --no-deps by the lock script (its declared deps include gradio/flask).
+torch==2.8.0+cu126
+transformers==4.57.6
+accelerate==1.12.0
+# Imported at module level by qwen_asr: the forced aligner tokenizes Japanese
+# with nagisa and Korean with soynlp; qwen_asr.inference.utils imports librosa.
+nagisa==0.2.11
+soynlp==0.0.493
+librosa==1.0.0

@@ -80,6 +80,37 @@ jobs:
           done < python-server/requirements.txt
           exit $rc
 
+      # The Qwen3-ASR engine pack installs --no-deps on top of the base
+      # environment, so its lock must (1) install under --require-hashes for
+      # the same target (the torch index is inside the lock), (2) pin nothing
+      # the base lock pins — or one process could see two versions — and
+      # (3) still carry every pin of requirements-qwen.txt.
+      - name: Validate engine pack lock under --require-hashes
+        run: |
+          python -m pip install --require-hashes --no-deps -r python-server/requirements-qwen.lock \
+            --dry-run --only-binary=:all: \
+            --platform win_amd64 --python-version 3.12 --abi cp312 \
+            --target /tmp/packcheck
+
+      - name: Check the engine pack lock against the base lock and its intent
+        run: |
+          names() { grep -v -e '^#' -e '^--' -e '^$' "$1" | sed 's/==.*//' | tr 'A-Z-' 'a-z_' | sort -u; }
+          both=$(comm -12 <(names python-server/requirements.lock) <(names python-server/requirements-qwen.lock))
+          if [ -n "$both" ]; then
+            echo "::error::in both requirements.lock and requirements-qwen.lock: $both"
+            exit 1
+          fi
+          rc=0
+          while IFS= read -r line; do
+            case "$line" in ''|\#*) continue;; esac
+            want=$(printf '%s' "$line" | tr -d '\r' | tr 'A-Z-' 'a-z_')
+            if ! grep -qF "$want --hash=" python-server/requirements-qwen.lock; then
+              echo "::error::requirements-qwen.txt pin '$line' is missing from requirements-qwen.lock — run scripts/lock_python.py qwen"
+              rc=1
+            fi
+          done < python-server/requirements-qwen.txt
+          exit $rc
+
   pytest:
     name: Python unit tests
     runs-on: ubuntu-latest
