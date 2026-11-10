@@ -59,19 +59,23 @@ Qwen3-ASR(1.7B / 0.6B)을 faster-whisper 옆에 **두 번째 STT 엔진**으로 
 현재 `stt_engine.py`는 모듈 전역 `_model`과 faster-whisper 호출 시그니처에 묶여 있다. 오케스트레이션과 백엔드를 분리한다.
 
 - **유지 (엔진 무관)**: 작업 상태, 취소 플래그, 60분 초과 30분 청크 분할(`_compute_chunks`), ffmpeg 추출과 `dynaudnorm` 부스트, `_dominant_language`, SSE 이벤트 형태(`stt_segment` / `stt_progress` / `done`).
-- **새 인터페이스** `stt_backends/base.py`:
+- **인터페이스** `stt_backends.py` (P1에서 구현):
   ```python
   class SttBackend(Protocol):
-      engine_id: str                     # "faster-whisper" | "qwen3-asr"
-      def load(self, model_dir: Path, aux_dirs: dict[str, Path]) -> None: ...
+      engine_id: str        # "faster-whisper" | "qwen3-asr"
+      display_name: str     # 진행·오류 메시지용 ("Whisper")
+      def find_model(self, model_dir: Path, model_id: str) -> Path | None: ...  # 엔진별 필수 파일 검사
+      def check_available(self) -> None: ...   # 런타임 import 실패 시 실제 이유로 RuntimeError
+      def load(self, model_path: Path) -> None: ...
       def unload(self) -> None: ...
-      def transcribe(self, wav_path: str, language: str | None,
-                     should_stop: Callable[[], bool]) -> Iterator[SegmentOrInfo]: ...
+      def transcribe(self, audio_path: str, language: str | None
+                     ) -> tuple[Iterator[SttSegment], SttInfo]: ...
   ```
-  `transcribe`는 세그먼트를 하나씩 내보내고, 마지막에 `duration`·`language`를 담은 정보 객체를 낸다. 지금 `_transcribe_range`가 `(segments_iter, info)`를 다루는 방식과 같다.
-- `stt_backends/whisper.py`: 현재 코드를 그대로 옮긴다(동작 변경 없음).
-- `stt_backends/qwen.py`: §3.1 흐름을 구현한다. import는 기존 규약대로 `try/except Exception` 가드와 `QWEN_LOAD_ERROR`로 감싸고, `test_native_import_guards.py`에 행을 추가한다.
-- `run_stt`의 기본 모델 탐색(`model.bin` 존재 검사, l.424-431)과 `_find_whisper_model_path`(l.111)를 엔진별 필수 파일 검사로 바꾼다.
+  `transcribe`는 지금의 faster-whisper와 같은 `(지연 세그먼트 이터레이터, info)`를 돌려준다. 오케스트레이터가 세그먼트를 하나씩 꺼내며 취소 플래그를 확인하고, `info.language`는 이터레이터를 다 소비한 뒤에 읽는다. 그래서 Qwen처럼 디코딩 중에 언어를 알게 되는 엔진도 나중에 채워 넣을 수 있다.
+- **모듈은 평면 구조**: 앱 번들 글롭(`resources/python-server/*`)과 `sync-python-resources.mjs`가 하위 폴더를 전제하지 않으므로 패키지 대신 `stt_backends.py`(계약·레지스트리) + `stt_backend_whisper.py` + (P4) `stt_backend_qwen.py`로 둔다.
+- `stt_backend_whisper.py`: 기존 코드를 옮겼다(동작 변경 없음). 디코딩 설정은 `TRANSCRIBE_KWARGS`로 모아 테스트로 고정했다.
+- `stt_backend_qwen.py`(P4): §3.1 흐름을 구현한다. import는 기존 규약대로 `try/except Exception` 가드와 `QWEN_LOAD_ERROR`로 감싸고, `test_native_import_guards.py`에 행을 추가한다.
+- `run_stt`의 기본 모델 탐색과 `load_model`은 이미 `backend.find_model`을 쓴다(P1). P4에서 요청의 `engine` 값을 넘기기만 하면 된다.
 
 ### 3.3 카탈로그·Rust: 이름은 유지하고 `engine` 필드 추가
 
@@ -161,7 +165,7 @@ torch CUDA 휠만 ~2.5GB라서 기본 설치에 넣으면 모든 사용자의 �
 | 단계 | 내용 | 완료 기준 |
 |---|---|---|
 | **P0 스파이크** ✅ 완료 | 임베디드 CPython 3.12 + Windows + torch cu12 + `qwen-asr` transformers 백엔드로 실제 파일 전사. `--no-deps` 최소 의존성 확인, VRAM과 속도 측정, 정렬기 출력 단위 확인, `faster_whisper.vad` 단독 사용 확인 | 동작 여부와 수치 보고. **실패하면 여기서 중단하거나 §7 대안으로 전환** |
-| P1 | 백엔드 추상화 리팩터(Whisper만, 동작 변경 없음) | 기존 테스트 전부 통과 |
+| P1 ✅ 완료 | 백엔드 추상화 리팩터(Whisper만, 동작 변경 없음) | 기존 테스트 전부 통과 |
 | P2 | 카탈로그 필드, `requires` 다운로드, 전체 파일 검증 | cargo 테스트, 기존 카탈로그 호환 |
 | P3 | 엔진 팩 lock과 설치 명령, CI 검증 | 깨끗한 환경에서 설치·재설치 |
 | P4 | Qwen 백엔드 + `subtitle_segmenter` | pytest, 수동 전사 비교 |

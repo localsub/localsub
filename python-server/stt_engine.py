@@ -1,6 +1,8 @@
-"""STT engine backed by faster-whisper.
+"""STT orchestration: jobs, long-file chunking, audio extraction, SSE events.
 
-Singleton model pattern: model is loaded once and reused across jobs.
+The model itself sits behind an `stt_backends.SttBackend` (faster-whisper
+today). Singleton pattern: one backend with one model is loaded and reused
+across jobs.
 """
 
 import asyncio
@@ -19,19 +21,7 @@ from typing import Any, AsyncGenerator, Callable
 
 log = logging.getLogger(__name__)
 
-try:
-    from faster_whisper import WhisperModel
-except Exception as e:  # noqa: BLE001 - any load failure -> STT off, not fatal
-    # Not just ImportError: a native backend can fail to *load* (missing MSVC
-    # runtime, wrong CPU ISA), which raises OSError/RuntimeError. Letting that
-    # escape kills `import stt_router` and takes the whole server down with it.
-    log.warning("faster_whisper unavailable, STT disabled: %s: %s", type(e).__name__, e)
-    WHISPER_LOAD_ERROR: str | None = f"{type(e).__name__}: {e}"
-    WhisperModel = None  # type: ignore[misc,assignment]
-else:
-    WHISPER_LOAD_ERROR = None
-
-import gpu_utils
+from stt_backends import DEFAULT_ENGINE, SttBackend, create_backend
 
 # ── Long-file chunking ───────────────────────────────────────────
 # Belt-and-braces guard for the CT2 native crash chased in c0d7b92 / da27d1e.
@@ -100,49 +90,37 @@ def _compute_chunks(
 
 # ── Model singleton ────────────────────────────────────────────────
 
-_model: Any = None
+# The loaded backend, holding its model. Anything with a compatible
+# `transcribe(path, language=...)` works here, which is what the tests rely on.
+_backend: Any = None
 _loaded_model_id: str | None = None
+_loaded_engine: str | None = None
 
 
 def _resolve_model_dir() -> Path:
     return Path(os.environ.get("MODEL_DIR", "./models"))
 
 
-def _find_whisper_model_path(model_id: str) -> Path | None:
-    """Return the directory containing model.bin for the given model_id."""
-    base = _resolve_model_dir() / model_id
-    if (base / "model.bin").exists():
-        return base
-    return None
+def load_model(model_id: str, engine: str = DEFAULT_ENGINE) -> bool:
+    global _backend, _loaded_model_id, _loaded_engine
 
-
-def load_model(model_id: str) -> bool:
-    global _model, _loaded_model_id
-
-    if _model is not None and _loaded_model_id == model_id:
+    if _backend is not None and _loaded_model_id == model_id and _loaded_engine == engine:
         return True  # already loaded
 
     # Unload previous model first
     unload_model()
 
-    if WhisperModel is None:
-    # "not installed" would be a lie and a wild goose chase: the package is
-    # there, it just could not load. Keep the real reason and hand it to the
-    # user with the failure, or they go debugging pip instead of a missing DLL.
-        raise RuntimeError(f"faster-whisper unavailable ({WHISPER_LOAD_ERROR})")
-
-    model_path = _find_whisper_model_path(model_id)
+    backend: SttBackend = create_backend(engine)
+    # Runtime first: when the engine itself cannot load, that is the error the
+    # user needs, even if the model files are missing too.
+    backend.check_available()
+    model_path = backend.find_model(_resolve_model_dir(), model_id)
     if model_path is None:
-        raise FileNotFoundError(f"Whisper model not found: {model_id}")
-
-    device, compute_type = gpu_utils.get_stt_device()
-    _model = WhisperModel(
-        str(model_path),
-        device=device,
-        compute_type=compute_type,
-    )
+        raise FileNotFoundError(f"{backend.display_name} model not found: {model_id}")
+    backend.load(model_path)
+    _backend = backend
     _loaded_model_id = model_id
-    log.info("Loaded Whisper model: %s (device=%s)", model_id, device)
+    _loaded_engine = engine
     try:
         import torch
         if torch.cuda.is_available():
@@ -307,12 +285,13 @@ def _probe_duration(file_path: str) -> float | None:
 
 
 def unload_model() -> None:
-    global _model, _loaded_model_id
+    global _backend, _loaded_model_id, _loaded_engine
     log.info("[STT] Unloading model: %s", _loaded_model_id)
-    if _model is not None:
-        del _model
-    _model = None
+    if _backend is not None:
+        _backend.unload()
+    _backend = None
     _loaded_model_id = None
+    _loaded_engine = None
     import gc
     gc.collect()
     try:
@@ -330,7 +309,7 @@ def unload_model() -> None:
 
 
 def is_model_loaded() -> bool:
-    return _model is not None
+    return _backend is not None
 
 
 # ── Job management ─────────────────────────────────────────────────
@@ -422,11 +401,13 @@ async def run_stt(job_id: str) -> AsyncGenerator[dict[str, Any], None]:
 
     # Determine model_id — fallback to first available model
     model_id = job.get("model_id")
+    engine = DEFAULT_ENGINE
     if not model_id:
         model_dir = _resolve_model_dir()
         if model_dir.exists():
+            probe = create_backend(engine)
             for d in model_dir.iterdir():
-                if d.is_dir() and (d / "model.bin").exists():
+                if d.is_dir() and probe.find_model(model_dir, d.name) is not None:
                     model_id = d.name
                     break
     if not model_id:
@@ -441,10 +422,10 @@ async def run_stt(job_id: str) -> AsyncGenerator[dict[str, Any], None]:
             "type": "stt_progress",
             "job_id": job_id,
             "progress": 0,
-            "message": "Loading Whisper model...",
+            "message": f"Loading {create_backend(engine).display_name} model...",
         }
         try:
-            await asyncio.get_running_loop().run_in_executor(None, load_model, model_id)
+            await asyncio.get_running_loop().run_in_executor(None, load_model, model_id, engine)
         except Exception as e:
             yield {"type": "error", "job_id": job_id, "error": f"Failed to load model: {e}"}
             job["state"] = SttJobState.FAILED
@@ -465,7 +446,7 @@ async def run_stt(job_id: str) -> AsyncGenerator[dict[str, Any], None]:
     }
 
     try:
-        async for event in _run_whisper(job_id, job):
+        async for event in _run_transcription(job_id, job):
             yield event
     except Exception as e:
         job["state"] = SttJobState.FAILED
@@ -489,7 +470,7 @@ async def _transcribe_range(
     duration_hint: float,
     whole_file: bool = False,
 ) -> AsyncGenerator[dict[str, Any], None]:
-    """Run a single faster-whisper transcription pass, optionally on a
+    """Run a single backend transcription pass, optionally on a
     time slice of `source_file`.
 
     `whole_file` says the slice spans the entire file, so a failed
@@ -574,24 +555,10 @@ async def _transcribe_range(
             transcribe_file, language_arg, time_offset, index_base,
         )
 
+        backend = _backend
         segments_iter, info = await loop.run_in_executor(
             None,
-            lambda: _model.transcribe(
-                transcribe_file,
-                language=language_arg,
-                beam_size=5,
-                word_timestamps=True,
-                vad_filter=True,
-                vad_parameters=dict(
-                    max_speech_duration_s=15,
-                    min_silence_duration_ms=200,
-                    speech_pad_ms=300,
-                    threshold=0.3,
-                ),
-                condition_on_previous_text=False,
-                no_speech_threshold=0.3,
-                temperature=0.0,
-            ),
+            lambda: backend.transcribe(transcribe_file, language=language_arg),
         )
 
         info_duration = info.duration if info.duration and info.duration > 0 else (duration_hint or 1.0)
@@ -652,7 +619,7 @@ async def _transcribe_range(
                 pass
 
 
-async def _run_whisper(job_id: str, job: dict) -> AsyncGenerator[dict[str, Any], None]:
+async def _run_transcription(job_id: str, job: dict) -> AsyncGenerator[dict[str, Any], None]:
     """Orchestrate one or many _transcribe_range calls.
 
     - User-supplied start_time/end_time (preview): single range call.

@@ -98,7 +98,7 @@ class _FakeFfmpeg:
 
 
 def _setup(monkeypatch, duration: float, ffmpeg: _FakeFfmpeg):
-    monkeypatch.setattr(stt_engine, "_model", _FakeWhisper(duration))
+    monkeypatch.setattr(stt_engine, "_backend", _FakeWhisper(duration))
     monkeypatch.setattr(stt_engine, "_loaded_model_id", "fake")
     monkeypatch.setattr(stt_engine, "_probe_duration", lambda p: duration)
     monkeypatch.setattr(stt_engine, "_find_ffmpeg", lambda: "ffmpeg")
