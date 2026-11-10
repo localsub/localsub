@@ -521,6 +521,8 @@
       "outputFormat": "デフォルト出力形式",
       "sourceLanguage": "ソース言語",
       "sourceLanguageDesc": "音声認識に使う言語です。自動検出を選ぶと、Whisper が言語を判別します。",
+      "boostQuietSpeech": "小さな声の補正",
+      "boostQuietSpeechDesc": "音声認識の前に、ささやき声などの小さなセリフの音量を上げます。小さなセリフが字幕から抜ける場合にオンにしてください。",
       "targetLanguage": "ターゲット言語",
       "sourceLangs": {
         "auto": "自動検出",

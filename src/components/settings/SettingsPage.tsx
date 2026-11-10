@@ -63,6 +63,7 @@ export function SettingsPage({
   const DEFAULT_CONFIG: PartialConfig = {
     subtitle_format: "srt",
     source_language: "auto",
+    boost_quiet_speech: false,
     max_concurrent_jobs: 1,
   }
 

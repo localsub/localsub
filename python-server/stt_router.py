@@ -17,6 +17,7 @@ class SttStartRequest(BaseModel):
     model_id: str | None = None
     start_time: float | None = None
     end_time: float | None = None
+    boost_quiet_speech: bool = False
 
 
 class SttStartResponse(BaseModel):
@@ -33,6 +34,7 @@ async def start_stt(request: SttStartRequest):
         model_id=request.model_id,
         start_time=request.start_time,
         end_time=request.end_time,
+        boost_quiet_speech=request.boost_quiet_speech,
     )
     return SttStartResponse(job_id=job_id)
 

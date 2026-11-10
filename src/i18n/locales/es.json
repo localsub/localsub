@@ -521,6 +521,8 @@
       "outputFormat": "Formato de salida predeterminado",
       "sourceLanguage": "Idioma de origen",
       "sourceLanguageDesc": "Idioma hablado para el reconocimiento de voz. Con Detección automática, Whisper lo identifica.",
+      "boostQuietSpeech": "Realzar voz baja",
+      "boostQuietSpeechDesc": "Sube el volumen de las frases dichas en voz baja, como susurros, antes del reconocimiento de voz. Actívalo si faltan diálogos en voz baja en los subtítulos.",
       "targetLanguage": "Idioma de destino",
       "sourceLangs": {
         "auto": "Detección automática",
