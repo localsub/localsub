@@ -31,7 +31,7 @@ class _FakeWhisper:
 
 def _run(monkeypatch, duration: float, script: list[tuple[str, int]], language: str | None = None):
     fake = _FakeWhisper(script)
-    monkeypatch.setattr(stt_engine, "_model", fake)
+    monkeypatch.setattr(stt_engine, "_backend", fake)
     monkeypatch.setattr(stt_engine, "_loaded_model_id", "fake")
     monkeypatch.setattr(stt_engine, "_probe_duration", lambda p: duration)
     monkeypatch.setattr(stt_engine, "_find_ffmpeg", lambda: "ffmpeg")

@@ -77,7 +77,9 @@ cd python-server && python -m pytest -q .
 src/                  # React 프론트엔드 소스코드
 src-tauri/src/        # Rust 백엔드 코어 (Tauri 명령 핸들러, 프로세스 및 무결성 관리)
 python-server/        # FastAPI 기반 AI 추론 서버
-  stt_engine.py       # STT 엔진 (faster-whisper, 60분 초과 미디어의 30분 청크 분할)
+  stt_engine.py       # STT 오케스트레이션 (작업·취소, 60분 초과 미디어의 30분 청크 분할, ffmpeg 추출, SSE)
+  stt_backends.py     # STT 엔진 계약(SttBackend)과 엔진 레지스트리. 엔진은 평면 모듈 stt_backend_<이름>.py (번들 글롭이 하위 폴더를 담지 않음)
+  stt_backend_whisper.py # faster-whisper 백엔드 (디코딩 설정 TRANSCRIBE_KWARGS)
   llm_engine.py       # LLM 번역 엔진 (세그먼트 단위 추론, 품질 게이트)
   prompt_builder.py   # 번역 프롬프트 구성 모듈
   quality_filters.py  # 구조적 비-번역 탐지 (문자 집합/길이 비율/퇴행적 반복)

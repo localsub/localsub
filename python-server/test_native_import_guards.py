@@ -72,7 +72,7 @@ def _reimport_with_failing_backend(engine: str, backend: str, exc: BaseException
 # (engine module, native backend, attr set to None, module var holding the reason)
 GUARDED = [
     ("llm_engine", "llama_cpp", "Llama", "LLAMA_LOAD_ERROR"),
-    ("stt_engine", "faster_whisper", "WhisperModel", "WHISPER_LOAD_ERROR"),
+    ("stt_backend_whisper", "faster_whisper", "WhisperModel", "WHISPER_LOAD_ERROR"),
     ("diarization_engine", "onnxruntime", "ort", "ORT_LOAD_ERROR"),
 ]
 
