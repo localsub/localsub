@@ -10,6 +10,9 @@
 | 표준 기술 용어 (국문/영문) | 약어 | 기술적 정의 및 공학적 의미 | 코드베이스 대응 심볼 / 경로 | 비표준 / 지양 표현 |
 |---|---|---|---|---|
 | **음성 인식**<br/>(Speech-to-Text) | STT | 오디오 스트림의 음향 신호를 시계열 텍스트 토큰 및 타임스탬프 세그먼트로 변환하는 공정. CTranslate2 가속 엔진 기반 faster-whisper를 사용. | `stt_engine.py`<br/>`commands_stt.rs` | 받아쓰기, 음성 타이핑, 알아듣기 |
+| **STT 엔진**<br/>(STT Engine) | - | STT 모델을 구동하는 Python 백엔드 종류. 카탈로그 `engine` 필드 값(`"faster-whisper"`, `"qwen3-asr"`)으로 식별하며, 미지정 시 `"faster-whisper"`. 엔진별 구현은 `SttBackend` 계약을 따름. | `stt_backends.py`<br/>`stt_backend_whisper.py`<br/>`state.rs` (`SttEngine`) | 음성 엔진 종류, 인식기 |
+| **STT 모델 (`whisper_*` 명칭)**<br/>(STT Model) | - | 카탈로그 `whisper_models`, 프리셋 `whisper_model`, 설정 `active_whisper_model`, 매니페스트 `model_type: "whisper"`는 역사적 명칭이며 엔진과 무관하게 STT 모델 전체를 가리킴. 저장된 설정·프리셋의 이전(마이그레이션)을 피하기 위해 이름을 유지함. | `model_catalog.json`<br/>`state.rs` (`WhisperCatalogEntry`) | Whisper 전용 모델 목록 |
+| **보조 모델**<br/>(Helper Model) | - | 단독으로 선택되지 않고 다른 STT 모델의 `requires`를 통해서만 함께 설치·삭제되는 모델(`role: "aligner"`, 예: 강제 정렬기). 이를 필요로 하는 마지막 모델이 삭제될 때 함께 삭제됨. | `stt_catalog.rs` | 부속 모델, 추가 파일 |
 | **음성 활동 감지**<br/>(Voice Activity Detection) | VAD | 오디오 신호 내에서 비음성 구간(침묵, 배경 잡음)과 유효 발화 구간을 분리 판별하는 전처리 공정. faster-whisper 내장 Silero VAD 적용 (`vad_filter=True`). | `stt_engine.py` | 음성 필터링, 말소리 골라내기 |
 | **화자 분리**<br/>(Speaker Diarization) | - | "누가 언제 발화했는가"를 기준으로 오디오 구간을 발화자별 세그먼트로 분할하고 클러스터링하는 공정. ONNX Runtime 음향 임베딩 추출 및 scikit-learn 응집 군집화(Agglomerative Clustering) 알고리즘 수행. | `diarization_engine.py`<br/>`commands_diarization.rs` | 화자 나누기, 목소리 구분, 발화자 쪼개기 |
 | **신경망 기계번역**<br/>(Neural Machine Translation) | NMT / Translation | 거대 언어 모델(LLM)을 활용하여 원천 언어(Source) 자막 세그먼트를 목표 언어(Target) 문맥에 부합하도록 변환하는 공정. | `llm_engine.py`<br/>`commands_translate.rs` | 말 바꾸기, 자동 번역기 |

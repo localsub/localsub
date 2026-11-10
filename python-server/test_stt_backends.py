@@ -177,6 +177,42 @@ def test_run_stt_picks_an_installed_model_when_none_is_given(fake_whisper, monke
     assert events[-1]["type"] == "error"
 
 
+def test_run_stt_fails_cleanly_on_an_unknown_engine(fake_whisper, monkeypatch):
+    """A newer app asking an older server for an engine it lacks gets an error
+    event, not a crash or a silent Whisper run."""
+    import asyncio
+
+    loaded: list = []
+    monkeypatch.setattr(stt_engine, "load_model", lambda *a: loaded.append(a))
+    job_id = stt_engine.create_stt_job("in.mp4", model_id="whisper-small", engine="vosk")
+
+    events = asyncio.run(_collect(stt_engine.run_stt(job_id)))
+
+    assert events == [{"type": "error", "job_id": job_id, "error": "Unknown STT engine: vosk"}]
+    assert loaded == []
+    assert stt_engine.get_stt_job(job_id) is None  # cleaned up
+
+
+def test_run_stt_reloads_when_the_engine_changes(fake_whisper, monkeypatch):
+    """Same model id, different engine: the loaded backend is the wrong one."""
+    import asyncio
+
+    monkeypatch.setattr(stt_engine, "_backend", object())
+    monkeypatch.setattr(stt_engine, "_loaded_model_id", "whisper-small")
+    monkeypatch.setattr(stt_engine, "_loaded_engine", "qwen3-asr")
+    loaded: list = []
+
+    def fake_load(model_id, engine):
+        loaded.append((model_id, engine))
+        raise RuntimeError("stop here")
+
+    monkeypatch.setattr(stt_engine, "load_model", fake_load)
+    job_id = stt_engine.create_stt_job("in.mp4", model_id="whisper-small")
+    asyncio.run(_collect(stt_engine.run_stt(job_id)))
+
+    assert loaded == [("whisper-small", "faster-whisper")]
+
+
 async def _collect(gen):
     return [ev async for ev in gen]
 

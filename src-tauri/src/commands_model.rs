@@ -4,7 +4,8 @@ use tokio_util::sync::CancellationToken;
 use crate::error::AppError;
 use crate::manifest_manager::{self, ModelManifest, ModelManifestEntry};
 use crate::model_downloader;
-use crate::state::{ModelCatalog, SharedState};
+use crate::state::{ModelCatalog, SharedState, WhisperCatalogEntry};
+use crate::stt_catalog;
 
 pub(crate) fn load_catalog(app: &AppHandle) -> Result<ModelCatalog, AppError> {
     let resource_path = app
@@ -17,6 +18,8 @@ pub(crate) fn load_catalog(app: &AppHandle) -> Result<ModelCatalog, AppError> {
 
     let catalog: ModelCatalog = serde_json::from_str(&data)
         .map_err(|e| AppError::Config(format!("Failed to parse model catalog: {}", e)))?;
+    stt_catalog::validate(&catalog)
+        .map_err(|e| AppError::Config(format!("Invalid model catalog: {}", e)))?;
 
     Ok(catalog)
 }
@@ -33,30 +36,13 @@ pub async fn download_model(
 ) -> Result<(), AppError> {
     let catalog = load_catalog(&app)?;
 
-    // Extract info needed before spawning — find in whisper first, then llm
-    let (model_name, model_type, size_bytes, representative_hash) =
-        if let Some(m) = catalog.whisper_models.iter().find(|m| m.id == model_id) {
-            (
-                m.name.clone(),
-                "whisper".to_string(),
-                m.total_size_bytes,
-                m.sha256.get("model.bin").cloned().unwrap_or_default(),
-            )
-        } else if let Some(m) = catalog.llm_models.iter().find(|m| m.id == model_id) {
-            (
-                m.name.clone(),
-                "llm".to_string(),
-                m.size_bytes,
-                m.sha256.clone(),
-            )
-        } else {
-            return Err(AppError::Download(format!(
-                "Model '{}' not found in catalog",
-                model_id
-            )));
-        };
-
-    let is_whisper = model_type == "whisper";
+    let is_whisper = stt_catalog::find(&catalog, &model_id).is_some();
+    if !is_whisper && !catalog.llm_models.iter().any(|m| m.id == model_id) {
+        return Err(AppError::Download(format!(
+            "Model '{}' not found in catalog",
+            model_id
+        )));
+    }
 
     // Get config and set up manifest entry
     let (config, http_client) = {
@@ -68,7 +54,39 @@ pub async fn download_model(
     };
 
     let models_dir = manifest_manager::models_dir(&config)?;
-    let dest_dir = models_dir.join(&model_id);
+
+    // Every manifest entry this download creates, in download order. An STT
+    // model that needs helpers (an aligner) brings them along, so the user
+    // clicks once and gets a working model.
+    let entries: Vec<ModelManifestEntry> = if is_whisper {
+        let manifest = manifest_manager::load_manifest(&config)?;
+        let ready = |id: &str| {
+            manifest
+                .models
+                .iter()
+                .any(|m| m.id == id && m.status == "ready")
+        };
+        stt_catalog::download_plan(&catalog, &model_id, ready)?
+            .into_iter()
+            .map(|m| {
+                manifest_entry(
+                    &m.id,
+                    "whisper",
+                    &m.name,
+                    m.total_size_bytes,
+                    stt_catalog::representative_hash(m),
+                )
+            })
+            .collect()
+    } else {
+        let m = catalog
+            .llm_models
+            .iter()
+            .find(|m| m.id == model_id)
+            .expect("checked above");
+        vec![manifest_entry(&m.id, "llm", &m.name, m.size_bytes, m.sha256.clone())]
+    };
+    let size_bytes: u64 = entries.iter().map(|e| e.size_bytes).sum();
 
     // Check disk space
     let free_bytes = fs2_free_space(&models_dir);
@@ -79,30 +97,24 @@ pub async fn download_model(
         )));
     }
 
-    // Create cancellation token and store it
+    // Create cancellation token and store it under every id the download
+    // touches, so none of them can be deleted mid-download.
     let cancel = CancellationToken::new();
     {
         let mut s = state
             .lock()
             .map_err(|e| AppError::Download(format!("Lock error: {}", e)))?;
-        s.active_downloads.insert(model_id.clone(), cancel.clone());
+        for e in &entries {
+            s.active_downloads.insert(e.id.clone(), cancel.clone());
+        }
     }
 
     // Update manifest to "downloading" status
-    let now = manifest_manager_now();
-    let entry = ModelManifestEntry {
-        id: model_id.clone(),
-        model_type: model_type.clone(),
-        name: model_name.clone(),
-        path: model_id.clone(),
-        size_bytes,
-        sha256: representative_hash,
-        status: "downloading".to_string(),
-        installed_at: now,
-    };
     {
         let manifest = manifest_manager::modify_manifest(&config, |m| {
-            manifest_manager::upsert_entry(m, entry);
+            for e in &entries {
+                manifest_manager::upsert_entry(m, e.clone());
+            }
         })?;
         emit_manifest(&app, &manifest);
     }
@@ -112,86 +124,121 @@ pub async fn download_model(
     let app_clone = app.clone();
     let model_id_clone = model_id.clone();
     let config_clone = config.clone();
+    let ids: Vec<String> = entries.iter().map(|e| e.id.clone()).collect();
 
     tokio::spawn(async move {
-        let result = if is_whisper {
-            match catalog.whisper_models.iter().find(|m| m.id == model_id_clone) {
-                Some(model) => {
+        let mut done: Vec<String> = Vec::new();
+        let result: Result<(), AppError> = async {
+            if is_whisper {
+                let plan: Vec<WhisperCatalogEntry> = ids
+                    .iter()
+                    .filter_map(|id| stt_catalog::find(&catalog, id).cloned())
+                    .collect();
+                let total_files: u32 = plan.iter().map(|m| m.files.len() as u32).sum();
+                let mut file_offset = 0u32;
+                for model in &plan {
                     model_downloader::download_whisper_model(
                         &http_client,
                         &app_clone,
-                        &model.clone(),
-                        &dest_dir,
+                        model,
+                        &models_dir.join(&model.id),
                         cancel.clone(),
+                        model_downloader::ProgressSlot {
+                            model_id: &model_id_clone,
+                            file_offset,
+                            total_files,
+                        },
                     )
-                    .await
+                    .await?;
+                    file_offset += model.files.len() as u32;
+                    mark(&app_clone, &config_clone, &model.id, "ready");
+                    done.push(model.id.clone());
                 }
-                None => Err(AppError::InvalidState(format!(
-                    "Whisper model '{}' disappeared from catalog",
-                    model_id_clone
-                ))),
-            }
-        } else {
-            match catalog.llm_models.iter().find(|m| m.id == model_id_clone) {
-                Some(model) => {
-                    model_downloader::download_llm_model(
-                        &http_client,
-                        &app_clone,
-                        &model.clone(),
-                        &dest_dir,
-                        cancel.clone(),
-                    )
-                    .await
+                Ok(())
+            } else {
+                match catalog.llm_models.iter().find(|m| m.id == model_id_clone) {
+                    Some(model) => {
+                        model_downloader::download_llm_model(
+                            &http_client,
+                            &app_clone,
+                            &model.clone(),
+                            &models_dir.join(&model_id_clone),
+                            cancel.clone(),
+                        )
+                        .await?;
+                        mark(&app_clone, &config_clone, &model_id_clone, "ready");
+                        Ok(())
+                    }
+                    None => Err(AppError::InvalidState(format!(
+                        "LLM model '{}' disappeared from catalog",
+                        model_id_clone
+                    ))),
                 }
-                None => Err(AppError::InvalidState(format!(
-                    "LLM model '{}' disappeared from catalog",
-                    model_id_clone
-                ))),
             }
-        };
+        }
+        .await;
 
         // Remove from active downloads via AppHandle
         let shared = app_clone.state::<SharedState>();
         if let Ok(mut s) = shared.lock() {
-            s.active_downloads.remove(&model_id_clone);
+            for id in &ids {
+                s.active_downloads.remove(id);
+            }
         }
         drop(shared);
 
-        // Update manifest based on result
-        match result {
-            Ok(()) => {
-                if let Ok(manifest) = manifest_manager::modify_manifest(&config_clone, |m| {
-                    if let Some(entry) = m.models.iter_mut().find(|m| m.id == model_id_clone) {
-                        entry.status = "ready".to_string();
-                    }
-                }) {
-                    emit_manifest(&app_clone, &manifest);
+        if let Err(ref e) = result {
+            let error_msg = e.to_string();
+            let is_cancel = error_msg.contains("cancelled");
+            if !is_cancel {
+                // Everything that did not finish is unusable, helpers included.
+                for id in ids.iter().filter(|id| !done.contains(id)) {
+                    mark(&app_clone, &config_clone, id, "corrupt");
                 }
             }
-            Err(ref e) => {
-                let error_msg = e.to_string();
-                let is_cancel = error_msg.contains("cancelled");
-                if !is_cancel {
-                    if let Ok(manifest) = manifest_manager::modify_manifest(&config_clone, |m| {
-                        if let Some(entry) = m.models.iter_mut().find(|m| m.id == model_id_clone) {
-                            entry.status = "corrupt".to_string();
-                        }
-                    }) {
-                        emit_manifest(&app_clone, &manifest);
-                    }
-                }
-                // Emit error event to frontend
-                let _ = app_clone.emit("download-error", serde_json::json!({
+            // Emit error event to frontend
+            let _ = app_clone.emit(
+                "download-error",
+                serde_json::json!({
                     "model_id": model_id_clone,
                     "error": error_msg,
                     "cancelled": is_cancel,
-                }));
-                log::error!("Download failed for {}: {}", model_id_clone, e);
-            }
+                }),
+            );
+            log::error!("Download failed for {}: {}", model_id_clone, e);
         }
     });
 
     Ok(())
+}
+
+fn manifest_entry(
+    id: &str,
+    model_type: &str,
+    name: &str,
+    size_bytes: u64,
+    sha256: String,
+) -> ModelManifestEntry {
+    ModelManifestEntry {
+        id: id.to_string(),
+        model_type: model_type.to_string(),
+        name: name.to_string(),
+        path: id.to_string(),
+        size_bytes,
+        sha256,
+        status: "downloading".to_string(),
+        installed_at: manifest_manager_now(),
+    }
+}
+
+fn mark(app: &AppHandle, config: &crate::state::AppConfig, id: &str, status: &str) {
+    if let Ok(manifest) = manifest_manager::modify_manifest(config, |m| {
+        if let Some(entry) = m.models.iter_mut().find(|m| m.id == id) {
+            entry.status = status.to_string();
+        }
+    }) {
+        emit_manifest(app, &manifest);
+    }
 }
 
 #[tauri::command]
@@ -267,6 +314,43 @@ pub async fn delete_model(
     })?;
     emit_manifest(&app, &manifest);
 
+    // Helpers (an aligner) are never shown as a model of their own, so the
+    // user cannot delete them. Free them with the last model that needed them,
+    // or they sit on disk unseen. Best effort: the model itself is gone.
+    if let Ok(catalog) = load_catalog(&app) {
+        let mut installed: Vec<String> = manifest.models.iter().map(|m| m.id.clone()).collect();
+        installed.push(model_id.clone());
+        let busy: Vec<String> = state
+            .lock()
+            .map(|s| s.active_downloads.keys().cloned().collect())
+            .unwrap_or_default();
+        for helper in stt_catalog::orphaned_helpers(&catalog, &installed, &model_id) {
+            if busy.contains(&helper) {
+                continue;
+            }
+            let Some(path) = manifest
+                .models
+                .iter()
+                .find(|m| m.id == helper)
+                .map(|m| models_dir.join(&m.path))
+            else {
+                continue;
+            };
+            if path.is_dir() {
+                if let Err(e) = std::fs::remove_dir_all(&path) {
+                    log::warn!("Could not delete unused helper model {}: {}", helper, e);
+                    continue;
+                }
+            }
+            if let Ok(m) = manifest_manager::modify_manifest(&config, |m| {
+                manifest_manager::remove_entry(m, &helper);
+            }) {
+                log::info!("Deleted helper model {} (no installed model needs it)", helper);
+                emit_manifest(&app, &m);
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -286,6 +370,7 @@ pub async fn get_model_manifest(
 
 #[tauri::command]
 pub async fn verify_model(
+    app: AppHandle,
     state: State<'_, SharedState>,
     model_id: String,
 ) -> Result<String, AppError> {
@@ -311,6 +396,26 @@ pub async fn verify_model(
     // Check existence
     if !model_path.exists() {
         return Ok("missing".to_string());
+    }
+
+    // STT models: every file the catalog pins. A model the catalog no longer
+    // lists falls through to the old model.bin check below.
+    if entry.model_type == "whisper" {
+        let catalog_entry = load_catalog(&app)
+            .ok()
+            .and_then(|c| stt_catalog::find(&c, &model_id).cloned());
+        if let Some(catalog_entry) = catalog_entry {
+            for (file, hash) in stt_catalog::files_to_verify(&catalog_entry) {
+                let path = model_path.join(&file);
+                if !path.exists() {
+                    return Ok("missing".to_string());
+                }
+                if !crate::integrity::verify_sha256(&path, &hash).await? {
+                    return Ok("corrupt".to_string());
+                }
+            }
+            return Ok("ready".to_string());
+        }
     }
 
     // For whisper models, verify model.bin hash

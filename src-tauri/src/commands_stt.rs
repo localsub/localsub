@@ -130,6 +130,14 @@ pub async fn start_stt(
     }
     if let Some(ref model_id) = whisper_model_id {
         body["model_id"] = serde_json::Value::String(model_id.clone());
+        // Which Python backend runs this model, and the helper models it uses
+        // (an aligner). Unknown to the catalog → the default engine, as before.
+        let catalog = crate::commands_model::load_catalog(&app).ok();
+        let (engine, aux_models) = crate::stt_catalog::stt_request_extras(catalog.as_ref(), model_id);
+        body["engine"] = serde_json::Value::String(engine.to_string());
+        if !aux_models.is_empty() {
+            body["aux_models"] = serde_json::json!(aux_models);
+        }
     }
     if let Some(st) = start_time {
         body["start_time"] = serde_json::json!(st);

@@ -3,9 +3,10 @@ import json
 import os
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
+from stt_backends import DEFAULT_ENGINE
 from stt_engine import create_stt_job, cancel_stt_job, get_stt_job, run_stt
 
 router = APIRouter(prefix="/stt")
@@ -18,6 +19,11 @@ class SttStartRequest(BaseModel):
     start_time: float | None = None
     end_time: float | None = None
     boost_quiet_speech: bool = False
+    # Which STT backend runs the model, and helper models it needs by role
+    # ({"aligner": "<model id>"}). The defaults are what every request meant
+    # before engines existed.
+    engine: str = DEFAULT_ENGINE
+    aux_models: dict[str, str] = Field(default_factory=dict)
 
 
 class SttStartResponse(BaseModel):
@@ -35,6 +41,8 @@ async def start_stt(request: SttStartRequest):
         start_time=request.start_time,
         end_time=request.end_time,
         boost_quiet_speech=request.boost_quiet_speech,
+        engine=request.engine,
+        aux_models=request.aux_models,
     )
     return SttStartResponse(job_id=job_id)
 

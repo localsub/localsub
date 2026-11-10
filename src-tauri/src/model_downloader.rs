@@ -195,14 +195,24 @@ pub async fn download_file(
     Ok(())
 }
 
+/// Where an STT entry's progress shows up. A download that pulls in helper
+/// models (an aligner) reports every file under the model the user clicked,
+/// numbered across the whole download, so one card shows one progress bar.
+pub struct ProgressSlot<'a> {
+    pub model_id: &'a str,
+    pub file_offset: u32,
+    pub total_files: u32,
+}
+
 pub async fn download_whisper_model(
     client: &reqwest::Client,
     app: &AppHandle,
     model: &WhisperCatalogEntry,
     dest_dir: &Path,
     cancel: CancellationToken,
+    slot: ProgressSlot<'_>,
 ) -> Result<(), AppError> {
-    let total_files = model.files.len() as u32;
+    let total_files = slot.total_files;
     log::info!(
         "Starting whisper model download: {} ({} files, repo: {})",
         model.id, total_files, model.repo
@@ -219,9 +229,9 @@ pub async fn download_whisper_model(
 
         let url = hf_url(&model.repo, filename);
         let dest = dest_dir.join(filename);
-        let model_id = model.id.clone();
+        let model_id = slot.model_id.to_string();
         let file_name = filename.clone();
-        let file_index = i as u32;
+        let file_index = slot.file_offset + i as u32;
         let app_clone = app.clone();
 
         download_file(client, &url, &dest, cancel.clone(), |downloaded, total, speed, eta| {
@@ -244,7 +254,7 @@ pub async fn download_whisper_model(
         // Verify hash for files that have a hash in the catalog
         if let Some(expected_hash) = model.sha256.get(filename) {
             let app_clone = app.clone();
-            let model_id = model.id.clone();
+            let model_id = slot.model_id.to_string();
             let file_name = filename.clone();
 
             // Emit verifying state
@@ -253,7 +263,7 @@ pub async fn download_whisper_model(
                 DownloadProgress {
                     model_id: model_id.clone(),
                     file_name: file_name.clone(),
-                    file_index: i as u32,
+                    file_index,
                     total_files,
                     downloaded: 0,
                     total: 0,

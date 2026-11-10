@@ -166,7 +166,7 @@ torch CUDA 휠만 ~2.5GB라서 기본 설치에 넣으면 모든 사용자의 �
 |---|---|---|
 | **P0 스파이크** ✅ 완료 | 임베디드 CPython 3.12 + Windows + torch cu12 + `qwen-asr` transformers 백엔드로 실제 파일 전사. `--no-deps` 최소 의존성 확인, VRAM과 속도 측정, 정렬기 출력 단위 확인, `faster_whisper.vad` 단독 사용 확인 | 동작 여부와 수치 보고. **실패하면 여기서 중단하거나 §7 대안으로 전환** |
 | P1 ✅ 완료 | 백엔드 추상화 리팩터(Whisper만, 동작 변경 없음) | 기존 테스트 전부 통과 |
-| P2 | 카탈로그 필드, `requires` 다운로드, 전체 파일 검증 | cargo 테스트, 기존 카탈로그 호환 |
+| P2 ✅ 완료 | 카탈로그 필드, `requires` 다운로드, 전체 파일 검증 (+ 보조 모델 자동 삭제, `start_stt`의 `engine`·`aux_models` 전달) | cargo 테스트, 기존 카탈로그 호환 |
 | P3 | 엔진 팩 lock과 설치 명령, CI 검증 | 깨끗한 환경에서 설치·재설치 |
 | P4 | Qwen 백엔드 + `subtitle_segmenter` | pytest, 수동 전사 비교 |
 | P5 | UI, i18n, 문서 | Vitest, 실제 앱에서 마법사→작업→번역 전 과정 |

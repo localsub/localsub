@@ -332,6 +332,8 @@ def create_stt_job(
     start_time: float | None = None,
     end_time: float | None = None,
     boost_quiet_speech: bool = False,
+    engine: str = DEFAULT_ENGINE,
+    aux_models: dict[str, str] | None = None,
 ) -> str:
     job_id = str(uuid.uuid4())
     _stt_jobs[job_id] = {
@@ -342,6 +344,8 @@ def create_stt_job(
         "start_time": start_time,
         "end_time": end_time,
         "boost_quiet_speech": boost_quiet_speech,
+        "engine": engine,
+        "aux_models": dict(aux_models or {}),
         "state": SttJobState.QUEUED,
         "cancel_flag": False,
     }
@@ -401,11 +405,17 @@ async def run_stt(job_id: str) -> AsyncGenerator[dict[str, Any], None]:
 
     # Determine model_id — fallback to first available model
     model_id = job.get("model_id")
-    engine = DEFAULT_ENGINE
+    engine = job.get("engine") or DEFAULT_ENGINE
+    try:
+        probe = create_backend(engine)
+    except ValueError as e:
+        yield {"type": "error", "job_id": job_id, "error": str(e)}
+        job["state"] = SttJobState.FAILED
+        cleanup_job(job_id)
+        return
     if not model_id:
         model_dir = _resolve_model_dir()
         if model_dir.exists():
-            probe = create_backend(engine)
             for d in model_dir.iterdir():
                 if d.is_dir() and probe.find_model(model_dir, d.name) is not None:
                     model_id = d.name
@@ -417,12 +427,12 @@ async def run_stt(job_id: str) -> AsyncGenerator[dict[str, Any], None]:
         return
 
     # Load model if needed
-    if not is_model_loaded() or _loaded_model_id != model_id:
+    if not is_model_loaded() or _loaded_model_id != model_id or (_loaded_engine or DEFAULT_ENGINE) != engine:
         yield {
             "type": "stt_progress",
             "job_id": job_id,
             "progress": 0,
-            "message": f"Loading {create_backend(engine).display_name} model...",
+            "message": f"Loading {probe.display_name} model...",
         }
         try:
             await asyncio.get_running_loop().run_in_executor(None, load_model, model_id, engine)
