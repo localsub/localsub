@@ -53,6 +53,8 @@ export interface JobUpdate {
   etaMs?: number | null;
   /** Number of translated lines persisted by the last checkpoint save. */
   translated_count?: number;
+  /** Language STT reported for the transcript. */
+  detected_language?: string;
 }
 
 interface ActivePipeline {
@@ -66,6 +68,8 @@ interface ActivePipeline {
   enableDiarization: boolean;
   skipTranslation: boolean;
   presetId?: string;
+  /** Language STT reported for `segments`; the translation's source language. */
+  sourceLang?: string;
   filePath: string;
   phase: "stt" | "diarizing" | "translating" | "done" | "error";
   /**
@@ -164,6 +168,7 @@ export function usePipeline(
 
             // Clean STT output before passing to next stage
             pipeline.segments = cleanSttSegments(pipeline.segments);
+            pipeline.sourceLang = job.language;
 
             // Calculate duration from last segment
             const lastSeg = pipeline.segments[pipeline.segments.length - 1];
@@ -175,6 +180,7 @@ export function usePipeline(
               stage: "stt",
               progress: 100,
               duration,
+              detected_language: job.language,
             });
 
             if (pipeline.enableDiarization) {
@@ -489,7 +495,7 @@ export function usePipeline(
       await inFlight(pipeline, restartServer());
       if (pipeline.abandoned) return;
 
-      const job = await inFlight(pipeline, startTranslate(pipeline.segments, pipeline.presetId));
+      const job = await inFlight(pipeline, startTranslate(pipeline.segments, pipeline.presetId, pipeline.sourceLang));
       pipeline.translateJobId = job.id;
       if (pipeline.abandoned) cancelTranslate(job.id).catch(() => {});
     } catch (e) {
@@ -646,6 +652,8 @@ export function usePipeline(
         resumeBaseLines?: SubtitleLine[];
         /** Source file path — used for the auto-export file name. */
         filePath?: string;
+        /** Language STT reported for `segments` (the job's detected_language). */
+        sourceLang?: string;
       },
     ) => {
       const pipeline: ActivePipeline = {
@@ -659,6 +667,7 @@ export function usePipeline(
         enableDiarization: false,
         skipTranslation: false,
         presetId,
+        sourceLang: options?.sourceLang,
         filePath: options?.filePath ?? "",
         phase: "translating",
         resumeBaseLines: options?.resumeBaseLines,

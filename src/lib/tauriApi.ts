@@ -156,11 +156,13 @@ export async function cancelDiarization(jobId: string): Promise<void> {
 
 // ── Translate commands ──
 
+/** `sourceLang`: the language STT reported; wins over the preset's. */
 export async function startTranslate(
   segments: SttSegment[],
   presetId?: string,
+  sourceLang?: string,
 ): Promise<Job> {
-  return invoke<Job>("start_translate", { segments, presetId });
+  return invoke<Job>("start_translate", { segments, presetId, sourceLang });
 }
 
 export async function cancelTranslate(jobId: string): Promise<void> {
