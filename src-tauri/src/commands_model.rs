@@ -130,6 +130,39 @@ pub async fn download_model(
         let mut done: Vec<String> = Vec::new();
         let result: Result<(), AppError> = async {
             if is_whisper {
+                // An engine that is not in the base setup (Qwen3-ASR) first gets
+                // its Python packages, as part of this same download: the user
+                // never installs "components" as a separate step. No-op once
+                // installed; progress arrives as "engine-pack-progress".
+                let engine = stt_catalog::find(&catalog, &model_id_clone)
+                    .map(|m| m.engine)
+                    .unwrap_or_default();
+                if crate::engine_pack::lock_file(engine).is_some() {
+                    let app_pack = app_clone.clone();
+                    let installed = tauri::async_runtime::spawn_blocking(move || {
+                        crate::engine_pack::install(&app_pack, engine)
+                    })
+                    .await
+                    .map_err(|e| AppError::Setup(format!("Engine pack task failed: {}", e)))
+                    .and_then(|r| r);
+                    if let Err(e) = installed {
+                        // Nothing was downloaded: drop the entries instead of
+                        // marking them "corrupt", so the card returns to its
+                        // download button (the event says why it failed).
+                        if let Ok(m) = manifest_manager::modify_manifest(&config_clone, |m| {
+                            for id in &ids {
+                                manifest_manager::remove_entry(m, id);
+                            }
+                        }) {
+                            emit_manifest(&app_clone, &m);
+                        }
+                        done.extend(ids.iter().cloned());
+                        return Err(e);
+                    }
+                    if cancel.is_cancelled() {
+                        return Err(AppError::Download("Download cancelled".to_string()));
+                    }
+                }
                 let plan: Vec<WhisperCatalogEntry> = ids
                     .iter()
                     .filter_map(|id| stt_catalog::find(&catalog, id).cloned())
@@ -320,6 +353,15 @@ pub async fn delete_model(
     if let Ok(catalog) = load_catalog(&app) {
         let mut installed: Vec<String> = manifest.models.iter().map(|m| m.id.clone()).collect();
         installed.push(model_id.clone());
+        // Last model of an engine with an on-demand pack: the pack goes too.
+        if let Some(engine) = stt_catalog::find(&catalog, &model_id).map(|m| m.engine) {
+            if !stt_catalog::engine_still_used(&catalog, &installed, &model_id, engine) {
+                let busy = state.lock().map(|s| !s.active_downloads.is_empty()).unwrap_or(true);
+                if !busy {
+                    tauri::async_runtime::spawn_blocking(move || crate::engine_pack::remove(engine));
+                }
+            }
+        }
         let busy: Vec<String> = state
             .lock()
             .map(|s| s.active_downloads.keys().cloned().collect())

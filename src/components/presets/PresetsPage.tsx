@@ -57,7 +57,8 @@ import { PageActions } from "@/components/page-header"
 import { toastSuccess, toastError } from "@/lib/toast"
 import { pickFile, readCsvFile } from "@/lib/tauriApi"
 import { cn } from "@/lib/utils"
-import type { Preset, Vocabulary, VocabularyEntry, ModelManifestEntry } from "@/types"
+import type { Preset, Vocabulary, VocabularyEntry, ModelManifestEntry, ModelCatalog } from "@/types"
+import { helperModelIds, isQwen } from "@/lib/sttModels"
 
 const LANG_KEYS = ["ko", "en", "ja", "zh"] as const
 const STYLE_KEYS = ["natural", "formal", "casual"] as const
@@ -284,13 +285,14 @@ function VocabCard({
 // ─── Preset Dialog ───────────────────────────────────────────────
 
 function PresetDialog({
-  open, onOpenChange, initial, vocabularies, manifest, onSave,
+  open, onOpenChange, initial, vocabularies, manifest, catalog, onSave,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   initial?: Preset
   vocabularies: Vocabulary[]
   manifest: ModelManifestEntry[]
+  catalog?: ModelCatalog | null
   onSave: (data: Omit<Preset, "id" | "created_at" | "updated_at">) => void
 }) {
   const { t } = useTranslation()
@@ -356,7 +358,14 @@ function PresetDialog({
     onOpenChange(false)
   }
 
-  const whisperModels = manifest.filter((m) => m.model_type === "whisper" && m.status === "ready")
+  // Helper models (the Qwen aligner) are installed STT models too, but never a choice.
+  const helpers = helperModelIds(catalog ?? null)
+  const whisperModels = manifest.filter((m) => m.model_type === "whisper" && m.status === "ready" && !helpers.has(m.id))
+  const sttEntry = catalog?.whisper_models.find((m) => m.id === whisperModel)
+  // A model that times subtitles for only some languages (Qwen3-ASR) offers only those.
+  const sourceLangKeys = sttEntry?.languages
+    ? LANG_KEYS.filter((k) => sttEntry.languages!.includes(k))
+    : LANG_KEYS
   const llmModels = manifest.filter((m) => m.model_type === "llm" && m.status === "ready")
 
   return (
@@ -405,6 +414,9 @@ function PresetDialog({
                   )}
                 </SelectContent>
               </Select>
+              {isQwen(sttEntry) && (
+                <p className="text-xs text-muted-foreground">{t("presets.dialog.qwenLanguagesNote")}</p>
+              )}
             </Field>
             <Field label={t("presets.dialog.llmModel")}>
               <Select value={llmModel} onValueChange={setLlmModel}>
@@ -423,7 +435,7 @@ function PresetDialog({
               <Select value={sourceLang} onValueChange={setSourceLang}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {LANG_KEYS.map((k) => (
+                  {sourceLangKeys.map((k) => (
                     <SelectItem key={k} value={k}>{t(`presets.lang.${k}`, k)}</SelectItem>
                   ))}
                 </SelectContent>
@@ -831,6 +843,7 @@ interface PresetsPageProps {
   presets: Preset[]
   vocabularies: Vocabulary[]
   manifest: ModelManifestEntry[]
+  catalog?: ModelCatalog | null
   onAddPreset: (preset: Preset) => Promise<unknown>
   onUpdatePreset: (preset: Preset) => Promise<unknown>
   onRemovePreset: (id: string) => Promise<unknown>
@@ -853,7 +866,7 @@ function EmptyState({ icon, title, description, action }: { icon: ReactNode; tit
 }
 
 export function PresetsPage({
-  presets, vocabularies, manifest,
+  presets, vocabularies, manifest, catalog,
   onAddPreset, onUpdatePreset, onRemovePreset,
   onAddVocabulary, onUpdateVocabulary, onRemoveVocabulary,
 }: PresetsPageProps) {
@@ -1001,7 +1014,7 @@ export function PresetsPage({
         </TabsContent>
       </Tabs>
 
-      <PresetDialog open={presetDialogOpen} onOpenChange={setPresetDialogOpen} initial={editingPreset} vocabularies={vocabularies} manifest={manifest} onSave={handleSavePreset} />
+      <PresetDialog open={presetDialogOpen} onOpenChange={setPresetDialogOpen} initial={editingPreset} vocabularies={vocabularies} manifest={manifest} catalog={catalog} onSave={handleSavePreset} />
       <VocabDialog open={vocabDialogOpen} onOpenChange={setVocabDialogOpen} initial={editingVocab} onSave={handleSaveVocab} />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>

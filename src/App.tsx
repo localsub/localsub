@@ -201,9 +201,10 @@ function App() {
     }
   }, [screen, hardware, detectHw]);
 
-  // Lazy-load model catalog when entering settings
+  // Lazy-load model catalog when entering settings or presets (presets need
+  // it to hide helper models and to know which languages a model supports)
   useEffect(() => {
-    if (activePage === "settings" && !models.catalog) {
+    if ((activePage === "settings" || activePage === "presets") && !models.catalog) {
       models.loadCatalog();
     }
   }, [activePage, models.catalog, models.loadCatalog]);
@@ -589,6 +590,7 @@ function App() {
                     presets={presetsHook.presets}
                     vocabularies={vocabulariesHook.vocabularies}
                     manifest={models.manifest}
+                    catalog={models.catalog}
                     onAddPreset={presetsHook.add}
                     onUpdatePreset={presetsHook.update}
                     onRemovePreset={presetsHook.remove}
@@ -605,6 +607,7 @@ function App() {
                     catalog={models.catalog}
                     hardware={hardware}
                     downloads={models.downloads}
+                    installingPacks={models.installingPacks}
                     onUpdateConfig={(patch) => updateConfig(patch)}
                     onDeleteModel={models.deleteModel}
                     onDownloadModel={models.startDownload}

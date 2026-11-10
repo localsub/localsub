@@ -9,11 +9,14 @@ import {
 } from "../lib/tauriApi";
 import { toastError } from "../lib/toast";
 import i18n from "../i18n";
+import { downloadErrorKey } from "../lib/sttModels";
 import type {
   ModelCatalog,
   ModelManifestEntry,
   DownloadProgress,
   DownloadError,
+  EnginePackProgress,
+  SttEngine,
 } from "../types";
 
 export function useModels() {
@@ -22,6 +25,8 @@ export function useModels() {
   const [downloads, setDownloads] = useState<Map<string, DownloadProgress>>(
     new Map(),
   );
+  // Engines whose components are being installed right now (first Qwen download).
+  const [installingPacks, setInstallingPacks] = useState<Set<SttEngine>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,6 +100,20 @@ export function useModels() {
     let unlistenProgress: (() => void) | null = null;
     let unlistenManifest: (() => void) | null = null;
     let unlistenError: (() => void) | null = null;
+    let unlistenPack: (() => void) | null = null;
+
+    listen<EnginePackProgress>(
+      "engine-pack-progress",
+      (event) => {
+        const { engine, stage } = event.payload;
+        setInstallingPacks((prev) => {
+          const next = new Set(prev);
+          if (stage === "installing") next.add(engine);
+          else next.delete(engine);
+          return next;
+        });
+      },
+    ).then((fn) => { unlistenPack = fn; });
 
     listen<DownloadProgress>(
       "download-progress",
@@ -131,7 +150,10 @@ export function useModels() {
         });
 
         console.error(`Model download failed for ${model_id}:`, error);
-        toastError(i18n.t("toast.modelDownloadError"), error || model_id);
+        // A failed component install says why in plain words; the raw pip
+        // output is in the log file.
+        const key = downloadErrorKey(error);
+        toastError(i18n.t("toast.modelDownloadError"), key ? i18n.t(key as never) : error || model_id);
       },
     ).then((fn) => { unlistenError = fn; });
 
@@ -139,6 +161,7 @@ export function useModels() {
       unlistenProgress?.();
       unlistenManifest?.();
       unlistenError?.();
+      unlistenPack?.();
     };
   }, [loadManifest]);
 
@@ -146,6 +169,7 @@ export function useModels() {
     catalog,
     manifest,
     downloads,
+    installingPacks,
     loading,
     error,
     loadCatalog,

@@ -34,6 +34,7 @@ import { usePreviewPipeline } from "@/hooks/usePreviewPipeline"
 import { cn } from "@/lib/utils"
 import { MEDIA_EXTENSIONS, SUBTITLE_EXTENSIONS, isAcceptedFile, isSubtitleFile } from "@/lib/sourceType"
 import type { Preset, Vocabulary, VocabularyEntry } from "@/types"
+import { friendlySttError } from "@/lib/sttModels"
 
 interface NewJobDialogProps {
   open: boolean
@@ -601,7 +602,7 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
 
               {/* Error */}
               {preview.phase === "error" && preview.error && (
-                <p className="text-[13px] font-semibold text-status-error">{preview.error}</p>
+                <p className="text-[13px] font-semibold text-status-error">{friendlySttError(preview.error, t)}</p>
               )}
 
               {/* Results table — max-h scales with viewport so long previews scroll inside the panel */}

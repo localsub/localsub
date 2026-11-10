@@ -4,6 +4,7 @@ import { Mic, Languages } from "lucide-react";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { ChoiceCard } from "./ChoiceCard";
 import { cn } from "@/lib/utils";
+import { isQwen, isSelectableStt } from "@/lib/sttModels";
 import type {
   ModelCatalog,
   Profile,
@@ -58,8 +59,11 @@ export function StepModels({
     );
   }
 
-  const whisperModels = catalog.whisper_models.filter((m) =>
-    m.profiles.includes(profile),
+  // First-run setup offers Whisper only: Qwen3-ASR needs an NVIDIA GPU and a
+  // one-time ~3 GB component install, so it is offered in Settings, where the
+  // GPU check and its explanation are shown.
+  const whisperModels = catalog.whisper_models.filter(
+    (m) => m.profiles.includes(profile) && isSelectableStt(m) && !isQwen(m),
   );
   const llmModels = catalog.llm_models.filter((m) =>
     m.profiles.includes(profile),

@@ -307,7 +307,8 @@
       "saveChanges": "保存更改",
       "createPreset": "创建预设",
       "createVocab": "创建词汇表",
-      "entriesCount": "{{count}} 条"
+      "entriesCount": "{{count}} 条",
+      "qwenLanguagesNote": "Qwen3-ASR 只提供能对齐字幕时间的语言。其他语言请使用 Whisper 模型。"
     }
   },
   "setup": {
@@ -670,7 +671,11 @@
         "ready": "就绪",
         "missing": "缺失",
         "corrupt": "已损坏"
-      }
+      },
+      "preparingEngine": "正在准备语音识别组件(仅首次,约 3 GB 下载)…",
+      "needsNvidiaGpu": "需要 NVIDIA 显卡",
+      "needsVram": "需要 {{size}} 以上显存",
+      "qwenNote": "可为包括韩语、英语、日语和中文在内的 {{count}} 种语言生成字幕。首次下载时会一并安装所需组件(额外占用约 7 GB 磁盘空间)。"
     },
     "api": {
       "title": "外部 API",
@@ -730,5 +735,15 @@
     "redo": "重做",
     "find": "查找与替换",
     "closeFind": "关闭搜索"
+  },
+  "errors": {
+    "stt": {
+      "languageUnsupported": "Qwen3-ASR 无法为此视频的语言对齐字幕时间。请为该语言选择 Whisper 模型后重试。",
+      "qwenUnavailable": "Qwen3-ASR 无法启动。请在 设置 > 模型 中删除 Qwen3-ASR 模型后重新下载,或使用 Whisper 模型。"
+    },
+    "enginePack": {
+      "disk": "空间不足,无法准备 Qwen3-ASR。请腾出约 10 GB 后重试。",
+      "failed": "无法准备 Qwen3-ASR。请检查网络连接后重试。"
+    }
   }
 }

@@ -127,7 +127,7 @@ export function InfoSection() {
       {/* Tech info */}
       <div className="rounded-xl bg-card px-5 py-1.5 shadow-card">
         <InfoRow label={t("settings.about.runtime")} value="Tauri 2.x + React" />
-        <InfoRow label={t("settings.about.sttEngine")} value="faster-whisper (CTranslate2)" />
+        <InfoRow label={t("settings.about.sttEngine")} value="faster-whisper (CTranslate2) · Qwen3-ASR (transformers)" />
         <InfoRow label={t("settings.about.llmEngine")} value="llama-cpp-python (GGUF)" />
         <InfoRow label={t("settings.about.license")} value="PolyForm Noncommercial 1.0.0" />
       </div>

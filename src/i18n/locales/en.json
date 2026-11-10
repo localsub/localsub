@@ -307,7 +307,8 @@
       "saveChanges": "Save Changes",
       "createPreset": "Create Preset",
       "createVocab": "Create Vocabulary",
-      "entriesCount": "{{count}} entries"
+      "entriesCount": "{{count}} entries",
+      "qwenLanguagesNote": "Qwen3-ASR offers only the languages it can time subtitles for. Use a Whisper model for other languages."
     }
   },
   "setup": {
@@ -670,7 +671,11 @@
         "ready": "Ready",
         "missing": "Missing",
         "corrupt": "Corrupt"
-      }
+      },
+      "preparingEngine": "Setting up speech recognition components (one-time, about 3 GB download)…",
+      "needsNvidiaGpu": "Needs an NVIDIA graphics card",
+      "needsVram": "Needs {{size}} of graphics memory",
+      "qwenNote": "Makes subtitles in {{count}} languages, including Korean, English, Japanese and Chinese. The first download also sets up its components (about 7 GB of extra disk space)."
     },
     "api": {
       "title": "External API",
@@ -730,5 +735,15 @@
     "redo": "Redo",
     "find": "Find & Replace",
     "closeFind": "Close search"
+  },
+  "errors": {
+    "stt": {
+      "languageUnsupported": "Qwen3-ASR can't time subtitles for this video's language. Choose a Whisper model for this language and try again.",
+      "qwenUnavailable": "Qwen3-ASR couldn't start. Delete the Qwen3-ASR model in Settings > Models and download it again, or use a Whisper model."
+    },
+    "enginePack": {
+      "disk": "Not enough free space to set up Qwen3-ASR. Free up about 10 GB and try again.",
+      "failed": "Couldn't set up Qwen3-ASR. Check your internet connection and try again."
+    }
   }
 }

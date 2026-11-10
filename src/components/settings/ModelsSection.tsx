@@ -27,7 +27,9 @@ import type {
   Profile,
   PartialConfig,
   DownloadProgress,
+  SttEngine,
 } from "@/types"
+import { downloadSize, engineLabel, gpuFit, isQwen, selectableSttModels, type GpuFit } from "@/lib/sttModels"
 
 type InstallStatus = ModelManifestEntry["status"] | "not_installed"
 type VramFit = "recommended" | "cpu_only" | "too_large"
@@ -46,6 +48,8 @@ interface ModelsSectionProps {
   onCancelDownload: (id: string) => void
   sourceLanguage?: string
   targetLanguage?: string
+  /** Engines whose one-time components install is running (first Qwen download). */
+  installingPacks?: Set<SttEngine>
 }
 
 // All Qwen models are multilingual; specific model names can be mapped here if needed
@@ -108,6 +112,7 @@ export function ModelsSection({
   onCancelDownload,
   sourceLanguage,
   targetLanguage,
+  installingPacks,
 }: ModelsSectionProps) {
   const { t } = useTranslation()
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -117,6 +122,11 @@ export function ModelsSection({
     for (const m of manifest) map.set(m.id, m)
     return map
   }, [manifest])
+
+  const installedIds = useMemo(
+    () => new Set(manifest.filter((m) => m.status === "ready").map((m) => m.id)),
+    [manifest],
+  )
 
   function getStatus(id: string): InstallStatus {
     const entry = manifestMap.get(id)
@@ -149,8 +159,16 @@ export function ModelsSection({
     return <Tag tone={tone}>{t(`settings.models.status.${status}` as never)}</Tag>
   }
 
-  function renderDownloadProgress(id: string) {
+  function renderDownloadProgress(id: string, preparing: boolean) {
     const progress = downloads.get(id)
+    if (preparing && !progress) {
+      return (
+        <div className="flex items-center gap-2 pl-9">
+          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{t("settings.models.preparingEngine")}</span>
+        </div>
+      )
+    }
     if (!progress || progress.total === 0) {
       return (
         <div className="flex items-center gap-2 pl-9">
@@ -177,7 +195,16 @@ export function ModelsSection({
     )
   }
 
-  function renderActions(id: string, status: InstallStatus) {
+  function renderGpuFitTag(fit: GpuFit, entry: WhisperModelEntry) {
+    if (fit === "needs_gpu") return <Tag tone="warn">{t("settings.models.needsNvidiaGpu")}</Tag>
+    return (
+      <Tag tone="warn">
+        {t("settings.models.needsVram", { size: formatVram(entry.min_vram_mb ?? 0) })}
+      </Tag>
+    )
+  }
+
+  function renderActions(id: string, status: InstallStatus, installBlocked = false) {
     if (status === "ready") {
       return (
         <button className={textActionClass} onClick={() => setDeleteTarget(id)}>
@@ -196,6 +223,7 @@ export function ModelsSection({
       return (
         <Button
           className="h-[38px] rounded-[11px] bg-primary-soft px-4 text-sm text-primary-text hover:bg-primary-soft/70"
+          disabled={installBlocked}
           onClick={() => onDownload(id)}
         >
           {t("settings.models.install")}
@@ -213,7 +241,10 @@ export function ModelsSection({
     license,
     licenseUrl,
     tags,
+    note,
     isActive,
+    installBlocked,
+    preparing,
   }: {
     id: string
     name: string
@@ -222,7 +253,13 @@ export function ModelsSection({
     license: string
     licenseUrl: string
     tags: ReactNode
+    /** One muted line under the details (what installing this involves). */
+    note?: ReactNode
     isActive: boolean
+    /** This machine cannot run the model: the install button is disabled. */
+    installBlocked?: boolean
+    /** The model's engine components are being installed (download step 1). */
+    preparing?: boolean
   }) {
     const status = getStatus(id)
     const canActivate = status === "ready"
@@ -256,12 +293,13 @@ export function ModelsSection({
               {renderStatusTag(status)}
               {tags}
             </div>
+            {note && status !== "ready" && <p className="text-xs text-muted-foreground">{note}</p>}
           </div>
           <div className="flex shrink-0 items-center">
-            {renderActions(id, status)}
+            {renderActions(id, status, installBlocked)}
           </div>
         </div>
-        {status === "downloading" && renderDownloadProgress(id)}
+        {status === "downloading" && renderDownloadProgress(id, preparing ?? false)}
       </div>
     )
   }
@@ -275,17 +313,26 @@ export function ModelsSection({
           onValueChange={(id) => handleSelectActive("whisper", id)}
           className="gap-0"
         >
-          {models.map((entry) =>
-            renderModelRow({
+          {models.map((entry) => {
+            const fit = gpuFit(entry, hardware)
+            const qwen = isQwen(entry)
+            return renderModelRow({
               id: entry.id,
               name: entry.name,
-              size: entry.total_size_bytes,
+              nameExtra: qwen ? <Tag tone="neutral">{engineLabel(entry)}</Tag> : undefined,
+              // Includes the aligner when it still has to come along.
+              size: downloadSize(entry, catalog, installedIds),
               license: entry.license,
               licenseUrl: entry.license_url,
-              tags: renderVramTag(getWhisperFit(entry, profile)),
+              tags: fit === "ok" ? renderVramTag(getWhisperFit(entry, profile)) : renderGpuFitTag(fit, entry),
+              note: qwen
+                ? t("settings.models.qwenNote", { count: entry.languages?.length ?? 0 })
+                : undefined,
               isActive: entry.id === activeWhisperModel,
-            }),
-          )}
+              installBlocked: fit !== "ok",
+              preparing: !!entry.engine && (installingPacks?.has(entry.engine) ?? false),
+            })
+          })}
         </RadioGroup>
       </ModelGroup>
     )
@@ -361,7 +408,7 @@ export function ModelsSection({
         <p className="text-sm text-muted-foreground">{t("settings.models.empty")}</p>
       ) : (
         <>
-          {renderWhisperModels(catalog.whisper_models)}
+          {renderWhisperModels(selectableSttModels(catalog))}
           {renderLlmModels(catalog.llm_models)}
         </>
       )}
