@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { HardwareInfo, Profile, ProfileRecommendation } from "../../types";
 import { HardwareOverview } from "../shared/HardwareOverview";
@@ -32,11 +32,16 @@ export function StepEnvironment({
     }
   }, [hardware, loading, onDetect]);
 
+  // Preselect the recommendation once, when it arrives. Keyed on the
+  // recommendation alone: the parent passes onProfileChange inline, so a
+  // dependency on it re-ran this after every pick and snapped the choice back.
+  const onProfileChangeRef = useRef(onProfileChange);
+  onProfileChangeRef.current = onProfileChange;
   useEffect(() => {
     if (recommendation) {
-      onProfileChange(recommendation.recommended);
+      onProfileChangeRef.current(recommendation.recommended);
     }
-  }, [recommendation, onProfileChange]);
+  }, [recommendation]);
 
   if (loading) {
     return (

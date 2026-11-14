@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { Job, SttSegment, SubtitleLine, JobStatus, JobStage, JobSourceType } from "../types";
+import { exportBaseName } from "../lib/exportName";
 import {
   startStt,
   cancelStt,
@@ -542,10 +543,7 @@ export function usePipeline(
         text: line.original_text,
         translated: line.translated_text || undefined,
       }));
-      // Extract filename without extension from source file path
-      const baseName = pipeline.filePath
-        .split(/[/\\]/).pop()
-        ?.replace(/\.[^.]+$/, "") ?? pipeline.dashboardJobId;
+      const baseName = exportBaseName(pipeline.filePath, pipeline.dashboardJobId);
       await exportSubtitles(
         segments,
         config.subtitle_format || "srt",

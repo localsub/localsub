@@ -625,6 +625,12 @@ pub fn run_setup_sync(app: &AppHandle) -> Result<(), AppError> {
         );
     }
 
+    // Step 3c: engine packs for STT models already downloaded. The setup
+    // wizard downloads models before this setup runs, so a Qwen3-ASR model
+    // picked there could not get its packages yet (no pip until step 1).
+    // Required: the user chose that model to transcribe with.
+    install_pending_engine_packs(app)?;
+
     // Step 4: Save completion marker LAST — only after every *required* install step
     // (incl. the LLM wheel) succeeded. The marker must not be written earlier:
     // `is_setup_complete` only checks marker + this hash, so a marker saved
@@ -645,6 +651,43 @@ pub fn run_setup_sync(app: &AppHandle) -> Result<(), AppError> {
 
     emit_progress(app, "complete", "Setup complete!", 1.0);
 
+    Ok(())
+}
+
+/// Engines that need a pack, for the downloaded STT models in `ready_ids`.
+/// Deduplicated, in catalog order.
+fn engines_needing_packs(
+    catalog: &crate::state::ModelCatalog,
+    ready_ids: &[&str],
+) -> Vec<crate::state::SttEngine> {
+    let mut engines = Vec::new();
+    for m in &catalog.whisper_models {
+        if ready_ids.contains(&m.id.as_str())
+            && crate::engine_pack::lock_file(m.engine).is_some()
+            && !engines.contains(&m.engine)
+        {
+            engines.push(m.engine);
+        }
+    }
+    engines
+}
+
+/// Installs the engine packs that downloaded STT models need (no-op for packs
+/// already up to date). Also refreshes a pack the base lock made stale.
+fn install_pending_engine_packs(app: &AppHandle) -> Result<(), AppError> {
+    let config = crate::config_manager::load_config()?;
+    let manifest = crate::manifest_manager::load_manifest(&config)?;
+    let catalog = crate::commands_model::load_catalog(app)?;
+    let ready: Vec<&str> = manifest
+        .models
+        .iter()
+        .filter(|m| m.model_type == "whisper" && m.status == "ready")
+        .map(|m| m.id.as_str())
+        .collect();
+    for engine in engines_needing_packs(&catalog, &ready) {
+        emit_progress(app, "engine-pack", "Installing speech recognition components...", 0.985);
+        crate::engine_pack::install(app, engine)?;
+    }
     Ok(())
 }
 
@@ -1175,6 +1218,28 @@ mod tests {
     /// Replacement is `purge_installed_llama`'s job instead. If someone re-adds
     /// `--upgrade` to "force replacement", this fails and the doc comment
     /// explains why that is exactly backwards.
+    /// Setup installs the Qwen pack only when a Qwen model is downloaded, once,
+    /// even with both Qwen models; Whisper-only installs need no pack.
+    #[test]
+    fn engine_packs_follow_downloaded_stt_models() {
+        use crate::state::{ModelCatalog, SttEngine};
+        let catalog: ModelCatalog =
+            serde_json::from_str(include_str!("../resources/model_catalog.json")).unwrap();
+        assert!(engines_needing_packs(&catalog, &["whisper-small"]).is_empty());
+        assert!(engines_needing_packs(&catalog, &[]).is_empty());
+        assert_eq!(
+            engines_needing_packs(&catalog, &["whisper-small", "qwen3-asr-0.6b"]),
+            vec![SttEngine::Qwen3Asr]
+        );
+        assert_eq!(
+            engines_needing_packs(
+                &catalog,
+                &["qwen3-asr-1.7b", "qwen3-asr-0.6b", "qwen3-forced-aligner-0.6b"]
+            ),
+            vec![SttEngine::Qwen3Asr]
+        );
+    }
+
     #[test]
     fn wheel_install_does_not_use_upgrade() {
         let args = wheel_pip_args(

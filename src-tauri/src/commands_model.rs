@@ -137,7 +137,17 @@ pub async fn download_model(
                 let engine = stt_catalog::find(&catalog, &model_id_clone)
                     .map(|m| m.engine)
                     .unwrap_or_default();
-                if crate::engine_pack::lock_file(engine).is_some() {
+                // Before the base Python setup has run (the setup wizard
+                // downloads models first) there is no pip to install with:
+                // download the files only, and setup installs the pack.
+                let base_ready = crate::setup_manager::is_setup_complete(&app_clone);
+                if crate::engine_pack::lock_file(engine).is_some() && !base_ready {
+                    log::info!(
+                        "[engine-pack] base setup not complete; {:?} pack deferred to setup",
+                        engine
+                    );
+                }
+                if crate::engine_pack::lock_file(engine).is_some() && base_ready {
                     let app_pack = app_clone.clone();
                     let installed = tauri::async_runtime::spawn_blocking(move || {
                         crate::engine_pack::install(&app_pack, engine)

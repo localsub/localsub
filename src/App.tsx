@@ -254,7 +254,9 @@ function App() {
 
   const handleWizardComplete = useCallback(() => {
     reloadConfig();
-  }, [reloadConfig]);
+    // The wizard may have saved the default preset.
+    presetsHook.reload();
+  }, [reloadConfig, presetsHook.reload]);
 
   const handleNewJob = useCallback(
     (files: { name: string; path: string; size: number }[], presetId: string, enableDiarization: boolean = false, skipTranslation: boolean = false) => {
@@ -534,18 +536,13 @@ function App() {
           />
           <SidebarInset>
             <PageHeaderProvider>
-              <div
-                className={
-                  activePage === "editor"
-                    ? "flex flex-1 flex-col gap-4 overflow-auto px-8 py-7"
-                    : "flex flex-1 flex-col gap-6 overflow-auto px-10 py-9"
-                }
-              >
+              {/* One frame for every page: same padding, gap and title size, so
+                  the heading and panels line up when switching pages. */}
+              <div className="flex flex-1 flex-col gap-6 overflow-auto px-10 py-9">
                 {/* The editor writes its own file line into the header (PageMeta). */}
                 <PageHeader
                   title={t(pageInfo.titleKey)}
                   description={activePage !== "editor" && pageInfo.descKey ? t(pageInfo.descKey) : undefined}
-                  compact={activePage === "editor"}
                 />
 
                 {/* Renders nothing when the runtime is present, so the common
@@ -564,6 +561,7 @@ function App() {
                     onUpdateVocabulary={vocabulariesHook.update}
                     onAddVocabulary={vocabulariesHook.add}
                     onUpdatePreset={presetsHook.update}
+                    onGoToPresets={() => setActivePage("presets")}
                     onOpenEditor={(jobId, filePath) => {
                       setEditorJobId(jobId);
                       setEditorFilePath(filePath);
@@ -579,6 +577,7 @@ function App() {
                     outputDir={config.output_dir}
                     subtitleFormat={config.subtitle_format}
                     presetId={dashboardJobs.find((j) => j.id === editorJobId)?.preset_id}
+                    sourceLang={dashboardJobs.find((j) => j.id === editorJobId)?.detected_language}
                     vocabularies={vocabulariesHook.vocabularies}
                     onUpdateVocabulary={vocabulariesHook.update}
                     liveLines={editorJobId ? liveLines.get(editorJobId) : undefined}

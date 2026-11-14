@@ -160,7 +160,8 @@ class QwenBackend:
         audio = _decode_audio(audio_path)
         spans = _speech_spans(audio)
         info = SimpleNamespace(duration=len(audio) / SAMPLE_RATE, language=language)
-        return self._cues(audio, spans, language, info), info
+        cues = subtitle_segmenter.merge_short(self._cues(audio, spans, language, info))
+        return (SimpleNamespace(start=c.start, end=c.end, text=c.text) for c in cues), info
 
     def _cues(self, audio, spans: list[dict], forced: str | None, info) -> Iterator[Any]:
         chunks = [(audio[s["start"]:s["end"]], SAMPLE_RATE) for s in spans]
@@ -208,5 +209,4 @@ class QwenBackend:
         )
         for (i, out), result in zip(todo, results):
             words = subtitle_segmenter.words_from(result.items, offset=offsets[i])
-            for cue in subtitle_segmenter.segment(out.text, words):
-                yield SimpleNamespace(start=cue.start, end=cue.end, text=cue.text)
+            yield from subtitle_segmenter.segment(out.text, words)

@@ -11,6 +11,8 @@ Coverage (no extra model needed):
                           "I can't translate this" when the target is Korean).
   - has_residual_source_script : source script leaked through (Japanese kana, or
                           a CJK char copied verbatim from the source).
+  - has_foreign_han     : Chinese characters in, say, Korean output for a source
+                          line with no CJK script at all.
   - length_ratio_anomaly : output is implausibly long vs the source — refusals
                           and disclaimers run long; subtitle lines do not.
   - is_degenerate_repeat : output just repeats the previous line although the
@@ -72,6 +74,23 @@ def has_residual_source_script(original: str, translated: str, target_lang: str)
             return True
 
     return False
+
+
+def has_foreign_han(original: str, translated: str, target_lang: str) -> bool:
+    """True if CJK ideographs appear in a translation whose source has no CJK
+    script at all, into a language other than Chinese or Japanese.
+
+    Qwen models slip Chinese into Korean output ("매주播出的 요리 쇼" for an
+    English line). A hanja the model writes after a Japanese or Chinese source
+    line stays allowed (see ``has_residual_source_script``); after an English
+    line there is nothing it could be but a leak.
+    """
+    if _lang2(target_lang) in ("zh", "ja"):
+        return False
+    o = original or ""
+    if _HAN_RE.search(o) or _KANA_RE.search(o):
+        return False
+    return bool(_HAN_RE.search(translated or ""))
 
 
 def off_target_language(
@@ -147,13 +166,15 @@ def classify_bad_translation(original: str, translated: str, target_lang: str) -
     translation of ``original``, else ``None``. Repetition is handled separately
     by the caller since it needs the previous segment.
 
-    Reason codes: ``"empty"``, ``"source_leak"``, ``"off_language"``,
-    ``"too_long"``.
+    Reason codes: ``"empty"``, ``"source_leak"``, ``"script_leak"``,
+    ``"off_language"``, ``"too_long"``.
     """
     if not (translated or "").strip():
         return "empty"
     if has_residual_source_script(original, translated, target_lang):
         return "source_leak"
+    if has_foreign_han(original, translated, target_lang):
+        return "script_leak"
     if off_target_language(translated, target_lang):
         return "off_language"
     if length_ratio_anomaly(original, translated):

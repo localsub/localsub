@@ -1,5 +1,8 @@
 import { useState, useCallback } from "react";
 import type { AppConfig, PartialConfig, Profile, WizardStep } from "../types";
+import { addPreset, getPresets } from "../lib/tauriApi";
+import { buildWizardPreset } from "../lib/wizardPreset";
+import i18n from "../i18n";
 
 export interface WizardState {
   step: WizardStep;
@@ -68,9 +71,33 @@ export function useWizard({ config, onUpdateConfig }: UseWizardOptions) {
     }
   }, [state.step]);
 
+  // The models just downloaded become the ones jobs use. Left unset, STT fell
+  // back to the first ready manifest entry, which for a Qwen pick is its
+  // forced aligner (downloaded first).
   const complete = useCallback(async () => {
-    await onUpdateConfig({ wizard_completed: true, wizard_step: 5 });
-  }, [onUpdateConfig]);
+    const patch: PartialConfig = { wizard_completed: true, wizard_step: 5 };
+    if (state.selectedWhisperModel) patch.active_whisper_model = state.selectedWhisperModel;
+    if (state.selectedLlmModel) patch.active_llm_model = state.selectedLlmModel;
+    await onUpdateConfig(patch);
+
+    // A job needs a preset and a fresh install has none: save these choices
+    // as the default one. Never over existing presets, and a failure here
+    // must not keep the user in the wizard (they can still make one).
+    if (!state.selectedWhisperModel) return;
+    try {
+      if ((await getPresets()).length > 0) return;
+      await addPreset(
+        buildWizardPreset(
+          state,
+          { name: i18n.t("presets.wizardDefault.name"), description: i18n.t("presets.wizardDefault.description") },
+          crypto.randomUUID(),
+          new Date().toISOString(),
+        ),
+      );
+    } catch (e) {
+      console.error("Failed to create the default preset:", e);
+    }
+  }, [onUpdateConfig, state]);
 
   const skip = useCallback(async () => {
     await onUpdateConfig({ wizard_completed: true });

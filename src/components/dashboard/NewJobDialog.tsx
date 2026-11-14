@@ -46,6 +46,8 @@ interface NewJobDialogProps {
   onAddVocabulary?: (vocab: Vocabulary) => Promise<unknown>
   onUpdatePreset?: (preset: Preset) => Promise<unknown>
   initialFiles?: SelectedFile[]
+  /** Opens the Presets page (closing this dialog), for when there is none. */
+  onGoToPresets?: () => void
 }
 
 export interface SelectedFile {
@@ -150,7 +152,7 @@ function InlineVocabEditor({ vocab, onSave }: { vocab: Vocabulary; onSave: (v: V
   )
 }
 
-export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubmit, onUpdateVocabulary, onAddVocabulary, onUpdatePreset, initialFiles }: NewJobDialogProps) {
+export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubmit, onUpdateVocabulary, onAddVocabulary, onUpdatePreset, initialFiles, onGoToPresets }: NewJobDialogProps) {
   const { t } = useTranslation()
   const [files, setFiles] = useState<SelectedFile[]>([])
 
@@ -532,9 +534,23 @@ export function NewJobDialog({ open, onOpenChange, presets, vocabularies, onSubm
           </TooltipProvider>
 
           {presets.length === 0 && (
-            <p className="py-2 text-center text-sm text-muted-foreground">
-              {t("dashboard.newJob.noPresets", "No presets available. Create one in the Presets page.")}
-            </p>
+            <div className="flex flex-col items-center gap-3 py-2 text-center">
+              <p className="text-sm text-muted-foreground">
+                {t("dashboard.newJob.noPresets", "No presets available. Create one in the Presets page.")}
+              </p>
+              {onGoToPresets && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    onOpenChange(false)
+                    onGoToPresets()
+                  }}
+                >
+                  <Plus />
+                  {t("dashboard.newJob.goToPresets")}
+                </Button>
+              )}
+            </div>
           )}
 
           {/* Preview panel */}

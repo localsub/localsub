@@ -4,18 +4,26 @@ import { Mic, Languages } from "lucide-react";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { ChoiceCard } from "./ChoiceCard";
 import { cn } from "@/lib/utils";
-import { isQwen, isSelectableStt } from "@/lib/sttModels";
+import { downloadSize, engineLabel, gpuFit, isQwen, isSelectableStt } from "@/lib/sttModels";
 import type {
+  HardwareInfo,
   ModelCatalog,
   Profile,
   WhisperModelEntry,
   LlmModelEntry,
 } from "../../types";
 
+/** Nothing is installed yet during first-run setup. */
+const NONE_INSTALLED = new Set<string>();
+
 interface StepModelsProps {
   catalog: ModelCatalog | null;
   loading: boolean;
   profile: Profile;
+  /** From the environment step; Qwen3-ASR is offered only if the GPU fits. */
+  hardware: HardwareInfo | null;
+  /** From the output step; "auto" or an ISO 639-1 code. */
+  sourceLanguage: string;
   selectedWhisperModel: string | null;
   selectedLlmModel: string | null;
   onSelectWhisper: (id: string) => void;
@@ -36,6 +44,8 @@ export function StepModels({
   catalog,
   loading,
   profile,
+  hardware,
+  sourceLanguage,
   selectedWhisperModel,
   selectedLlmModel,
   onSelectWhisper,
@@ -59,19 +69,26 @@ export function StepModels({
     );
   }
 
-  // First-run setup offers Whisper only: Qwen3-ASR needs an NVIDIA GPU and a
-  // one-time ~3 GB component install, so it is offered in Settings, where the
-  // GPU check and its explanation are shown.
+  // Qwen3-ASR needs an NVIDIA GPU with enough VRAM, and can time subtitles
+  // only for its aligner's languages. The environment and output steps already
+  // know both, so offer it only when it will work; otherwise it stays a
+  // Settings choice, where the GPU warning is shown.
+  const fitsHere = (m: WhisperModelEntry) =>
+    !isQwen(m) ||
+    (gpuFit(m, hardware) === "ok" &&
+      (sourceLanguage === "auto" || !m.languages || m.languages.includes(sourceLanguage)));
   const whisperModels = catalog.whisper_models.filter(
-    (m) => m.profiles.includes(profile) && isSelectableStt(m) && !isQwen(m),
+    (m) => m.profiles.includes(profile) && isSelectableStt(m) && fitsHere(m),
   );
+  // A Qwen download also brings its forced aligner.
+  const sttSize = (m: WhisperModelEntry) => downloadSize(m, catalog, NONE_INSTALLED);
   const llmModels = catalog.llm_models.filter((m) =>
     m.profiles.includes(profile),
   );
 
+  const selectedStt = whisperModels.find((m) => m.id === selectedWhisperModel);
   const totalSize =
-    (whisperModels.find((m) => m.id === selectedWhisperModel)
-      ?.total_size_bytes ?? 0) +
+    (selectedStt ? sttSize(selectedStt) : 0) +
     (llmModels.find((m) => m.id === selectedLlmModel)?.size_bytes ?? 0);
 
   return (
@@ -96,7 +113,8 @@ export function StepModels({
               key={m.id}
               value={m.id}
               name={m.name}
-              size={formatSize(m.total_size_bytes)}
+              badge={isQwen(m) ? engineLabel(m) : undefined}
+              size={formatSize(sttSize(m))}
               license={m.license}
               licenseUrl={m.license_url}
               checked={selectedWhisperModel === m.id}
@@ -153,6 +171,7 @@ export function StepModels({
 function ModelRadio({
   value,
   name,
+  badge,
   size,
   license,
   licenseUrl,
@@ -160,6 +179,7 @@ function ModelRadio({
 }: {
   value: string;
   name: string;
+  badge?: string;
   size: string;
   license: string;
   licenseUrl: string;
@@ -168,6 +188,11 @@ function ModelRadio({
   return (
     <ChoiceCard value={value} checked={checked} className="h-[60px]">
       <span className="min-w-0 truncate text-[15px] font-bold">{name}</span>
+      {badge && (
+        <span className="inline-flex h-5 shrink-0 items-center rounded-[6px] bg-primary-soft px-[7px] text-[11px] font-bold text-primary-text">
+          {badge}
+        </span>
+      )}
       <span className="ml-auto flex shrink-0 items-center gap-2.5 text-[13px] text-muted-foreground">
         <a
           href={licenseUrl}

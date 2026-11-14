@@ -81,6 +81,7 @@
       "dropzone": "将文件拖放到此处，或点击浏览",
       "preset": "预设",
       "noPresets": "暂无可用预设。请在预设页面创建。",
+      "goToPresets": "前往预设页面",
       "start": "开始任务",
       "startMultiple": "开始 {{count}} 个任务",
       "supportedFormats": "MP4、MKV、AVI、MOV、WebM、MP3、WAV、M4A、FLAC、OGG、AAC、SRT、VTT",
@@ -229,6 +230,7 @@
     }
   },
   "presets": {
+    "wizardDefault": { "name": "初始设置", "description": "根据初始设置中的选择创建" },
     "description": "翻译预设与词汇表",
     "placeholder": "预设管理即将推出。",
     "tabs": {
@@ -439,7 +441,7 @@
     },
     "models": {
       "title": "模型选择",
-      "whisperTitle": "语音识别 (Whisper)",
+      "whisperTitle": "语音识别",
       "llmTitle": "翻译 (LLM)",
       "skipLlm": "跳过翻译（仅语音转录）",
       "totalSize": "总下载大小",

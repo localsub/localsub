@@ -129,3 +129,33 @@ def test_double_is_left_alone():
 def test_no_repeat_unchanged():
     s = "다리를 만지는 건 간통이 아니야."
     assert qf.collapse_immediate_repeats(s) == s
+
+
+# ── has_foreign_han ────────────────────────────────────────────────
+
+def test_chinese_in_korean_for_an_english_line_is_a_leak():
+    # From a real run with Qwen3.5-9B.
+    assert qf.has_foreign_han(
+        "And welcome to the weekly cooking show.", "그리고 매주播出的 요리 쇼에 오신 것을 환영합니다.", "ko"
+    )
+    assert qf.classify_bad_translation(
+        "And welcome to the weekly cooking show.", "그리고 매주播出的 요리 쇼에 오신 것을 환영합니다.", "ko"
+    ) == "script_leak"
+
+
+def test_chinese_in_english_output_is_a_leak():
+    assert qf.has_foreign_han("안녕하세요", "Hello 你好", "en")
+
+
+def test_hanja_after_a_japanese_or_chinese_line_is_still_allowed():
+    assert qf.has_foreign_han("ねこ", "고양이 猫", "ko") is False
+    assert qf.has_foreign_han("你好", "안녕 好", "ko") is False
+
+
+def test_chinese_and_japanese_targets_are_not_judged():
+    assert qf.has_foreign_han("hello", "你好", "zh") is False
+    assert qf.has_foreign_han("hello", "今日は", "ja") is False
+
+
+def test_plain_korean_for_an_english_line_is_clean():
+    assert qf.has_foreign_han("Good morning.", "좋은 아침입니다.", "ko") is False

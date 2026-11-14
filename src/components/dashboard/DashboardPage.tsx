@@ -58,6 +58,7 @@ interface DashboardPageProps {
   onUpdateVocabulary?: (vocab: Vocabulary) => Promise<unknown>
   onAddVocabulary?: (vocab: Vocabulary) => Promise<unknown>
   onUpdatePreset?: (preset: Preset) => Promise<unknown>
+  onGoToPresets?: () => void
 }
 
 type FilterStatus = "all" | JobStatus
@@ -112,6 +113,7 @@ export function DashboardPage({
   onUpdateVocabulary,
   onAddVocabulary,
   onUpdatePreset,
+  onGoToPresets,
 }: DashboardPageProps) {
   const { t, i18n } = useTranslation()
   const [newJobOpen, setNewJobOpen] = useState(false)
@@ -504,6 +506,7 @@ export function DashboardPage({
         onAddVocabulary={onAddVocabulary}
         onUpdatePreset={onUpdatePreset}
         initialFiles={droppedFiles}
+        onGoToPresets={onGoToPresets}
       />
     </div>
   )
