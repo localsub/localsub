@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { AppConfig, PartialConfig } from "../../types";
 import { useWizard } from "../../hooks/useWizard";
 import { useHardware } from "../../hooks/useHardware";
@@ -27,6 +27,15 @@ export function WizardScreen({
   });
   const hw = useHardware();
   const models = useModels();
+
+  // The model step offers Qwen3-ASR only on a GPU that fits. A wizard resumed
+  // at that step (wizard_step is saved) never ran the environment step's
+  // detection, so detect here too.
+  // A failed detection is not retried in a loop; Qwen then stays in Settings.
+  const { hardware, loading: hwLoading, error: hwError, detect } = hw;
+  useEffect(() => {
+    if (state.step === 4 && !hardware && !hwLoading && !hwError) detect();
+  }, [state.step, hardware, hwLoading, hwError, detect]);
 
   const selectedModels = useMemo(() => {
     const ids: string[] = [];
@@ -101,6 +110,8 @@ export function WizardScreen({
             catalog={models.catalog}
             loading={models.loading}
             profile={state.profile}
+            hardware={hw.hardware}
+            sourceLanguage={state.sourceLanguage}
             selectedWhisperModel={state.selectedWhisperModel}
             selectedLlmModel={state.selectedLlmModel}
             onSelectWhisper={(id) => updateState({ selectedWhisperModel: id })}
@@ -124,6 +135,7 @@ export function WizardScreen({
         selectedModels={selectedModels}
         downloads={models.downloads}
         manifest={models.manifest}
+        preparingEngine={models.installingPacks.size > 0}
         onStartDownload={() => {
           if (state.selectedWhisperModel) models.startDownload(state.selectedWhisperModel);
           if (state.selectedLlmModel) models.startDownload(state.selectedLlmModel);

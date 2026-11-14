@@ -11,6 +11,7 @@ import { render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
 import { ModelsSection } from "@/components/settings/ModelsSection";
 import { StepModels } from "@/components/wizard/StepModels";
+import { StepInstall } from "@/components/wizard/StepInstall";
 import {
   downloadErrorKey,
   downloadSize,
@@ -175,21 +176,75 @@ describe("Settings > Models with Qwen3-ASR", () => {
 });
 
 describe("Setup wizard", () => {
-  it("offers Whisper only, never Qwen or the aligner", () => {
+  function renderWizardModels(hardware: HardwareInfo | null, sourceLanguage = "auto") {
     render(
       <StepModels
         catalog={CATALOG}
         loading={false}
         profile="power"
-        selectedWhisperModel={null}
+        hardware={hardware}
+        sourceLanguage={sourceLanguage}
+        selectedWhisperModel="qwen3-asr-1.7b"
         selectedLlmModel={null}
         onSelectWhisper={vi.fn()}
         onSelectLlm={vi.fn()}
         onLoadCatalog={vi.fn()}
       />,
     );
+  }
+
+  it("offers Qwen when the detected GPU fits, never the aligner", () => {
+    renderWizardModels(hw(8188));
+    expect(screen.getByText("whisper-small")).toBeInTheDocument();
+    expect(screen.getByText("Qwen3-ASR 1.7B")).toBeInTheDocument();
+    expect(screen.getByText("Qwen3-ASR")).toBeInTheDocument();
+    expect(screen.queryByText("Qwen3 Forced Aligner 0.6B")).toBeNull();
+  });
+
+  it("counts the aligner in the Qwen download size", () => {
+    renderWizardModels(hw(8188));
+    // 4.7 GB model + 1.8 GB aligner, on the row and in the total
+    expect(screen.getAllByText("6.5 GB")).toHaveLength(2);
+  });
+
+  it.each([
+    ["no GPU", null],
+    ["too little VRAM", 6144],
+  ])("hides Qwen with %s", (_label, vram) => {
+    renderWizardModels(hw(vram));
     expect(screen.getByText("whisper-small")).toBeInTheDocument();
     expect(screen.queryByText("Qwen3-ASR 1.7B")).toBeNull();
-    expect(screen.queryByText("Qwen3 Forced Aligner 0.6B")).toBeNull();
+  });
+
+  it("hides Qwen when the chosen source language has no aligner", () => {
+    renderWizardModels(hw(8188), "vi");
+    expect(screen.queryByText("Qwen3-ASR 1.7B")).toBeNull();
+  });
+});
+
+describe("Setup wizard install step", () => {
+  function renderInstall(preparingEngine: boolean) {
+    render(
+      <StepInstall
+        selectedModels={["qwen3-asr-1.7b"]}
+        downloads={new Map()}
+        manifest={[]}
+        preparingEngine={preparingEngine}
+        onStartDownload={vi.fn()}
+        onComplete={vi.fn()}
+        error={null}
+        onRetry={vi.fn()}
+      />,
+    );
+  }
+
+  it("says the engine components are being set up while they install", () => {
+    renderInstall(true);
+    expect(screen.getByText(en.settings.models.preparingEngine)).toBeInTheDocument();
+  });
+
+  it("does not show that line otherwise", () => {
+    renderInstall(false);
+    expect(screen.queryByText(en.settings.models.preparingEngine)).toBeNull();
   });
 });

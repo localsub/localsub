@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { PageActions, PageMeta } from "@/components/page-header"
 import { cn } from "@/lib/utils"
+import { exportBaseName } from "@/lib/exportName"
 import { Waveform } from "./Waveform"
 import { SubtitleList } from "./SubtitleList"
 import { EditPanel } from "./EditPanel"
@@ -40,12 +41,16 @@ interface EditorPageProps {
   subtitleFormat: string
   /** 잡의 프리셋 — 재번역이 본 번역과 같은 톤/용어집/언어 설정을 쓰게 한다. */
   presetId?: string
+  /** Language STT reported for this job. A one-line retranslation has no
+   * transcript language of its own, so without this the preset's source
+   * language won (an English video retranslated as Japanese). */
+  sourceLang?: string
   vocabularies?: Vocabulary[]
   onUpdateVocabulary?: (v: Vocabulary) => Promise<Vocabulary[]>
   liveLines?: SubtitleLine[]
 }
 
-export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetId, vocabularies, onUpdateVocabulary, liveLines: liveLinesFromPipeline }: EditorPageProps) {
+export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetId, sourceLang, vocabularies, onUpdateVocabulary, liveLines: liveLinesFromPipeline }: EditorPageProps) {
   const { t } = useTranslation()
   const { present: lines, push: pushLines, undo, redo, reset: resetLines, canUndo, canRedo } = useHistory<SubtitleLine[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -453,13 +458,13 @@ export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetI
         text: l.original_text,
         translated: l.translated_text || undefined,
       }))
-      await exportSubtitles(segments, subtitleFormat, outputDir, jobId)
+      await exportSubtitles(segments, subtitleFormat, outputDir, exportBaseName(filePath, jobId))
       toastSuccess(t("toast.exportSuccess"))
     } catch (e) {
       console.error("Failed to export:", e)
       toastError(t("toast.exportFailed"))
     }
-  }, [jobId, lines, subtitleFormat, outputDir, t])
+  }, [jobId, filePath, lines, subtitleFormat, outputDir, t])
 
   const handleSplitLine = useCallback((id: string) => {
     const idx = lines.findIndex((l) => l.id === id)
@@ -538,7 +543,7 @@ export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetI
     })
     try {
       await unlistenPromise
-      const job = await startTranslate([{ index: line.index, start: line.start_time, end: line.end_time, text: line.original_text }], presetId)
+      const job = await startTranslate([{ index: line.index, start: line.start_time, end: line.end_time, text: line.original_text }], presetId, sourceLang)
       jobId = job.id
       activeRetranslateRef.current = { abort: () => { cancelJob(); settle(null) } }
       for (const seg of buffered) {
@@ -551,7 +556,7 @@ export function EditorPage({ jobId, filePath, outputDir, subtitleFormat, presetI
       clearTimeout(timeout)
       unlistenPromise.then((fn) => fn()).catch(() => {})
     }
-  }, [presetId])
+  }, [presetId, sourceLang])
 
   // Apply a finished translation against the freshest lines; the target may
   // have been deleted while we awaited the LLM.

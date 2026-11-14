@@ -81,6 +81,7 @@
       "dropzone": "파일을 드래그 앤 드롭하거나 클릭하여 찾아보기",
       "preset": "프리셋",
       "noPresets": "사용 가능한 프리셋이 없습니다. 프리셋 페이지에서 만들어주세요.",
+      "goToPresets": "프리셋 만들러 가기",
       "start": "작업 시작",
       "startMultiple": "{{count}}개 작업 시작",
       "supportedFormats": "MP4, MKV, AVI, MOV, WebM, MP3, WAV, M4A, FLAC, OGG, AAC, SRT, VTT",
@@ -229,6 +230,7 @@
     }
   },
   "presets": {
+    "wizardDefault": { "name": "처음 설정", "description": "처음 설정에서 고른 내용으로 만든 프리셋" },
     "description": "번역 프리셋 & 용어사전",
     "placeholder": "프리셋 관리 기능이 곧 제공됩니다.",
     "tabs": {
@@ -439,7 +441,7 @@
     },
     "models": {
       "title": "모델 선택",
-      "whisperTitle": "음성 인식 (Whisper)",
+      "whisperTitle": "음성 인식",
       "llmTitle": "번역 (LLM)",
       "skipLlm": "번역 건너뛰기 (STT만 사용)",
       "totalSize": "총 다운로드 크기",

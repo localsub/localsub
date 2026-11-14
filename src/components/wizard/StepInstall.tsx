@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, AlertCircle } from "lucide-react";
+import { Check, AlertCircle, Loader2 } from "lucide-react";
 import type { DownloadProgress, ModelManifestEntry } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -11,6 +11,9 @@ interface StepInstallProps {
   selectedModels: string[];
   downloads: Map<string, DownloadProgress>;
   manifest: ModelManifestEntry[];
+  /** A Qwen3-ASR download is installing its engine components first. That
+   * step sends no download progress, so say what is happening instead. */
+  preparingEngine?: boolean;
   onStartDownload: () => void;
   onComplete: () => void;
   error: string | null;
@@ -34,6 +37,7 @@ export function StepInstall({
   selectedModels,
   downloads,
   manifest,
+  preparingEngine = false,
   onStartDownload,
   onComplete,
   error,
@@ -146,6 +150,13 @@ export function StepInstall({
         </div>
         <Progress value={overallProgress} className="h-2.5" />
       </div>
+
+      {preparingEngine && (
+        <div className="flex items-center gap-2.5 rounded-lg bg-muted px-4 py-3.5 text-[13.5px] text-muted-foreground">
+          <Loader2 className="size-4 shrink-0 animate-spin" />
+          <span>{t("settings.models.preparingEngine")}</span>
+        </div>
+      )}
 
       {/* Per-file progress */}
       {downloads.size > 0 && (

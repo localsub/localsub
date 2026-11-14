@@ -81,6 +81,7 @@
       "dropzone": "Arrastra y suelta archivos aquí, o haz clic para explorar",
       "preset": "Predefinido",
       "noPresets": "No hay predefinidos disponibles. Crea uno en la página de Predefinidos.",
+      "goToPresets": "Ir a Predefinidos",
       "start": "Iniciar trabajo",
       "startMultiple": "Iniciar {{count}} trabajos",
       "supportedFormats": "MP4, MKV, AVI, MOV, WebM, MP3, WAV, M4A, FLAC, OGG, AAC, SRT, VTT",
@@ -229,6 +230,7 @@
     }
   },
   "presets": {
+    "wizardDefault": { "name": "Mi configuración", "description": "Creado con lo que elegiste en la configuración" },
     "description": "Predefinidos de traducción y vocabularios",
     "placeholder": "La administración de predefinidos estará disponible pronto.",
     "tabs": {
@@ -439,7 +441,7 @@
     },
     "models": {
       "title": "Selección de modelo",
-      "whisperTitle": "Reconocimiento de voz (Whisper)",
+      "whisperTitle": "Reconocimiento de voz",
       "llmTitle": "Traducción (LLM)",
       "skipLlm": "Omitir traducción (solo STT)",
       "totalSize": "Tamaño total de descarga",

@@ -81,6 +81,7 @@
       "dropzone": "Drag and drop files here, or click to browse",
       "preset": "Preset",
       "noPresets": "No presets available. Create one in the Presets page.",
+      "goToPresets": "Go to Presets",
       "start": "Start job",
       "startMultiple": "Start {{count}} jobs",
       "supportedFormats": "MP4, MKV, AVI, MOV, WebM, MP3, WAV, M4A, FLAC, OGG, AAC, SRT, VTT",
@@ -229,6 +230,7 @@
     }
   },
   "presets": {
+    "wizardDefault": { "name": "My setup", "description": "Made from your setup choices" },
     "description": "Translation presets & vocabularies",
     "placeholder": "Preset management coming soon.",
     "tabs": {
@@ -439,7 +441,7 @@
     },
     "models": {
       "title": "Model Selection",
-      "whisperTitle": "Speech Recognition (Whisper)",
+      "whisperTitle": "Speech Recognition",
       "llmTitle": "Translation (LLM)",
       "skipLlm": "Skip translation (STT only)",
       "totalSize": "Total download size",

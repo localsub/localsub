@@ -103,10 +103,19 @@ pub async fn start_stt(
             })
         })
         .or_else(|| {
+            // Never a helper: a Qwen download puts its forced aligner in the
+            // manifest first, so "first ready" alone picked the aligner.
+            let catalog = crate::commands_model::load_catalog(&app).ok();
             manifest
                 .models
                 .iter()
-                .find(|m| m.model_type == "whisper" && m.status == "ready")
+                .find(|m| {
+                    m.model_type == "whisper"
+                        && m.status == "ready"
+                        && catalog
+                            .as_ref()
+                            .is_none_or(|c| crate::stt_catalog::is_selectable(c, &m.id))
+                })
                 .map(|m| m.id.clone())
         });
 

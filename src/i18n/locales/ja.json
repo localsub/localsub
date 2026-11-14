@@ -81,6 +81,7 @@
       "dropzone": "ここにファイルをドラッグ＆ドロップ、またはクリックして選択",
       "preset": "プリセット",
       "noPresets": "プリセットがありません。プリセットページで作成してください。",
+      "goToPresets": "プリセットページへ",
       "start": "ジョブを開始",
       "startMultiple": "{{count}}件のジョブを開始",
       "supportedFormats": "MP4, MKV, AVI, MOV, WebM, MP3, WAV, M4A, FLAC, OGG, AAC, SRT, VTT",
@@ -229,6 +230,7 @@
     }
   },
   "presets": {
+    "wizardDefault": { "name": "初期設定", "description": "セットアップで選んだ設定から作成" },
     "description": "翻訳プリセットと用語集",
     "placeholder": "プリセット管理は近日公開予定です。",
     "tabs": {
@@ -439,7 +441,7 @@
     },
     "models": {
       "title": "モデル選択",
-      "whisperTitle": "音声認識 (Whisper)",
+      "whisperTitle": "音声認識",
       "llmTitle": "翻訳 (LLM)",
       "skipLlm": "翻訳をスキップ（STTのみ）",
       "totalSize": "合計ダウンロードサイズ",

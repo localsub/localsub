@@ -13,19 +13,27 @@ from __future__ import annotations
 
 import unicodedata
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import Iterable, Iterator, Sequence
 
-# A cue ends after sentence-final punctuation, before a pause this long, or
-# before it would grow past these limits (characters of the cue text).
+# A cue ends after sentence-final punctuation or before a pause this long. A
+# sentence too long for one cue (characters of the cue text, or duration) is
+# split where it reads best: after a comma, else near its middle.
 SENTENCE_END = set(".?!。？！…")
+CLAUSE_END = set(",;:，、；：")
 MAX_GAP_S = 0.6
 MAX_CUE_S = 7.0
-MAX_CHARS = 42
+# Two 42-character lines: the usual limit for Latin-script subtitles. One
+# line per cue cut most English sentences in two ("...a simple tomato" /
+# "pasta that...").
+MAX_CHARS = 84
 # Chinese and Japanese pack more per character and use no spaces: a
 # 42-character line is two lines' worth on screen. Korean is in between:
 # full-width syllables, but words are separated by spaces.
 MAX_CHARS_CJK = 24
 MAX_CHARS_HANGUL = 32
+# Shorter than this a cue flashes past unread ("Everyone.", "First."): it is
+# joined to a neighbour when the two fit in one cue.
+MIN_CUE_S = 0.83
 
 
 @dataclass(frozen=True)
@@ -134,30 +142,109 @@ def segment(transcript: str, words: Sequence[Word]) -> list[Cue]:
             return _cue_text(transcript, spans[a][0], spans[b][1])
         return _joined(words[a : b + 1])
 
-    def ends_sentence(i: int) -> bool:
-        if spans is None:
-            return False
-        tail = _cue_text(transcript, spans[i][1], spans[i][1])
-        return any(c in SENTENCE_END for c in tail)
+    def tail_after(i: int) -> str:
+        return "" if spans is None else _cue_text(transcript, spans[i][1], spans[i][1])
 
-    cues: list[Cue] = []
+    def ends_sentence(i: int) -> bool:
+        return any(c in SENTENCE_END for c in tail_after(i))
+
+    def ends_clause(i: int) -> bool:
+        return any(c in CLAUSE_END for c in tail_after(i))
+
+    def fits(a: int, b: int) -> bool:
+        text = text_of(a, b)
+        return len(text) <= _limit(text) and words[b].end - words[a].start <= MAX_CUE_S
+
+    # 1. Sentences: cut after sentence-final punctuation and at long pauses.
+    groups: list[tuple[int, int]] = []
     first = 0
     for i in range(len(words)):
-        last_word = i == len(words) - 1
-        cut = last_word or ends_sentence(i)
-        if not cut:
-            nxt = words[i + 1]
-            cut = (
-                nxt.start - words[i].end >= MAX_GAP_S
-                or nxt.end - words[first].start > MAX_CUE_S
-                or len(text_of(first, i + 1)) > _limit(text_of(first, i + 1))
-            )
-        if cut:
-            text = text_of(first, i)
-            if text:
-                cues.append(Cue(words[first].start, words[i].end, text))
+        if i == len(words) - 1 or ends_sentence(i) or words[i + 1].start - words[i].end >= MAX_GAP_S:
+            groups.append((first, i))
             first = i + 1
+
+    # 2. A sentence that does not fit is split where it reads best, never
+    # leaving a one-word tail ("...water to a" / "boil.").
+    def split(a: int, b: int) -> list[tuple[int, int]]:
+        if a == b or fits(a, b):
+            return [(a, b)]
+        total = len(text_of(a, b))
+        best, best_score = a, None
+        for j in range(a, b):  # cut after word j
+            left, right = len(text_of(a, j)), len(text_of(j + 1, b))
+            score = abs(left - right) / total
+            if ends_clause(j):
+                score -= 0.35
+            if j == a or j + 1 == b:  # a single word on its own
+                score += 1.0
+            if best_score is None or score < best_score:
+                best, best_score = j, score
+        return split(a, best) + split(best + 1, b)
+
+    pieces = [p for g in groups for p in split(*g)]
+
+    # 3. Join a cue too short to read to the neighbour it is closest to.
+    def too_short(p: tuple[int, int]) -> bool:
+        return words[p[1]].end - words[p[0]].start < MIN_CUE_S
+
+    def joinable(p: tuple[int, int], q: tuple[int, int]) -> bool:
+        return words[q[0]].start - words[p[1]].end < MAX_GAP_S and fits(p[0], q[1])
+
+    changed = True
+    while changed:
+        changed = False
+        for k, p in enumerate(pieces):
+            if not too_short(p):
+                continue
+            prev = pieces[k - 1] if k > 0 and joinable(pieces[k - 1], p) else None
+            nxt = pieces[k + 1] if k + 1 < len(pieces) and joinable(p, pieces[k + 1]) else None
+            if prev and (not nxt or words[p[0]].start - words[prev[1]].end <= words[nxt[0]].start - words[p[1]].end):
+                pieces[k - 1 : k + 1] = [(prev[0], p[1])]
+            elif nxt:
+                pieces[k : k + 2] = [(p[0], nxt[1])]
+            else:
+                continue
+            changed = True
+            break
+
+    cues: list[Cue] = []
+    for a, b in pieces:
+        text = text_of(a, b)
+        if text:
+            cues.append(Cue(words[a].start, words[b].end, text))
     return cues
+
+
+def _join_text(a: str, b: str) -> str:
+    if a and b and _is_cjk(a[-1]) and _is_cjk(b[0]):
+        return a + b
+    return f"{a} {b}"
+
+
+def merge_short(cues: Iterable[Cue]) -> Iterator[Cue]:
+    """Join a cue too short to read to the next one across speech chunks.
+
+    ``segment`` joins short cues within one chunk; a pause that splits speech
+    into chunks ("Good morning." | "Everyone.") left them apart. Streams: holds
+    back one cue, so cues still reach the caller as they are made.
+    """
+    held: Cue | None = None
+    for cue in cues:
+        if held is not None:
+            short = held.end - held.start < MIN_CUE_S or cue.end - cue.start < MIN_CUE_S
+            text = _join_text(held.text, cue.text)
+            if (
+                short
+                and cue.start - held.end < MAX_GAP_S
+                and cue.end - held.start <= MAX_CUE_S
+                and len(text) <= _limit(text)
+            ):
+                held = Cue(held.start, cue.end, text)
+                continue
+            yield held
+        held = cue
+    if held is not None:
+        yield held
 
 
 def words_from(items: Iterable, offset: float = 0.0) -> list[Word]:

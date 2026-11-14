@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from subtitle_segmenter import MAX_CUE_S, Cue, Word, locate, segment, words_from
+from subtitle_segmenter import MAX_CHARS, MAX_CUE_S, MIN_CUE_S, Cue, Word, locate, merge_short, segment, words_from
 
 
 def ws(*triples):
@@ -13,10 +13,10 @@ def test_text_comes_from_the_transcript_with_spaces_and_punctuation():
 
 
 def test_sentence_end_starts_a_new_cue():
-    words = ws(("Hi", 0.0, 0.3), ("there", 0.3, 0.6), ("How", 0.7, 0.9), ("are", 0.9, 1.0), ("you", 1.0, 1.2))
+    words = ws(("Hi", 0.0, 0.5), ("there", 0.5, 1.0), ("How", 1.1, 1.5), ("are", 1.5, 1.8), ("you", 1.8, 2.2))
     assert segment("Hi there. How are you?", words) == [
-        Cue(0.0, 0.6, "Hi there."),
-        Cue(0.7, 1.2, "How are you?"),
+        Cue(0.0, 1.0, "Hi there."),
+        Cue(1.1, 2.2, "How are you?"),
     ]
 
 
@@ -32,13 +32,54 @@ def test_cues_never_run_past_the_duration_limit():
     assert " ".join(c.text for c in cues) == " ".join(f"w{i}" for i in range(30))
 
 
-def test_latin_cues_stay_within_42_characters():
-    text = "this sentence keeps going with many short words and no punctuation at all"
+def test_latin_cues_stay_within_two_lines():
+    text = ("this sentence keeps going with many short words and no punctuation at all "
+            "and then it goes on for a while longer than any two lines of a subtitle can hold")
     words = [Word(w, i * 0.2, i * 0.2 + 0.15) for i, w in enumerate(text.split())]
     cues = segment(text, words)
     assert len(cues) > 1
-    assert all(len(c.text) <= 42 for c in cues)
+    assert all(len(c.text) <= MAX_CHARS == 84 for c in cues)
     assert " ".join(c.text for c in cues) == text
+
+
+def test_a_two_line_sentence_stays_one_cue():
+    # From a real run: one 42-char line per cue cut this after "tomato".
+    text = "Today we are going to make a simple tomato pasta that takes about 20 minutes."
+    words = [Word(w.strip("."), i * 0.3, i * 0.3 + 0.25) for i, w in enumerate(text.split())]
+    assert [c.text for c in segment(text, words)] == [text]
+
+
+def test_a_long_sentence_never_leaves_a_one_word_tail():
+    text = ("While the water heats up in the pot on the stove, slice two cloves of garlic, "
+            "one small onion and a handful of fresh basil leaves for the sauce to a boil")
+    words = [Word(w.strip(","), i * 0.2, i * 0.2 + 0.15) for i, w in enumerate(text.split())]
+    cues = segment(text, words)
+    assert len(cues) > 1
+    assert all(len(c.text.split()) > 1 for c in cues)
+    assert " ".join(c.text for c in cues) == text
+
+
+def test_a_long_sentence_is_split_after_a_comma():
+    text = ("When the pasta is almost done and the sauce has thickened nicely in the pan, "
+            "save a cup of the cooking water before you drain it")
+    words = [Word(w.strip(","), i * 0.2, i * 0.2 + 0.15) for i, w in enumerate(text.split())]
+    cues = segment(text, words)
+    assert cues[0].text.endswith("pan,")
+
+
+def test_a_cue_too_short_to_read_joins_its_neighbour():
+    # "Good morning. Everyone." came out as two 0.6 s flashes.
+    words = ws(("Good", 0.08, 0.4), ("morning", 0.4, 0.72), ("Everyone", 1.1, 1.74),
+               ("And", 2.06, 2.3), ("welcome", 2.3, 2.8), ("to", 2.8, 2.9), ("the", 2.9, 3.0),
+               ("show", 3.0, 3.8))
+    cues = segment("Good morning. Everyone. And welcome to the show.", words)
+    assert [c.text for c in cues] == ["Good morning. Everyone.", "And welcome to the show."]
+    assert all(c.end - c.start >= MIN_CUE_S for c in cues)
+
+
+def test_a_short_cue_stays_alone_after_a_long_pause():
+    words = ws(("Yes", 0.0, 0.4), ("Then", 2.0, 2.5), ("we", 2.5, 2.7), ("go", 2.7, 3.2))
+    assert [c.text for c in segment("Yes. Then we go.", words)] == ["Yes.", "Then we go."]
 
 
 def test_korean_eojeol_tokens_keep_spaces():
@@ -90,3 +131,37 @@ def test_empty_input_gives_no_cues():
 def test_words_from_shifts_chunk_time_to_file_time():
     items = [SimpleNamespace(text="hi", start_time=0.25, end_time=0.5)]
     assert words_from(items, offset=10.0) == [Word("hi", 10.25, 10.5)]
+
+
+# ── merge_short: across speech chunks ──────────────────────────────
+
+def test_short_cues_from_separate_chunks_are_joined():
+    # From a real run: each line came from its own speech chunk.
+    cues = [Cue(0.08, 0.72, "Good morning."), Cue(1.104, 1.744, "Everyone."),
+            Cue(2.064, 3.824, "And welcome to the weekly cooking show.")]
+    assert list(merge_short(cues)) == [
+        Cue(0.08, 1.744, "Good morning. Everyone."),
+        Cue(2.064, 3.824, "And welcome to the weekly cooking show."),
+    ]
+
+
+def test_a_short_cue_joins_the_next_one():
+    cues = [Cue(9.828, 10.308, "First."), Cue(10.704, 13.264, "Bring a large pot of salted water to a boil.")]
+    assert [c.text for c in merge_short(cues)] == ["First. Bring a large pot of salted water to a boil."]
+
+
+def test_merge_short_respects_pauses_and_limits():
+    assert len(list(merge_short([Cue(0.0, 0.5, "Yes."), Cue(2.0, 4.0, "Then we go.")]))) == 2
+    long = "x" * 80
+    assert len(list(merge_short([Cue(0.0, 0.5, "Yes."), Cue(0.6, 3.0, long)]))) == 2
+    assert len(list(merge_short([Cue(0.0, 0.5, "Yes."), Cue(0.6, 7.2, "a b c")]))) == 2
+
+
+def test_merge_short_joins_cjk_without_a_space():
+    assert [c.text for c in merge_short([Cue(0, 0.4, "はい"), Cue(0.5, 1.5, "そうです")])] == ["はいそうです"]
+
+
+def test_merge_short_passes_everything_else_through():
+    cues = [Cue(0, 2, "one two"), Cue(2.1, 4, "three four")]
+    assert list(merge_short(cues)) == cues
+    assert list(merge_short([])) == []

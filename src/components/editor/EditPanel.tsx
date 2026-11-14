@@ -83,7 +83,11 @@ function TimestampInput({
   )
 }
 
-const actionClass = "h-[42px] min-w-0 rounded-md px-2 text-sm [&_svg]:size-4"
+// Labels must fit at any panel width (the panel resizes down to 25%) and in
+// every language: two columns, and a label that is still too long wraps
+// inside the button instead of running out of it.
+const actionClass =
+  "h-auto min-h-[42px] min-w-0 whitespace-normal rounded-md px-2 py-1.5 text-center text-sm leading-tight [&_svg]:size-4"
 
 export function EditPanel({ line, onUpdateLine, onSplit, onMergeWithNext, onDelete, onRetranslate, canSplitLine, canMergeLine, retranslating, vocabularies, onUpdateVocabulary }: EditPanelProps) {
   const { t } = useTranslation()
@@ -178,7 +182,7 @@ export function EditPanel({ line, onUpdateLine, onSplit, onMergeWithNext, onDele
 
       {/* Actions */}
       <TooltipProvider>
-        <div className="mt-auto grid grid-cols-4 gap-2 pt-1">
+        <div className="mt-auto grid grid-cols-2 gap-2 pt-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="secondary" className={actionClass} disabled={!canSplitLine} onClick={() => onSplit(line.id)}>

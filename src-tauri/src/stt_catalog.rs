@@ -12,6 +12,12 @@ pub fn find<'a>(catalog: &'a ModelCatalog, id: &str) -> Option<&'a WhisperCatalo
     catalog.whisper_models.iter().find(|m| m.id == id)
 }
 
+/// Whether `id` can be the STT model a job runs with: anything but a helper
+/// (the forced aligner). Ids not in the catalog are not helpers.
+pub fn is_selectable(catalog: &ModelCatalog, id: &str) -> bool {
+    find(catalog, id).is_none_or(|e| e.role != SttRole::Aligner)
+}
+
 /// The hash recorded in the manifest for an STT entry: `model.bin`'s for
 /// Whisper (as before), otherwise the first hashed file by name.
 pub fn representative_hash(entry: &WhisperCatalogEntry) -> String {
@@ -384,6 +390,16 @@ mod tests {
         w["sha256"] = serde_json::json!({"ghost.bin": H});
         let err = validate(&catalog(serde_json::json!([w]))).unwrap_err();
         assert!(err.contains("ghost.bin"), "{err}");
+    }
+
+    #[test]
+    fn the_aligner_is_never_a_job_model() {
+        let catalog: ModelCatalog =
+            serde_json::from_str(include_str!("../resources/model_catalog.json")).unwrap();
+        assert!(!is_selectable(&catalog, "qwen3-forced-aligner-0.6b"));
+        assert!(is_selectable(&catalog, "qwen3-asr-0.6b"));
+        assert!(is_selectable(&catalog, "whisper-small"));
+        assert!(is_selectable(&catalog, "not-in-catalog"));
     }
 
     #[test]
